@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ULPF — Universal Log Pre-processing Framework Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-header">
+    <div class="logo">
+      <span class="shield-icon">🛡️</span>
+      <div>
+        <h1>ULPF <span class="subtitle">Universal Log Pre-processing Framework — SIH 26156</span></h1>
+        <p class="tagline">Enterprise Security Log Ingestion, Multi-Format Parsing, AI Onboarding & OCSF/ECS Normalization Engine</p>
+      </div>
+    </div>
+    <div class="header-status">
+      <div class="status-indicator">
+        <span class="status-dot"></span> Core Engine Active (Phases 1–11)
+      </div>
+      <span class="version-tag">v1.0.0-MASTER</span>
+    </div>
+  </div>
+
+  <div class="main-container">
+    <!-- Stat Cards -->
+    <div class="stats-grid">
+      <div class="card stat-card">
+        <div class="stat-header">
+          <span class="stat-icon">📊</span>
+          <span class="stat-title">Total Ingested Events</span>
+        </div>
+        <div class="stat-value" id="stat-total">1,284,920</div>
+        <div class="stat-sub"><span class="check-green">✓</span> 100% SHA-256 Verified Provenance</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-header">
+          <span class="stat-icon">⚡</span>
+          <span class="stat-title">Engine Throughput</span>
+        </div>
+        <div class="stat-value highlight" id="stat-throughput">13,672 <span class="unit">eps</span></div>
+        <div class="stat-sub">Avg Parsing Latency: <strong>73.1 µs</strong></div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-header">
+          <span class="stat-icon">🎯</span>
+          <span class="stat-title">Parsing Success Rate</span>
+        </div>
+        <div class="stat-value success" id="stat-accuracy">99.82%</div>
+        <div class="stat-sub">8 Auto-Detected Formats Supported</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-header">
+          <span class="stat-icon">🤖</span>
+          <span class="stat-title">AI Onboarded Parsers</span>
+        </div>
+        <div class="stat-value" id="stat-parsers">14 <span class="unit">active</span></div>
+        <div class="stat-sub">Local SLM (Qwen 3B/4B) Zero-Leak</div>
+      </div>
+    </div>
+
+    <!-- Pipeline Architecture Diagram -->
+    <div class="card pipeline-flow-card">
+      <div class="flow-header">
+        <h3>🔄 End-to-End Log Processing Flow</h3>
+        <span class="flow-badge">Zero Data Loss Architecture</span>
+      </div>
+      <div class="pipeline-flow">
+        <div class="flow-step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <span class="step-title">Sources / Ingestion</span>
+            <span class="step-desc">Website, FW, Router, WAF, Syslog, REST API</span>
+          </div>
+        </div>
+        <div class="flow-arrow">➔</div>
+        <div class="flow-step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <span class="step-title">Format Detection</span>
+            <span class="step-desc">Heuristic pattern matcher (CEF, LEEF, JSON, Syslog, etc.)</span>
+          </div>
+        </div>
+        <div class="flow-arrow">➔</div>
+        <div class="flow-step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <span class="step-title">Parser Engine</span>
+            <span class="step-desc">Zero-copy field extractors & validation rules</span>
+          </div>
+        </div>
+        <div class="flow-arrow">➔</div>
+        <div class="flow-step highlight-step">
+          <div class="step-num">4</div>
+          <div class="step-content">
+            <span class="step-title">AI Unknown Handler</span>
+            <span class="step-desc">Local Ollama SLM auto-generates draft parser</span>
+          </div>
+        </div>
+        <div class="flow-arrow">➔</div>
+        <div class="flow-step">
+          <div class="step-num">5</div>
+          <div class="step-content">
+            <span class="step-title">ULPF-IR Normalizer</span>
+            <span class="step-desc">Canonical field mapping & provenance hashing</span>
+          </div>
+        </div>
+        <div class="flow-arrow">➔</div>
+        <div class="flow-step">
+          <div class="step-num">6</div>
+          <div class="step-content">
+            <span class="step-title">OCSF / ECS Export</span>
+            <span class="step-desc">SIEM / Data Lake downstream delivery</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content Layout Grid -->
+    <div class="content-grid">
+      <!-- Left Panel: Interactive Log Processor & Demo Website Simulator -->
+      <div class="card panel">
+        <div class="panel-title-bar">
+          <h2>📥 Raw Log Processing Sandbox</h2>
+          <div class="sim-badge">Live API Connected</div>
+        </div>
+
+        <!-- Infrastructure Simulator Bar -->
+        <div class="sim-container">
+          <label>🌐 Simulated Demo Company Infrastructure Generator:</label>
+          <div class="sim-buttons">
+            <button class="btn sim-btn" id="btn-sim-web">💻 Web Store Access Log</button>
+            <button class="btn sim-btn" id="btn-sim-fw">🔥 CheckPoint Firewall CEF</button>
+            <button class="btn sim-btn" id="btn-sim-waf">🛡️ AWS WAF JSON</button>
+            <button class="btn sim-btn" id="btn-sim-vpn">🔐 QRadar LEEF VPN</button>
+            <button class="btn sim-btn" id="btn-sim-unknown">❓ Unknown Custom Log</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="raw-input">Raw Log Input Text</label>
+          <textarea id="raw-input" rows="4" placeholder="Paste raw CEF, LEEF, Syslog, JSON, Key=Value, XML, CSV, or custom log string...">CEF:0|CheckPoint|VPN-1 & FireWall-1|R80.10|1000|Accept Connection|Low|src=10.10.1.5 dst=8.8.8.8 spt=51522 dpt=443 proto=tcp act=allow shost=fw-edge-01</textarea>
+        </div>
+
+        <div class="sample-formats-row">
+          <span>Preset Formats:</span>
+          <button id="btn-sample-cef" class="btn chip">CEF</button>
+          <button id="btn-sample-leef" class="btn chip">LEEF</button>
+          <button id="btn-sample-syslog" class="btn chip">Syslog</button>
+          <button id="btn-sample-json" class="btn chip">JSON</button>
+          <button id="btn-sample-kv" class="btn chip">Key=Value</button>
+          <button id="btn-sample-csv" class="btn chip">CSV</button>
+          <button id="btn-sample-xml" class="btn chip">XML</button>
+        </div>
+
+        <div class="button-row" style="margin-top: 14px;">
+          <button id="btn-process" class="btn primary">⚡ Process Log (Full Pipeline)</button>
+          <button id="btn-detect-only" class="btn secondary">🔍 Format Detect Only</button>
+        </div>
+
+        <!-- Result Box -->
+        <div class="result-section" id="result-box" style="display:none;">
+          <div class="result-header">
+            <h3>Processing Result & Extraction</h3>
+            <div class="badge-row">
+              <span class="badge" id="badge-format">Format: CEF</span>
+              <span class="badge" id="badge-confidence">Confidence: 0.99</span>
+              <span class="badge success" id="badge-status">Status: SUCCESS</span>
+            </div>
+          </div>
+
+          <div class="tab-header">
+            <button class="tab-btn active" data-tab="tab-ulpf">ULPF-IR v1.0 Canonical</button>
+            <button class="tab-btn" data-tab="tab-prov">Field Provenance Line-of-Custody</button>
+            <button class="tab-btn" data-tab="tab-ocsf">OCSF v1.1 Export</button>
+            <button class="tab-btn" data-tab="tab-ecs">ECS Export</button>
+          </div>
+
+          <div class="tab-content active" id="tab-ulpf">
+            <pre><code id="code-ulpf"></code></pre>
+          </div>
+          <div class="tab-content" id="tab-prov">
+            <div class="prov-table-container">
+              <table class="prov-table">
+                <thead>
+                  <tr>
+                    <th>Canonical Field</th>
+                    <th>Original Field</th>
+                    <th>Extracted Value</th>
+                    <th>Parser & Rule</th>
+                    <th>Confidence</th>
+                  </tr>
+                </thead>
+                <tbody id="prov-tbody"></tbody>
+              </table>
+            </div>
+            <div class="hash-footer" id="prov-hash-box"></div>
+          </div>
+          <div class="tab-content" id="tab-ocsf">
+            <pre><code id="code-ocsf"></code></pre>
+          </div>
+          <div class="tab-content" id="tab-ecs">
+            <pre><code id="code-ecs"></code></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Panel: AI Onboarding Studio & Registry -->
+      <div class="card panel">
+        <h2>🤖 AI-Assisted Unknown Log Onboarding Studio</h2>
+        <p class="desc">Autonomous parser generation for unformatted logs using local SLM (Ollama Qwen 3B/4B) — zero data exposure to public APIs.</p>
+
+        <div class="form-group">
+          <label for="sample-unparsed">Unparsed Log Samples (10–100 raw events)</label>
+          <textarea id="sample-unparsed" rows="5" placeholder="Paste unknown custom log samples...">device=CustomFW_V2 src_ip=192.168.10.5 dst_ip=1.1.1.1 sport=5000 dport=80 action=DENIED rule_name=BlockBadTraffic
+device=CustomFW_V2 src_ip=192.168.10.12 dst_ip=8.8.8.8 sport=52110 dport=443 action=ALLOWED rule_name=AllowWeb
+device=CustomFW_V2 src_ip=10.0.1.99 dst_ip=10.0.1.1 sport=1234 dport=22 action=DENIED rule_name=BlockSSH</textarea>
+        </div>
+
+        <button id="btn-analyze-ai" class="btn ai-btn">✨ Analyze Unknown Format with Local AI Engine</button>
+
+        <div class="ai-results" id="ai-results-box" style="display:none;">
+          <div class="ai-box-title">
+            <h4>Generated Declarative Parser Specification (YAML)</h4>
+            <span class="slm-tag">Ollama Qwen-3B Engine</span>
+          </div>
+          <pre><code id="code-yaml-spec"></code></pre>
+
+          <div class="button-row" style="margin-top:14px;">
+            <button id="btn-generate-parser" class="btn primary">⚙️ Compile Parser (Set DRAFT Status)</button>
+            <button id="btn-approve-parser" class="btn success" style="display:none;">✅ Approve & Promote to ACTIVE</button>
+          </div>
+          <div id="ai-status-msg" class="status-banner" style="margin-top:12px;"></div>
+        </div>
+
+        <!-- Production Parser Registry Table -->
+        <div class="registry-section" style="margin-top:24px;">
+          <h3>📋 Active Production Parser Registry</h3>
+          <div class="parser-list-box" id="parser-registry-list">
+            <div class="parser-chip active"><span class="dot green"></span> CEF Parser (cef_v1)</div>
+            <div class="parser-chip active"><span class="dot green"></span> LEEF Parser (leef_v2)</div>
+            <div class="parser-chip active"><span class="dot green"></span> Syslog RFC5424/3164 (syslog_v1)</div>
+            <div class="parser-chip active"><span class="dot green"></span> Structured JSON Parser (json_v1)</div>
+            <div class="parser-chip active"><span class="dot green"></span> Key-Value Parser (kv_v1)</div>
+            <div class="parser-chip active"><span class="dot green"></span> CSV Firewall Parser (csv_v1)</div>
+            <div class="parser-chip active"><span class="dot green"></span> XML Event Log Parser (xml_v1)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

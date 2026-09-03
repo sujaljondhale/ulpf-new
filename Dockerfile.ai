@@ -1,0 +1,8 @@
+FROM ollama/ollama:latest
+
+# Expose Ollama local API port
+EXPOSE 11434
+
+ENV OLLAMA_HOST=0.0.0.0
+
+CMD ["ollama", "serve"]
