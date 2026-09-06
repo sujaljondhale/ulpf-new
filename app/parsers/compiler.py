@@ -1,6 +1,6 @@
 import re
 import yaml
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 from pydantic import BaseModel, Field
 from app.models.raw_event import RawEvent
 from app.parsers.base import BaseParser, ParseResult
