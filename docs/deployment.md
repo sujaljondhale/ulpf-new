@@ -1,197 +1,234 @@
-# ULPF Deployment & Operations Guide
-
-**Universal Log Pre-processing Framework (ULPF)**  
-*SIH 26156 — National Technical Research Organisation (NTRO)*  
-*Phase 7: Docker + Persistence + Deployment Hardening*
+# ULPF Deployment Guide
 
 ---
 
-## 1. System Requirements
+## Option A — Oracle Cloud VM (Full Production)
 
-| Metric | Minimum (Laptop Demo Mode) | Recommended (Multi-Service Production) |
-| :--- | :--- | :--- |
-| **Operating System** | Windows 10/11, Linux (Ubuntu 22.04+), macOS | Enterprise Linux (RHEL 9, Debian 12) |
-| **RAM** | 8 GB RAM (512MB OpenSearch JVM heap, ~150MB MinIO) | 16+ GB RAM (if running local AI SLM) |
-| **CPU** | 4 Cores (x86_64 or ARM64) | 8+ Cores |
-| **Disk Space** | 10 GB free disk space | 100+ GB SSD storage |
-| **Prerequisites** | Docker Engine 24.0+ & Docker Compose v2.20+ | Docker Engine & Kubernetes 1.28+ |
+> Everything works: Syslog UDP, Syslog TCP, MinIO, OpenSearch, Dashboard, REST API, AI
 
----
-
-## 2. One-Command Quickstart
-
-The entire ULPF platform starts with a single command:
-
-```bash
-docker compose up --build
-```
-
-Or run via automated startup script:
-
-```bash
-# Linux / macOS:
-./scripts/start.sh
-
-# Windows:
-scripts\start.bat
-```
-
-### Access URLs:
-* **🏆 SIH Demo Control Center**: [http://localhost:8000/dashboard/index.html#/sih-demo](http://localhost:8000/dashboard/index.html#/sih-demo)
-* **📊 Main ULPF Web Dashboard**: [http://localhost:8000/dashboard/index.html#/overview](http://localhost:8000/dashboard/index.html#/overview)
-* **💻 Client Event Generator**: [http://localhost:8000/dashboard/client_app.html](http://localhost:8000/dashboard/client_app.html)
-* **📖 Interactive Swagger OpenAPI**: [http://localhost:8000/docs](http://localhost:8000/docs)
-* **🔌 Core REST API Root**: [http://localhost:8000/api/v1](http://localhost:8000/api/v1)
-* **🪣 MinIO S3 Object Console**: [http://localhost:9001](http://localhost:9001) *(User: `ulpf_admin`, Pass: `ulpf_password_2026`)*
-* **🔍 OpenSearch Cluster REST**: [http://localhost:9200](http://localhost:9200)
+### Prerequisites
+- Oracle Cloud account (free tier — Ampere A1: 4 OCPU, 24 GB RAM is perfect)
+- A VM running **Ubuntu 22.04** or **Oracle Linux 8**
+- SSH access to the VM
 
 ---
 
-## 3. Operational Lifecycle Commands
+### Step 1 — Open Security List Ports (Oracle Cloud Console)
 
-### Stop the Platform (Preserve Data Volumes)
-```bash
-docker compose down
+Oracle Cloud blocks all inbound ports by default. You must open them in the Cloud Console **before** the setup script.
+
 ```
-*Persistent volumes (`ulpf_minio_data`, `ulpf_opensearch_data`, `ulpf_metadata_store`) remain preserved. On the next `docker compose up`, all previously ingested events and configurations will be available.*
-
-### Full Clean Reset (Wipe All Volumes)
-```bash
-docker compose down -v
-docker compose up --build
-```
-*Removes all persistent volumes and boots a pristine, fresh demonstration environment.*
-
-### Run Automated SIH Demo Suite
-```bash
-# Linux / macOS:
-./scripts/demo.sh
-
-# Windows:
-scripts\demo.bat
+Oracle Cloud Console
+  → Networking
+  → Virtual Cloud Networks
+  → Your VCN
+  → Security Lists
+  → Default Security List
+  → Add Ingress Rules
 ```
 
-### Inspect System Health Probes
-```bash
-# Linux / macOS:
-./scripts/health.sh
+Add these **Ingress Rules**:
 
-# Windows:
-scripts\health.bat
+| Source CIDR   | Protocol | Port(s)   | Description               |
+|---------------|----------|-----------|---------------------------|
+| `0.0.0.0/0`   | TCP      | `8000`    | ULPF Dashboard + REST API |
+| `0.0.0.0/0`   | UDP      | `5140`    | Syslog UDP Collector      |
+| `0.0.0.0/0`   | TCP      | `5141`    | Syslog TCP Collector      |
+| `0.0.0.0/0`   | TCP      | `9001`    | MinIO Console             |
+| `0.0.0.0/0`   | TCP      | `9200`    | OpenSearch (restrict if sensitive) |
+| `0.0.0.0/0`   | TCP      | `22`      | SSH (already open)        |
+
+---
+
+### Step 2 — Run the Setup Script (SSH into VM)
+
+```bash
+# SSH into your Oracle VM
+ssh ubuntu@<YOUR_VM_IP>
+
+# Download and run the setup script (one command)
+curl -fsSL https://raw.githubusercontent.com/Jayaduran/SIH-/main/scripts/oracle-setup.sh | sudo bash
+```
+
+The script will:
+1. Install Docker + Docker Compose
+2. Configure OS firewall (firewalld / ufw)
+3. Clone the ULPF repository to `/opt/ulpf`
+4. Create production `.env` file
+5. Install systemd service (auto-start on reboot)
+6. Start the full stack
+7. Verify health check
+
+**Total time: ~3-5 minutes** (Docker image build takes most of that)
+
+---
+
+### Step 3 — Edit Production Password
+
+```bash
+sudo nano /opt/ulpf/.env
+# Change: MINIO_SECRET_KEY=CHANGE_THIS_PASSWORD_2026
+# To something strong, then:
+sudo systemctl restart ulpf
 ```
 
 ---
 
-## 4. Multi-Tier Persistence Architecture
-
-ULPF does **NOT** rely on volatile RAM as a single source of truth. Data flows through a 3-tier persistent hierarchy:
-
-```text
-Incoming Raw Log
-       │
-       ▼
-[1. Cryptographic SHA-256 Hashing]
-       │
-       ▼
-[2. MinIO S3 Object Storage] ──────► Bucket: `ulpf-raw` (Immutable Evidence Source of Truth)
-       │                              Key: `events/{YYYY}/{MM}/{DD}/{event_id}.raw`
-       ▼
-[3. Deterministic Normalization] ──► Format Detection -> Regex Parser -> Semantic Normalizer -> ULPF-IR v1.0
-       │
-       ▼
-[4. OpenSearch REST Index] ────────► Index: `ulpf-events` (Searchable Normalized Representation)
-       │
-       ▼
-[5. SQLite Metadata DB] ───────────► Volume: `/app/storage/ulpf_metadata.db` (Parser Registry, Sources, Audit)
-```
-
----
-
-## 5. Graceful Degradation & High Availability
-
-ULPF is designed with robust circuit-breaker and fallback mechanisms:
-
-### Scenario A: OpenSearch Is Starting / Offline
-* **Behavior**: Raw log is safely stored in MinIO and metadata is written to persistent SQLite.
-* **Search Status**: Queries fallback transparently to SQLite full-text search with zero unhandled exceptions.
-* **Health Matrix**: OpenSearch component displays `DEGRADED (SQLite local search active)` while API remains `HEALTHY`.
-
-### Scenario B: MinIO Is Starting / Offline
-* **Behavior**: Raw log is immediately written to local tamper-evident disk storage (`/app/storage/raw/{event_id}.raw`) with SHA-256 checksum.
-* **Storage Status**: Storage indicates `degraded_local_fallback`. Evidence integrity remains 100% verified.
-
-### Scenario C: Local AI (Ollama) Is Offline
-* **Behavior**: All 8 deterministic compiled parsers (CEF, LEEF, Syslog, JSON, Key=Value, CSV, XML, Plaintext) operate at full speed (>13,500 EPS).
-* **Unknown Logs**: Unrecognized syntax is safely quarantined in the AI Review Queue with status `UNKNOWN_FORMAT / AI_OFFLINE`.
-
----
-
-## 6. Local AI / Ollama Profile Configuration
-
-Local SLM inference (Qwen2.5-Coder 3B) is packaged as an optional Docker Compose profile so laptop memory usage remains lean:
+### Step 4 — Verify Everything is Running
 
 ```bash
-# Start core platform + Local AI SLM engine:
-docker compose --profile ai up --build -d
+# Check service status
+sudo systemctl status ulpf
+
+# Follow live logs
+sudo journalctl -u ulpf -f
+
+# Check all containers
+cd /opt/ulpf && docker compose ps
+
+# Test API
+curl http://localhost:8000/api/v1/health/live
 ```
 
-To enable OpenSearch Dashboards UI:
+---
+
+### Access URLs (replace with your VM IP)
+
+| Service | URL |
+|---------|-----|
+| 🖥️ Dashboard | `http://<VM_IP>:8000/dashboard/index.html` |
+| 📖 API Docs | `http://<VM_IP>:8000/docs` |
+| 🗄️ MinIO Console | `http://<VM_IP>:9001` |
+| 🔍 OpenSearch | `http://<VM_IP>:9200` |
+| 📡 Syslog UDP | `<VM_IP>:5140` (UDP) |
+| 📡 Syslog TCP | `<VM_IP>:5141` (TCP) |
+
+---
+
+### Useful Management Commands
 
 ```bash
-# Start core platform + OpenSearch Dashboards UI:
-docker compose --profile analytics up --build -d
+# Start / Stop / Restart
+sudo systemctl start ulpf
+sudo systemctl stop ulpf
+sudo systemctl restart ulpf
+
+# Update to latest from GitHub
+cd /opt/ulpf && git pull && sudo systemctl restart ulpf
+
+# View container logs
+cd /opt/ulpf && docker compose logs -f ulpf-api
+
+# Send test syslog packets to your VM
+python scripts/send_syslog.py --host <VM_IP> --port 5140 --protocol udp --count 50
 ```
 
-To run all profiles simultaneously:
+---
+
+### Enable AI (if VM has ≥ 16GB RAM)
 
 ```bash
-docker compose --profile ai --profile analytics up --build -d
+sudo nano /opt/ulpf/.env
+# Set: AI_ENABLED=true
+
+cd /opt/ulpf
+docker compose --profile ai up -d
+# Wait ~5 min for model download
+docker compose exec ulpf-ai ollama pull qwen2.5-coder:3b
+sudo systemctl restart ulpf
 ```
 
 ---
 
-## 7. Air-Gapped & Sovereign Deployment Architecture
+## Option B — Render.com (Demo / Preview)
 
-For high-security defense networks (NTRO, defense SOC, isolated perimeters):
+> Dashboard + REST API + Pipeline work. Syslog UDP/TCP listeners are disabled (Render only supports HTTP). Free tier sleeps after 15 min.
 
-```text
-Internet Not Required at Runtime
-             ↓
-Local Container Base Images (Pre-packaged tarball)
-             ↓
-Local Deterministic Parser Registry
-             ↓
-Local Storage Volumes (MinIO / SQLite / OpenSearch)
-             ↓
-Optional Local Quantized SLM (Qwen2.5-Coder:3B)
+### What Works on Render
+- ✅ Web Dashboard
+- ✅ REST Ingest API (`POST /api/v1/ingest`)
+- ✅ Full parse → normalize → detect pipeline
+- ✅ File upload ingestion
+- ✅ CEF / Syslog / LEEF / JSON / KV parsers
+- ❌ Syslog UDP listener (no raw UDP on Render)
+- ❌ Syslog TCP listener (no raw TCP on Render)
+- ❌ MinIO (use local storage fallback)
+- ❌ OpenSearch (in-memory only)
+- ❌ AI/Ollama (no RAM on free tier)
+
+---
+
+### Deploy to Render (3 clicks)
+
+#### Method 1 — Auto-Deploy via render.yaml
+
+1. Go to [render.com](https://render.com) → **New** → **Blueprint**
+2. Connect your GitHub repo: `Jayaduran/SIH-`
+3. Render detects `render.yaml` automatically
+4. Click **Apply** → deployment starts
+
+#### Method 2 — Manual Web Service
+
+1. Go to [render.com](https://render.com) → **New** → **Web Service**
+2. Connect GitHub repo: `Jayaduran/SIH-`
+3. Settings:
+   - **Runtime**: Docker
+   - **Dockerfile Path**: `./Dockerfile`
+   - **Instance Type**: Free
+4. Add Environment Variables (see table below)
+5. Click **Deploy**
+
+---
+
+### Render Environment Variables
+
+Set these in **Render Dashboard → Your Service → Environment**:
+
+| Variable | Value |
+|----------|-------|
+| `ULPF_ENV` | `production` |
+| `ULPF_DEBUG` | `false` |
+| `SYSLOG_UDP_ENABLED` | `false` |
+| `SYSLOG_TCP_ENABLED` | `false` |
+| `FILE_COLLECTOR_ENABLED` | `true` |
+| `FILE_WATCH_DIR` | `/tmp/ulpf-logs` |
+| `MAX_EVENTS_PER_SECOND` | `1000` |
+| `INGRESS_QUEUE_MAX_SIZE` | `5000` |
+| `MINIO_ENDPOINT` | *(leave empty)* |
+| `OPENSEARCH_URL` | *(leave empty)* |
+| `AI_ENABLED` | `false` |
+| `STORAGE_DIR` | `/tmp/ulpf-raw` |
+| `DB_SQLITE_PATH` | `/tmp/ulpf-metadata.db` |
+
+> **Note:** On Render free tier, `/tmp` is ephemeral — data resets on each deploy/restart. For persistent demo data use Render's **Starter** plan ($7/month) with a persistent disk.
+
+---
+
+### After Render Deploy
+
+Your app will be live at:
+```
+https://ulpf-demo.onrender.com/dashboard/index.html
+https://ulpf-demo.onrender.com/docs
 ```
 
-> **Air-Gapped Statement**: *ULPF architecturally supports air-gapped deployment with zero external cloud egress, zero runtime package installation, and 100% sovereign on-premise execution; final compliance validation depends on the deployment host physical isolation.*
+> ⚠️ Free tier sleeps after 15 minutes of inactivity. First request after sleep takes ~30 seconds to wake up.
 
 ---
 
-## 8. Production vs. Prototype Comparison Table
+## Comparison
 
-| Capability / Tier | ULPF SIH Prototype (Delivered) | Enterprise Production Architecture |
-| :--- | :--- | :--- |
-| **API Layer** | Real (FastAPI + Uvicorn Async, Non-root) | Real (FastAPI / Envoy Gateway with Horizontal Pod Autoscaling) |
-| **Containerization** | Real (Docker + Docker Compose Stack) | Real (Kubernetes Helm Charts + OCI Images) |
-| **Raw Evidence Store** | Real (MinIO S3 Immutable + Local Fallback) | Real (Distributed Ceph / AWS S3 Object Lock / MinIO Cluster) |
-| **Search Engine** | Real (OpenSearch 2.11, 512MB Single-Node) | Real (Multi-node Distributed OpenSearch / Elasticsearch Cluster) |
-| **Metadata DB** | Real (SQLite 3 with Volume Mount) | Real (PostgreSQL / CockroachDB High-Availability Cluster) |
-| **Real-Time Stream** | Real (Server-Sent Events Broadcast Hub) | Real (Scalable WebSockets / Redis PubSub Gateway) |
-| **Streaming Buffer** | Real (Async In-Memory Queue / Redpanda) | Real (Multi-Broker Redpanda / Apache Kafka Cluster) |
-| **AI / SLM Engine** | Real (Local Ollama Qwen2.5-Coder:3B) | Real (vLLM / Triton Inference Server on Dedicated GPU Nodes) |
-| **Throughput (1 Core)** | **13,615 Events / Sec** (Measured) | Scaled Horizontally across N worker instances |
-| **Latency (Mean)** | **73.18 µs** (Measured) | Sub-millisecond pipeline SLA |
-| **Air-Gapped Support**| Real (Zero WAN dependencies) | Real (Strict DoD/NTRO Sovereign Enclave Deployment) |
-| **Billion-Scale Log Scale**| Architectural target via horizontal worker partitioning | Validated with multi-cluster Kafka + OpenSearch sharding |
-
----
-
-## 9. Security & Container Hardening
-
-* **Non-Root Execution**: Backend runs under unprivileged `ulpfuser:ulpfgroup`.
-* **Zero Commit of Credentials**: Standard `.env.example` provided; default passwords overridable via environment variables.
-* **Automated Healthchecks**: Every service exposes live healthcheck probes (`/api/v1/health/live`).
-* **Resource Caps**: JVM heap capped at 512MB to ensure seamless operation on standard laptops without freezing host memory.
+| Feature | Oracle Cloud VM | Render Free |
+|---------|----------------|-------------|
+| **Cost** | Free (Always Free) | Free (limited) |
+| **Sleep** | Never | After 15 min |
+| **Syslog UDP 5140** | ✅ Full | ❌ N/A |
+| **Syslog TCP 5141** | ✅ Full | ❌ N/A |
+| **MinIO Storage** | ✅ Persistent | ❌ Ephemeral |
+| **OpenSearch** | ✅ Full | ❌ N/A |
+| **AI / Ollama** | ✅ (if RAM ≥ 16GB) | ❌ N/A |
+| **Dashboard** | ✅ | ✅ |
+| **REST API** | ✅ | ✅ |
+| **Pipeline** | ✅ Full | ✅ Full |
+| **Custom Domain** | Configure nginx | Included |
+| **Best For** | SIH Live Demo | Public preview link |

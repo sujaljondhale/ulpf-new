@@ -46,4 +46,5 @@ HEALTHCHECK --interval=20s --timeout=5s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:8000/api/v1/health/live || exit 1
 
 # Start ULPF Unified API Server & Web Dashboard
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# PORT env var is used by Render; defaults to ULPF_API_PORT (8000) on other platforms
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-${ULPF_API_PORT:-8000}}"]
