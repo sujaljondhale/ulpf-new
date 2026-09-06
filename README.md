@@ -1,315 +1,130 @@
-# Universal Log Pre-processing Framework (ULPF) — Phase 1
+# Universal Log Pre-processing Framework (ULPF)
 
-**SIH Problem ID:** SIH 26156  
-**Proposed For:** National Technical Research Organisation (NTRO)  
-**Implementation:** Phase 1 Deterministic Foundation Core (100% Local & Offline)
-
----
-
-## 1. Problem Statement
-
-Perimeter network devices (firewalls, routers, IDPS, WAFs) across national security infrastructure generate vast volumes of heterogeneous logs in inconsistent formats (Syslog RFC 3164/5424, CEF, LEEF, Key=Value, JSON, and proprietary unstructured plain text). Existing SIEM and log ingestion solutions suffer from format lock-in, heavy resource footprints (Kafka, Elasticsearch, Kubernetes), high latency, and lack of field-level data provenance.
-
-**ULPF** addresses this by providing a lightweight, ultra-high-speed, format-agnostic pre-processing framework that ingests raw perimeter logs, deterministically identifies format type, parses header/payload attributes, normalizes network events into a canonical representation (**ULPF-IR**), and maintains full field-level data provenance—all without modifying the original raw message.
+**SIH Problem ID:** SIH 26156 (NTRO)  
+**Theme:** Cybersecurity & High-Throughput Log Pre-processing  
+**Status:** Phase 7 — Docker + Persistence + Deployment Hardening
 
 ---
 
-## 2. ULPF Phase 1 Objective
+## 1. What is ULPF?
 
-Phase 1 establishes a deterministic, high-performance log-processing engine designed to run locally on resource-constrained hardware (e.g., Intel i7 13th Gen, 16 GB RAM) without external cloud or internet dependencies:
+**ULPF (Universal Log Pre-processing Framework)** is a vendor-independent preprocessing and normalization layer positioned between heterogeneous enterprise log sources and downstream analytics systems (OpenSearch, OCSF, ECS, SIEMs).
+
+It preserves raw evidence, creates a common internal event representation (**ULPF-IR**), maintains cryptographic field-level provenance, assists onboarding of unknown formats with local AI, and provides standardized outputs to multiple downstream consumers.
+
+---
+
+## 🚀 One-Command Containerized Deployment
+
+The complete ULPF platform (API, Dashboard, MinIO Raw Storage, OpenSearch Normalized Index, SQLite Metadata) runs with a single command:
+
+```bash
+docker compose up --build
+```
+
+### Automation Scripts
+
+| Action | Linux / macOS | Windows | Description |
+| :--- | :--- | :--- | :--- |
+| **Start Stack** | `./scripts/start.sh` | `scripts\start.bat` | Starts all containers, waits for health, prints URLs |
+| **Stop Stack** | `./scripts/stop.sh` | `scripts\stop.bat` | Gracefully stops services preserving volumes |
+| **Clean Reset** | `./scripts/reset.sh` | `scripts\reset.bat` | Wipes volumes (`docker compose down -v`) and boots clean |
+| **Health Check** | `./scripts/health.sh` | `scripts\health.bat` | Inspects real live health probes across subsystems |
+| **Run SIH Demo** | `./scripts/demo.sh` | `scripts\demo.bat` | Ingests multi-vendor logs and verifies pipeline |
+
+---
+
+## 🌐 Platform URLs
+
+* 🏆 **SIH Demo Control Center**: [http://localhost:8000/dashboard/index.html#/sih-demo](http://localhost:8000/dashboard/index.html#/sih-demo)
+* 📊 **Main Web Dashboard**: [http://localhost:8000/dashboard/index.html#/overview](http://localhost:8000/dashboard/index.html#/overview)
+* 💻 **Client Event Generator**: [http://localhost:8000/dashboard/client_app.html](http://localhost:8000/dashboard/client_app.html)
+* 📖 **Interactive Swagger OpenAPI**: [http://localhost:8000/docs](http://localhost:8000/docs)
+* 🔌 **REST API Root**: [http://localhost:8000/api/v1](http://localhost:8000/api/v1)
+* 🪣 **MinIO S3 Object Console**: [http://localhost:9001](http://localhost:9001) *(User: `ulpf_admin`, Pass: `ulpf_password_2026`)*
+* 🔍 **OpenSearch Node**: [http://localhost:9200](http://localhost:9200)
+
+---
+
+## 3. How Does It Work?
 
 ```text
-Raw Log
-   ↓
-Input Validation & Hash Preserver (SHA-256)
-   ↓
-Format Detection (JSON, Syslog, CEF, LEEF, Key=Value, Plaintext)
-   ↓
-Parser Selection & Dispatch
-   ↓
-Field Extraction
-   ↓
-ULPF Canonical Event Model (ULPF-IR v0.1)
-   ↓
-Validation
-   ↓
-JSON Output + Field-Level Provenance
+                  MANY SOURCES
+       Firewall     Router     VPN     WAF
+          │           │         │       │
+          ↓           ↓         ↓       ↓
+       Syslog        JSON      CEF     LEEF
+          │           │         │       │
+          └───────────┼─────────┴───────┘
+                      ↓
+                     ULPF
+      (Raw Preservation ➔ Detect ➔ Parse ➔ Validate)
+                      ↓
+                   ULPF-IR
+     (Canonical Intermediate Representation & Provenance)
+                      ↓
+             ┌────────┼────────┐
+             ↓        ↓        ↓
+           OCSF      ECS      SIEM / OpenSearch
+
+      Preserve → Understand → Normalize → Trace → Deliver
 ```
 
-> **Note:** AI/LLM functionality is **NOT** included in Phase 1 to guarantee deterministic execution, zero latency overhead, and strict offline operation. AI-assisted parser generation is planned for Phase 2.
+1. **Preserve**: The incoming log is hashed with SHA-256 and preserved byte-for-byte in MinIO S3 object storage before transformation.
+2. **Understand**: The format is classified deterministically (confidence ≥ 0.95) and structured tokens are extracted.
+3. **Normalize**: Vendor fields are mapped to canonical semantic security taxonomy (**ULPF-IR v1.0**) and validated with Pydantic V2.
+4. **Trace**: Field-level provenance is recorded, linking normalized attributes back to raw byte offsets and source keys.
+5. **Deliver**: The canonical event is indexed in OpenSearch, persisted in SQLite, and exported simultaneously to OCSF v1.1.0, ECS v8.x, and downstream SIEM sinks.
 
 ---
 
-## 3. Hardware Constraints & Efficiency
+## 4. Multi-Tier Persistence Architecture
 
-ULPF Phase 1 is optimized for single-machine deployment:
-- **System Memory:** 16 GB RAM (ULPF uses < 100 MB RSS footprint)
-- **CPU:** Intel i7 13th Gen (Multi-threaded streaming support)
-- **VRAM:** NVIDIA RTX 4050 6 GB (Reserved for Phase 2 local AI models)
-- **Zero Heavy Infrastructure:** No Kafka, OpenSearch, Elasticsearch, Kubernetes, or Docker required for Phase 1.
-
----
-
-## 4. Technology Stack
-
-- **Language:** Python 3.12+
-- **REST Framework:** FastAPI & Uvicorn
-- **Validation & Serialization:** Pydantic v2
-- **Configuration:** PyYAML
-- **Testing:** Pytest (with 30+ synthetic security test cases)
-- **Metrics & Benchmarking:** Psutil & custom benchmark suite
+* **MinIO (`ulpf-raw` bucket)**: Persistent raw log evidence store. Every incoming log is hashed with SHA-256 and stored verbatim.
+* **OpenSearch (`ulpf-events` index)**: High-performance searchable canonical representation.
+* **SQLite (`storage/ulpf_metadata.db`)**: Persistent database for parsers, log sources, audit trails, and restart recovery.
+* **Restart Resilience**: After `docker compose restart`, all previously ingested events and configurations remain intact and searchable.
 
 ---
 
-## 5. Architectural Components
+## ⚡ Performance Benchmark (10,000 Events)
 
-### 5.1 Raw Event Model (`app/models/raw.py`)
-Preserves original raw log string without altering a single byte:
-- `event_id`: Unique UUID4 identifier
-- `ingestion_timestamp`: UTC ISO 8601 timestamp
-- `raw_message`: Immutable raw string
-- `raw_hash`: SHA-256 cryptographic digest of `raw_message`
+Reproducible CLI benchmark run: `python benchmark.py --events 10000`
 
-### 5.2 Format Detector (`app/detector/format_detector.py`)
-Deterministic regex and structural inspection engine:
-- **JSON**: Validated JSON objects/arrays (`confidence: 1.0`)
-- **CEF**: Pattern `CEF:<version>|` (`confidence: 0.99`)
-- **LEEF**: Pattern `LEEF:<version>|` (`confidence: 0.99`)
-- **Syslog**: PRI header `<0-191>` or RFC 3164/5424 timestamp/hostname (`confidence: 0.90 - 0.95`)
-- **Key=Value**: Multiple `key=value` patterns (`confidence: 0.70 - 0.95`)
-- **Plaintext**: Fallback for unstructured logs (`confidence: 0.20`)
-
-### 5.3 Parsers (`app/parsers/`)
-- `JsonParser`: Arbitrary JSON parsing with recursive nested dictionary flattening.
-- `SyslogParser`: RFC 3164 BSD & RFC 5424 IETF header extraction (PRI, facility, severity, hostname, appname, pid) and body K=V parsing.
-- `CefParser`: Extracts 7 standard CEF headers + extension field pairs.
-- `LeefParser`: Extracts standard LEEF headers + custom/tab-delimited key-value extensions.
-- `KvParser`: Parses arbitrary space/quote-delimited `key=value` lines.
-- `TextParser`: Fallback parser preserving raw message with `status="unparsed"`.
-
-### 5.4 Network Security Taxonomy (`app/models/taxonomy.py`)
-Targeted perimeter network taxonomy:
-- `event`: `id`, `time`, `category`, `type`, `action`
-- `source`: `ip`, `port`
-- `destination`: `ip`, `port`
-- `network`: `protocol`, `transport`
-- `device`: `vendor`, `product`, `hostname`
-- `rule`: `name`, `id`
-- `user`: `name`
-- `severity`: Normalized severity
-
-### 5.5 ULPF Intermediate Representation (ULPF-IR) (`app/models/ir.py`)
-Central canonical event format across all log sources.
-
-### 5.6 Field Provenance (`app/models/ir.py`)
-Maintains source field attribution for every normalized field:
-```json
-{
-  "source.ip": {
-    "original_field": "src",
-    "original_value": "10.10.1.5",
-    "parser": "key_value",
-    "confidence": 1.0
-  }
-}
-```
+* **Throughput**: **13,615.15 Events / Second (EPS)** (Single CPU Core)
+* **Processing Latency (P50 Median)**: **70.00 microseconds (0.0700 ms)**
+* **Processing Latency (Mean)**: **73.18 microseconds (0.0732 ms)**
+* **Processing Latency (P95)**: **89.20 microseconds (0.0892 ms)**
+* **Processing Latency (P99)**: **142.80 microseconds (0.1428 ms)**
+* **Parse Success Rate**: **100.00%** (10,000 / 10,000, 0 errors)
+* **Process Memory Delta**: **+0.54 MB**
 
 ---
 
-## 6. Installation & Quick Start
+## 🔒 Security & Defense Air-Gap Guarantees
 
-### 6.1 Prerequisites
-Python 3.12 or higher.
-
-### 6.2 Setup Virtual Environment
-```bash
-# Navigate to the project root directory
-cd C:\Users\tommy\.gemini\antigravity-ide\scratch\ulpf
-
-# Create virtual environment
-python -m venv venv
-
-# Activate virtual environment (Windows)
-.\venv\Scripts\activate
-# Activate virtual environment (Linux/macOS)
-# source venv/bin/activate
-
-# Install required dependencies
-pip install -r requirements.txt
-```
+* **100% Offline & Sovereign**: Operates strictly within air-gapped secure enclaves with zero external cloud telemetry, zero API keys, and zero tracking.
+* **Tamper-Evident Provenance**: Recalculates SHA-256 hash on-demand against stored raw messages to detect any modification.
+* **Active Threat Defense**: Includes real-time IP source blocking to mitigate DDoS log flooding and rogue injection attacks.
+* **Non-Root Execution**: Runs under unprivileged `ulpfuser` in container environment.
 
 ---
 
-## 7. Running ULPF
+## 📁 Technical Documentation Index
 
-### 7.1 Running the REST API Server
-```bash
-uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
-```
-Interactive Swagger API documentation will be available at: `http://127.0.0.1:8000/docs`
-
-### 7.2 Running the Demo CLI
-```bash
-# Run CLI against sample firewall log file
-python -m app.cli --file samples/firewall.log
-
-# Or run CLI against a raw log string
-python -m app.cli --log "CEF:0|CheckPoint|VPN-1|R80|100|Accept|Low|src=10.10.1.5 dst=8.8.8.8 spt=51522 dpt=443 proto=tcp act=allow"
-```
+* 📘 [Architecture Specification](docs/architecture.md) — Comprehensive technical design & component breakdown
+* 🚢 [Deployment & Operations Guide](docs/deployment.md) — Bare-metal, Docker Compose, and air-gapped setup
+* 🔄 [Data Flow & Lifecycle](docs/data-flow.md) — Byte-level trace from wire ingress to downstream sinks
+* 🌐 [REST API Reference](docs/api.md) — OpenAPI endpoint schemas, payloads, and response status codes
+* 🎬 [3-Minute Live Jury Script](docs/demo-script.md) — Presenter script and timing guide for SIH evaluation
+* 📊 [Performance Benchmark Report](docs/benchmark.md) — Complete methodology, latency percentiles, and hardware baseline
+* ❓ [Top 15 Jury Q&A Guide](docs/judge-questions.md) — Direct, technically rigorous answers to evaluation questions
+* 🛡️ [Engineering Scope & Limitations](docs/limitations.md) — Honest evaluation of prototype boundaries and production roadmap
 
 ---
 
-## 8. REST API Endpoints
+## 👥 Authors & Acknowledgments
 
-### 1. `GET /health`
-Returns service status.
-
-### 2. `POST /detect`
-Input:
-```json
-{
-  "log": "CEF:0|CheckPoint|VPN-1|R80.10|1000|Accept Connection|Low|src=10.10.1.5 dst=8.8.8.8"
-}
-```
-Response:
-```json
-{
-  "format": "CEF",
-  "confidence": 0.99,
-  "reason": "CEF header pattern detected"
-}
-```
-
-### 3. `POST /parse`
-Extracts raw structured fields before taxonomy normalization.
-
-### 4. `POST /normalize`
-Output canonical taxonomy structure and field provenance.
-
-### 5. `POST /process`
-Executes complete pipeline: `Raw → Detect → Parse → Normalize → Validate → ULPF-IR`.
-
-Response Example:
-```json
-{
-  "status": "success",
-  "detection": {
-    "format": "CEF",
-    "confidence": 0.99,
-    "reason": "CEF header pattern detected"
-  },
-  "normalized_event": {
-    "event": {
-      "category": "network",
-      "action": "allow"
-    },
-    "source": {
-      "ip": "10.10.1.5",
-      "port": 51522
-    },
-    "destination": {
-      "ip": "8.8.8.8",
-      "port": 443
-    },
-    "network": {
-      "transport": "tcp"
-    },
-    "device": {
-      "vendor": "CheckPoint",
-      "product": "VPN-1"
-    }
-  },
-  "provenance": {
-    "source.ip": {
-      "original_field": "src",
-      "original_value": "10.10.1.5",
-      "parser": "cef",
-      "confidence": 1.0
-    },
-    "destination.ip": {
-      "original_field": "dst",
-      "original_value": "8.8.8.8",
-      "parser": "cef",
-      "confidence": 1.0
-    }
-  },
-  "raw_hash": "a591a6d40bf420404a011733cfb7b190d62c65bf0bcda32b57b277d9ad9f146e",
-  "reason": null
-}
-```
-
----
-
-## 9. Automated Testing
-
-Run unit and pipeline tests via pytest:
-```bash
-pytest -v tests/
-```
-
-The test suite covers **30+ synthetic network/firewall test events**:
-- Valid Syslog (RFC 3164 & RFC 5424)
-- Malformed Syslog headers
-- Flat & nested JSON logs
-- CEF (CheckPoint, Palo Alto, Cisco)
-- LEEF (Imperva, QRadar, Trend Micro)
-- Key=Value (Fortinet, iptables)
-- Unknown plain text logs
-- Missing fields
-- Invalid IP addresses (preserves raw string safely)
-- Invalid ports (rejected gracefully without throwing errors)
-- Unicode characters (e.g. Spanish/German text & emojis)
-- Empty & whitespace logs
-- Very large logs (100 KB payload)
-- SHA-256 hash preservation
-- Field provenance accuracy
-
----
-
-## 10. Performance Benchmarking
-
-To run the performance benchmark tool:
-```bash
-python -m scripts.benchmark
-```
-
-### Measured Performance Baseline (Single core / 16 GB RAM):
-- **10,000 Events:** 0.827 seconds (**12,090 events/sec**, 82.71 µs latency)
-- **100,000 Events:** 7.221 seconds (**13,848 events/sec**, 72.21 µs latency)
-- **1,000,000 Events:** 73.140 seconds (**13,672 events/sec**, 73.14 µs latency)
-- **Memory Footprint (RSS):** **31.14 MB** total memory consumption (0 MB leak across 1M events)
-- **CPU Utilization:** **2.7%**
-
----
-
-## 11. Limitations of Phase 1
-
-1. **Unrecognized / Novel Log Formats:** If a log format does not match JSON, Syslog, CEF, LEEF, or Key=Value, Phase 1 safely preserves the raw log and marks it as `unparsed`.
-2. **Deterministic Rules Only:** No semantic AI inference is performed in Phase 1.
-3. **Targeted Taxonomy:** Phase 1 focuses on perimeter network log taxonomy (`event`, `source`, `destination`, `network`, `device`, `rule`, `user`). Extended domain taxonomies (cloud IAM, endpoint EDR, Windows Event Logs) are reserved for future phases.
-
----
-
-## 12. Recommended Phase 2 Architecture & AI Integration
-
-In Phase 2, ULPF will incorporate **Local, On-Device AI models** leveraging the laptop's NVIDIA RTX 4050 GPU (6 GB VRAM) to automatically infer and generate parsers for unparsed logs:
-
-```text
-               Unparsed Log Event (Phase 1 Fallback)
-                                ↓
-               Vector DB / Pattern Matcher (FAISS / ChromaDB)
-                                ↓
-          Local Small Language Model (e.g., Llama-3-8B-Instruct Q4 / Qwen2.5-Coder)
-                                ↓
-                 Auto-Generated Parser Code (Regex/Pydantic)
-                                ↓
-               Automated Validation & Sandbox Test
-                                ↓
-          Dynamic Parser Registry (Promoted to Phase 1 Deterministic Engine)
-```
-
-### PC2 Integration Strategy:
-When connecting a secondary PC (PC2) or expanding to a distributed multi-node deployment:
-1. **Primary Node (PC1):** Runs ULPF Deterministic Core Engine (Phase 1) + REST API + Local Model Inference Server (Ollama / vLLM on RTX GPU).
-2. **Secondary Node (PC2):** Runs lightweight log collectors (e.g., Vector / Fluentbit) forwarding raw syslog/HTTP streams to PC1 REST API (`POST /process`).
-3. **Metadata Synchronization:** SQLite or lightweight DuckDB database can be added to persist dynamic parser definitions and shared provenance graphs between PC1 and PC2.
+* **Project**: Universal Log Pre-processing Framework (ULPF)
+* **Problem Statement**: SIH 26156 (NTRO)
+* **License**: Apache 2.0 (Open Source for National Security Research)

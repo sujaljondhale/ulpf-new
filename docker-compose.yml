@@ -1,58 +1,53 @@
 version: '3.8'
 
 services:
-  # 1. ULPF Core API & Web Dashboard
+  # ----------------------------------------------------------------------------
+  # 1. ULPF Unified API Engine & Web Dashboard
+  # ----------------------------------------------------------------------------
   ulpf-api:
     build:
       context: .
-      dockerfile: Dockerfile.api
+      dockerfile: Dockerfile
     container_name: ulpf-api
     ports:
       - "8000:8000"
+      - "5140:5140/udp"
+      - "5141:5141"
     environment:
-      - OLLAMA_HOST=http://ulpf-ai:11434
-      - AI_MODEL_NAME=qwen2.5-coder:3b
-      - REDPANDA_HOST=redpanda:9092
-      - MINIO_HOST=minio:9000
-      - OPENSEARCH_HOST=http://opensearch:9200
-    depends_on:
-      - ulpf-ai
-      - redpanda
-      - minio
-      - opensearch
-    restart: unless-stopped
-
-  # 2. Local AI SLM Engine (Ollama + Qwen 3B on RTX 4050 GPU/CPU)
-  ulpf-ai:
-    build:
-      context: .
-      dockerfile: Dockerfile.ai
-    container_name: ulpf-ai
-    ports:
-      - "11434:11434"
+      - ULPF_ENV=production
+      - ULPF_DEBUG=false
+      - ULPF_API_HOST=0.0.0.0
+      - ULPF_API_PORT=8000
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=ulpf_admin
+      - MINIO_SECRET_KEY=ulpf_password_2026
+      - MINIO_BUCKET=ulpf-raw
+      - OPENSEARCH_URL=http://opensearch:9200
+      - OPENSEARCH_INDEX=ulpf-events
+      - OLLAMA_URL=http://ulpf-ai:11434
+      - OLLAMA_MODEL=qwen2.5-coder:3b
+      - STORAGE_DIR=/app/storage/raw
+      - DB_SQLITE_PATH=/app/storage/ulpf_metadata.db
     volumes:
-      - ollama_storage:/root/.ollama
+      - ulpf_metadata:/app/storage
+    depends_on:
+      minio:
+        condition: service_healthy
+      opensearch:
+        condition: service_healthy
+    networks:
+      - ulpf-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health/live"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     restart: unless-stopped
 
-  # 3. Redpanda (Lightweight C++ Kafka Streaming Buffer - ~400MB RAM)
-  redpanda:
-    image: docker.redpanda.com/redpandadata/redpanda:v23.3.10
-    container_name: ulpf-redpanda
-    command:
-      - redpanda start
-      - --smp 1
-      - --memory 400M
-      - --reserve-memory 0M
-      - --overprovisioned
-      - --node-id 0
-      - --kafka-addr PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
-      - --advertise-kafka-addr PLAINTEXT://redpanda:29092,OUTSIDE://localhost:9092
-    ports:
-      - "9092:9092"
-      - "29092:29092"
-    restart: unless-stopped
-
-  # 4. MinIO (Immutable Raw Event S3 Object Storage - ~150MB RAM)
+  # ----------------------------------------------------------------------------
+  # 2. MinIO — Immutable Raw Log S3 Object Storage (~150MB RAM)
+  # ----------------------------------------------------------------------------
   minio:
     image: minio/minio:RELEASE.2024-01-18T22-51-28Z
     container_name: ulpf-minio
@@ -65,9 +60,19 @@ services:
       - "9001:9001"
     volumes:
       - minio_data:/data
+    networks:
+      - ulpf-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
     restart: unless-stopped
 
-  # 5. OpenSearch (Normalized Search & Analytics Node - Lightweight 512MB JVM Heap)
+  # ----------------------------------------------------------------------------
+  # 3. OpenSearch — Normalized Search & Analytics Node (512MB Heap)
+  # ----------------------------------------------------------------------------
   opensearch:
     image: opensearchproject/opensearch:2.11.1
     container_name: ulpf-opensearch
@@ -78,30 +83,75 @@ services:
       - bootstrap.memory_lock=true
       - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
       - DISABLE_SECURITY_PLUGIN=true
+      - DISABLE_INSTALL_DEMO_CONFIG=true
     ulimits:
       memlock:
         soft: -1
         hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
     ports:
       - "9200:9200"
     volumes:
       - opensearch_data:/usr/share/opensearch/data
+    networks:
+      - ulpf-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"\\|\"status\":\"yellow\"' || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 25s
     restart: unless-stopped
 
-  # 6. OpenSearch Dashboards (Analytics & SIEM Visualization Console)
+  # ----------------------------------------------------------------------------
+  # 4. OpenSearch Dashboards — Analytics & SIEM Console (Optional Profile: analytics)
+  # ----------------------------------------------------------------------------
   opensearch-dashboards:
     image: opensearchproject/opensearch-dashboards:2.11.1
     container_name: ulpf-dashboards
+    profiles:
+      - analytics
     ports:
       - "5601:5601"
     environment:
       - OPENSEARCH_HOSTS=["http://opensearch:9200"]
       - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
     depends_on:
-      - opensearch
+      opensearch:
+        condition: service_healthy
+    networks:
+      - ulpf-net
+    restart: unless-stopped
+
+  # ----------------------------------------------------------------------------
+  # 5. Local AI / Ollama Engine (Optional Profile: ai)
+  # ----------------------------------------------------------------------------
+  ulpf-ai:
+    image: ollama/ollama:latest
+    container_name: ulpf-ai
+    profiles:
+      - ai
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_storage:/root/.ollama
+    networks:
+      - ulpf-net
     restart: unless-stopped
 
 volumes:
-  ollama_storage:
   minio_data:
+    name: ulpf_minio_data
   opensearch_data:
+    name: ulpf_opensearch_data
+  ulpf_metadata:
+    name: ulpf_metadata_store
+  ollama_storage:
+    name: ulpf_ollama_storage
+
+networks:
+  ulpf-net:
+    name: ulpf_network
+    driver: bridge

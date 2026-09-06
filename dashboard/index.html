@@ -3,249 +3,311 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ULPF — Universal Log Pre-processing Framework Dashboard</title>
+  <title>ULPF — Universal Log Pre-processing Framework</title>
   <link rel="stylesheet" href="style.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <!-- Google Fonts Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div class="app-header">
-    <div class="logo">
-      <span class="shield-icon">🛡️</span>
-      <div>
-        <h1>ULPF <span class="subtitle">Universal Log Pre-processing Framework — SIH 26156</span></h1>
-        <p class="tagline">Enterprise Security Log Ingestion, Multi-Format Parsing, AI Onboarding & OCSF/ECS Normalization Engine</p>
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <div class="app-layout">
+    <!-- PERSISTENT LEFT SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="brand-logo">
+          <span class="brand-icon">🛡️</span>
+          <div>
+            <div class="brand-title">ULPF</div>
+            <div class="brand-sub">Universal Log Pre-processing Framework</div>
+          </div>
+        </div>
       </div>
-    </div>
-    <div class="header-status">
-      <div class="status-indicator">
-        <span class="status-dot"></span> Core Engine Active (Phases 1–11)
+
+      <nav class="sidebar-nav">
+        <!-- CORE NAVIGATION -->
+        <div class="nav-section-title">CONTROL CENTER</div>
+        <a href="#/sih-demo" class="nav-item active" data-route="sih-demo" style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.25), rgba(168, 85, 247, 0.25)); border-left: 3px solid #60a5fa;">
+          <span class="nav-icon">🏆</span>
+          <span class="nav-label" style="font-weight: 700; color: #93c5fd;">SIH Demo (Grand Finale)</span>
+        </a>
+        <a href="#/overview" class="nav-item" data-route="overview">
+          <span class="nav-icon">📊</span>
+          <span class="nav-label">Home / Overview</span>
+        </a>
+        <a href="#/pipeline" class="nav-item" data-route="pipeline">
+          <span class="nav-icon">⚡</span>
+          <span class="nav-label">Live Pipeline</span>
+        </a>
+        <a href="#/sources" class="nav-item" data-route="sources">
+          <span class="nav-icon">📡</span>
+          <span class="nav-label">Log Sources</span>
+        </a>
+        <a href="#/events" class="nav-item" data-route="events">
+          <span class="nav-icon">🔍</span>
+          <span class="nav-label">Event Explorer</span>
+        </a>
+
+        <!-- MULTI-VENDOR LAB & PROCESSING -->
+        <div class="nav-section-title">PROCESSING & LABS</div>
+        <a href="#/lab/multivendor" class="nav-item" data-route="lab/multivendor">
+          <span class="nav-icon">🧪</span>
+          <span class="nav-label">Multi-Vendor Lab</span>
+        </a>
+        <a href="#/processing/testbench" class="nav-item" data-route="processing/testbench">
+          <span class="nav-icon">🔬</span>
+          <span class="nav-label">Parser Test Bench</span>
+        </a>
+        <a href="#/processing/parsers" class="nav-item" data-route="processing/parsers">
+          <span class="nav-icon">📚</span>
+          <span class="nav-label">Parser Registry</span>
+        </a>
+
+        <!-- INTELLIGENCE & DATA MANAGEMENT -->
+        <div class="nav-section-title">INTELLIGENCE & DATA</div>
+        <a href="#/intelligence/ai-onboarding" class="nav-item" data-route="intelligence/ai-onboarding">
+          <span class="nav-icon">🤖</span>
+          <span class="nav-label">AI Parser Onboarding</span>
+        </a>
+        <a href="#/storage/raw" class="nav-item" data-route="storage/raw">
+          <span class="nav-icon">🗄️</span>
+          <span class="nav-label">Raw Evidence & Storage</span>
+        </a>
+        <a href="#/outputs/siem" class="nav-item" data-route="outputs/siem">
+          <span class="nav-icon">📐</span>
+          <span class="nav-label">Standardized Outputs</span>
+        </a>
+
+        <!-- DEMO & ANALYTICS -->
+        <div class="nav-section-title">DEMO & ANALYTICS</div>
+        <a href="#/demo/hub" class="nav-item" data-route="demo/hub">
+          <span class="nav-icon">🏢</span>
+          <span class="nav-label">Demo & Traffic Hub</span>
+        </a>
+        <a href="#/analytics/overview" class="nav-item" data-route="analytics/overview">
+          <span class="nav-icon">📈</span>
+          <span class="nav-label">Stakeholder Analytics</span>
+        </a>
+        <a href="#/system/health" class="nav-item" data-route="system/health">
+          <span class="nav-icon">💚</span>
+          <span class="nav-label">System Health & Metrics</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="status-indicator">
+          <span class="pulse-dot"></span>
+          <span class="status-text">ULPF ONLINE</span>
+        </div>
+        <div class="sidebar-info">
+          <div>Version: 1.0.0 Enterprise</div>
+          <div>Environment: Local / Demo</div>
+        </div>
       </div>
-      <span class="version-tag">v1.0.0-MASTER</span>
-    </div>
+    </aside>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="main-wrapper">
+      <!-- TOP CONTROL BAR -->
+      <header class="top-bar">
+        <div class="top-search-container">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="globalSearchInput" placeholder="Search by Event ID (e.g. ULPF-2026-1002), IP, SHA-256, Vendor, Raw text..." />
+        </div>
+        <div class="top-bar-controls">
+          <!-- 3-Minute Demo Guided Presenter Button -->
+          <button id="btnStartDemoGuide" class="btn btn-sm btn-accent" style="background:linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%); color:#fff; font-weight:700; border:none; box-shadow:0 2px 8px rgba(124, 58, 237, 0.3);">
+            🎬 Start 3-Minute Demo
+          </button>
+
+          <!-- Preset Scenarios Selector -->
+          <div class="dropdown-container">
+            <button id="btnScenarioDropdown" class="btn btn-sm btn-outline dropdown-toggle">
+              <span>⚡ Preset Scenarios ▾</span>
+            </button>
+            <div id="scenarioDropdownMenu" class="dropdown-menu hidden">
+              <button class="dropdown-item" data-scenario="scenario_1">
+                <strong>Scenario 1: Normal Enterprise Traffic</strong>
+                <small class="text-muted block">15 mixed logs (Firewalls, Web, SSH, DNS)</small>
+              </button>
+              <button class="dropdown-item" data-scenario="scenario_2">
+                <strong>Scenario 2: Security Incidents & Threat Signatures</strong>
+                <small class="text-muted block">5 alert events (SQLi, RCE, Brute Force)</small>
+              </button>
+              <button class="dropdown-item" data-scenario="scenario_3">
+                <strong>Scenario 3: High-Volume Cyber Attack</strong>
+                <small class="text-muted block">20 velocity attack events with auto-blocking</small>
+              </button>
+              <button class="dropdown-item" data-scenario="scenario_4">
+                <strong>Scenario 4: Unknown Device Ingestion</strong>
+                <small class="text-muted block">Inject unknown SCADA format into AI review queue</small>
+              </button>
+            </div>
+          </div>
+
+          <button id="btnQuickTraffic" class="btn btn-sm btn-primary">⚡ Quick 10 Events</button>
+          <button id="btnResetDemo" class="btn btn-sm btn-danger-outline" title="Reset state to clean baseline">🔄 Reset Demo</button>
+          <div class="stream-status" id="streamStatusBadge">
+            <span class="pulse-dot teal"></span> SSE LIVE
+          </div>
+        </div>
+      </header>
+
+      <!-- 3-MINUTE GUIDED DEMO FLOATING BAR -->
+      <div id="demoGuideFloatingBar" class="demo-guide-bar hidden">
+        <div class="flex-between">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <span class="demo-step-badge" id="demoStepNum">STEP 1/6</span>
+            <div>
+              <strong id="demoStepTitle" style="color:#fff; font-size:13px;">Generate Mixed Enterprise Traffic</strong>
+              <div id="demoStepDesc" class="text-muted text-xs">Simulate real enterprise firewall, proxy, and auth logs entering ULPF.</div>
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <button id="btnDemoPrev" class="btn btn-xs btn-outline" style="color:#fff; border-color:#475569;">◂ Previous</button>
+            <button id="btnDemoAction" class="btn btn-xs btn-primary">⚡ Execute Action</button>
+            <button id="btnDemoNext" class="btn btn-xs btn-outline" style="color:#fff; border-color:#475569;">Next ▸</button>
+            <button id="btnCloseDemoGuide" class="btn-close" style="color:#94a3b8; font-size:18px; margin-left:8px;">&times;</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- DYNAMIC ROUTE CONTAINER -->
+      <div id="contentArea" class="content-area">
+        <!-- Views rendered dynamically via app.js -->
+      </div>
+    </main>
   </div>
 
-  <div class="main-container">
-    <!-- Stat Cards -->
-    <div class="stats-grid">
-      <div class="card stat-card">
-        <div class="stat-header">
-          <span class="stat-icon">📊</span>
-          <span class="stat-title">Total Ingested Events</span>
+  <!-- EVENT INVESTIGATION DETAIL MODAL -->
+  <div id="eventDetailModal" class="modal-overlay hidden">
+    <div class="modal-card full-modal">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title-row">
+            <h2 id="modalEventIdTitle">ULPF-2026-0000</h2>
+            <span id="modalEventStatusBadge" class="badge badge-teal">SUCCESS</span>
+          </div>
+          <p class="modal-subtitle">Full Processing Lifecycle & Data Provenance Investigation View</p>
         </div>
-        <div class="stat-value" id="stat-total">1,284,920</div>
-        <div class="stat-sub"><span class="check-green">✓</span> 100% SHA-256 Verified Provenance</div>
+        <button id="closeEventModal" class="btn-close">&times;</button>
       </div>
-      <div class="card stat-card">
-        <div class="stat-header">
-          <span class="stat-icon">⚡</span>
-          <span class="stat-title">Engine Throughput</span>
-        </div>
-        <div class="stat-value highlight" id="stat-throughput">13,672 <span class="unit">eps</span></div>
-        <div class="stat-sub">Avg Parsing Latency: <strong>73.1 µs</strong></div>
+
+      <!-- MODAL TABS -->
+      <div class="modal-tabs" id="modalTabHeader">
+        <button class="tab-btn active" data-tab="tabOverview">Overview</button>
+        <button class="tab-btn" data-tab="tabRaw">Raw Log</button>
+        <button class="tab-btn" data-tab="tabDetection">Format Detection</button>
+        <button class="tab-btn" data-tab="tabParsed">Parsed Fields</button>
+        <button class="tab-btn" data-tab="tabIr">ULPF-IR</button>
+        <button class="tab-btn" data-tab="tabNormalization">Normalization</button>
+        <button class="tab-btn" data-tab="tabValidation">Validation</button>
+        <button class="tab-btn" data-tab="tabProvenance">Provenance</button>
+        <button class="tab-btn" data-tab="tabOcsfEcs">OCSF / ECS</button>
+        <button class="tab-btn" data-tab="tabExport">Export Status</button>
+        <button class="tab-btn" data-tab="tabTimeline">Timeline</button>
       </div>
-      <div class="card stat-card">
-        <div class="stat-header">
-          <span class="stat-icon">🎯</span>
-          <span class="stat-title">Parsing Success Rate</span>
-        </div>
-        <div class="stat-value success" id="stat-accuracy">99.82%</div>
-        <div class="stat-sub">8 Auto-Detected Formats Supported</div>
-      </div>
-      <div class="card stat-card">
-        <div class="stat-header">
-          <span class="stat-icon">🤖</span>
-          <span class="stat-title">AI Onboarded Parsers</span>
-        </div>
-        <div class="stat-value" id="stat-parsers">14 <span class="unit">active</span></div>
-        <div class="stat-sub">Local SLM (Qwen 3B/4B) Zero-Leak</div>
-      </div>
-    </div>
 
-    <!-- Pipeline Architecture Diagram -->
-    <div class="card pipeline-flow-card">
-      <div class="flow-header">
-        <h3>🔄 End-to-End Log Processing Flow</h3>
-        <span class="flow-badge">Zero Data Loss Architecture</span>
-      </div>
-      <div class="pipeline-flow">
-        <div class="flow-step">
-          <div class="step-num">1</div>
-          <div class="step-content">
-            <span class="step-title">Sources / Ingestion</span>
-            <span class="step-desc">Website, FW, Router, WAF, Syslog, REST API</span>
-          </div>
-        </div>
-        <div class="flow-arrow">➔</div>
-        <div class="flow-step">
-          <div class="step-num">2</div>
-          <div class="step-content">
-            <span class="step-title">Format Detection</span>
-            <span class="step-desc">Heuristic pattern matcher (CEF, LEEF, JSON, Syslog, etc.)</span>
-          </div>
-        </div>
-        <div class="flow-arrow">➔</div>
-        <div class="flow-step">
-          <div class="step-num">3</div>
-          <div class="step-content">
-            <span class="step-title">Parser Engine</span>
-            <span class="step-desc">Zero-copy field extractors & validation rules</span>
-          </div>
-        </div>
-        <div class="flow-arrow">➔</div>
-        <div class="flow-step highlight-step">
-          <div class="step-num">4</div>
-          <div class="step-content">
-            <span class="step-title">AI Unknown Handler</span>
-            <span class="step-desc">Local Ollama SLM auto-generates draft parser</span>
-          </div>
-        </div>
-        <div class="flow-arrow">➔</div>
-        <div class="flow-step">
-          <div class="step-num">5</div>
-          <div class="step-content">
-            <span class="step-title">ULPF-IR Normalizer</span>
-            <span class="step-desc">Canonical field mapping & provenance hashing</span>
-          </div>
-        </div>
-        <div class="flow-arrow">➔</div>
-        <div class="flow-step">
-          <div class="step-num">6</div>
-          <div class="step-content">
-            <span class="step-title">OCSF / ECS Export</span>
-            <span class="step-desc">SIEM / Data Lake downstream delivery</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Main Content Layout Grid -->
-    <div class="content-grid">
-      <!-- Left Panel: Interactive Log Processor & Demo Website Simulator -->
-      <div class="card panel">
-        <div class="panel-title-bar">
-          <h2>📥 Raw Log Processing Sandbox</h2>
-          <div class="sim-badge">Live API Connected</div>
+      <!-- TAB CONTENT PANELS -->
+      <div class="modal-body">
+        <!-- Overview Tab -->
+        <div id="tabOverview" class="tab-pane active">
+          <div class="grid grid-3 gap-md" id="modalOverviewGrid"></div>
         </div>
 
-        <!-- Infrastructure Simulator Bar -->
-        <div class="sim-container">
-          <label>🌐 Simulated Demo Company Infrastructure Generator:</label>
-          <div class="sim-buttons">
-            <button class="btn sim-btn" id="btn-sim-web">💻 Web Store Access Log</button>
-            <button class="btn sim-btn" id="btn-sim-fw">🔥 CheckPoint Firewall CEF</button>
-            <button class="btn sim-btn" id="btn-sim-waf">🛡️ AWS WAF JSON</button>
-            <button class="btn sim-btn" id="btn-sim-vpn">🔐 QRadar LEEF VPN</button>
-            <button class="btn sim-btn" id="btn-sim-unknown">❓ Unknown Custom Log</button>
+        <!-- Raw Log Tab -->
+        <div id="tabRaw" class="tab-pane">
+          <div class="alert alert-info">
+            <strong>IMMUTABLE RAW EVIDENCE:</strong> Original payload is preserved byte-for-byte with SHA-256 cryptographic verification.
+          </div>
+          <div class="code-box-header">
+            <span>Raw Message String</span>
+            <span id="modalRawSha" class="mono text-muted">SHA-256: ---</span>
+          </div>
+          <pre id="modalRawCode" class="code-box"></pre>
+        </div>
+
+        <!-- Format Detection Tab -->
+        <div id="tabDetection" class="tab-pane">
+          <div class="card p-md">
+            <h3>Format Detection Results</h3>
+            <table class="table-dense mt-sm" id="modalDetectionTable"></table>
           </div>
         </div>
 
-        <div class="form-group">
-          <label for="raw-input">Raw Log Input Text</label>
-          <textarea id="raw-input" rows="4" placeholder="Paste raw CEF, LEEF, Syslog, JSON, Key=Value, XML, CSV, or custom log string...">CEF:0|CheckPoint|VPN-1 & FireWall-1|R80.10|1000|Accept Connection|Low|src=10.10.1.5 dst=8.8.8.8 spt=51522 dpt=443 proto=tcp act=allow shost=fw-edge-01</textarea>
+        <!-- Parsed Fields Tab -->
+        <div id="tabParsed" class="tab-pane">
+          <div class="card p-md">
+            <h3>Extracted Raw Key-Value Pairs</h3>
+            <table class="table-dense mt-sm" id="modalParsedTable"></table>
+          </div>
         </div>
 
-        <div class="sample-formats-row">
-          <span>Preset Formats:</span>
-          <button id="btn-sample-cef" class="btn chip">CEF</button>
-          <button id="btn-sample-leef" class="btn chip">LEEF</button>
-          <button id="btn-sample-syslog" class="btn chip">Syslog</button>
-          <button id="btn-sample-json" class="btn chip">JSON</button>
-          <button id="btn-sample-kv" class="btn chip">Key=Value</button>
-          <button id="btn-sample-csv" class="btn chip">CSV</button>
-          <button id="btn-sample-xml" class="btn chip">XML</button>
+        <!-- ULPF-IR Tab -->
+        <div id="tabIr" class="tab-pane">
+          <div class="card p-md">
+            <div class="flex-between">
+              <h3>Canonical ULPF-IR Representation</h3>
+              <span class="badge badge-neutral">ULPF-IR v1.0 Schema</span>
+            </div>
+            <pre id="modalIrCode" class="code-box mt-sm"></pre>
+          </div>
         </div>
 
-        <div class="button-row" style="margin-top: 14px;">
-          <button id="btn-process" class="btn primary">⚡ Process Log (Full Pipeline)</button>
-          <button id="btn-detect-only" class="btn secondary">🔍 Format Detect Only</button>
+        <!-- Normalization Tab -->
+        <div id="tabNormalization" class="tab-pane">
+          <div class="card p-md">
+            <h3>Vendor Field → Canonical ULPF Mapping</h3>
+            <table class="table-dense mt-sm" id="modalNormTable"></table>
+          </div>
         </div>
 
-        <!-- Result Box -->
-        <div class="result-section" id="result-box" style="display:none;">
-          <div class="result-header">
-            <h3>Processing Result & Extraction</h3>
-            <div class="badge-row">
-              <span class="badge" id="badge-format">Format: CEF</span>
-              <span class="badge" id="badge-confidence">Confidence: 0.99</span>
-              <span class="badge success" id="badge-status">Status: SUCCESS</span>
+        <!-- Validation Tab -->
+        <div id="tabValidation" class="tab-pane">
+          <div class="card p-md">
+            <h3>Security & Schema Validation Matrix</h3>
+            <table class="table-dense mt-sm" id="modalValidationTable"></table>
+          </div>
+        </div>
+
+        <!-- Provenance Tab -->
+        <div id="tabProvenance" class="tab-pane">
+          <div class="card p-md">
+            <h3>Field-Level Provenance & Attribution</h3>
+            <table class="table-dense mt-sm" id="modalProvenanceTable"></table>
+          </div>
+        </div>
+
+        <!-- OCSF / ECS Tab -->
+        <div id="tabOcsfEcs" class="tab-pane">
+          <div class="grid grid-2 gap-md">
+            <div>
+              <h3>OCSF Export Payload (v1.1.0)</h3>
+              <pre id="modalOcsfCode" class="code-box mt-sm"></pre>
+            </div>
+            <div>
+              <h3>Elastic Common Schema Export (v8.x)</h3>
+              <pre id="modalEcsCode" class="code-box mt-sm"></pre>
             </div>
           </div>
-
-          <div class="tab-header">
-            <button class="tab-btn active" data-tab="tab-ulpf">ULPF-IR v1.0 Canonical</button>
-            <button class="tab-btn" data-tab="tab-prov">Field Provenance Line-of-Custody</button>
-            <button class="tab-btn" data-tab="tab-ocsf">OCSF v1.1 Export</button>
-            <button class="tab-btn" data-tab="tab-ecs">ECS Export</button>
-          </div>
-
-          <div class="tab-content active" id="tab-ulpf">
-            <pre><code id="code-ulpf"></code></pre>
-          </div>
-          <div class="tab-content" id="tab-prov">
-            <div class="prov-table-container">
-              <table class="prov-table">
-                <thead>
-                  <tr>
-                    <th>Canonical Field</th>
-                    <th>Original Field</th>
-                    <th>Extracted Value</th>
-                    <th>Parser & Rule</th>
-                    <th>Confidence</th>
-                  </tr>
-                </thead>
-                <tbody id="prov-tbody"></tbody>
-              </table>
-            </div>
-            <div class="hash-footer" id="prov-hash-box"></div>
-          </div>
-          <div class="tab-content" id="tab-ocsf">
-            <pre><code id="code-ocsf"></code></pre>
-          </div>
-          <div class="tab-content" id="tab-ecs">
-            <pre><code id="code-ecs"></code></pre>
-          </div>
-        </div>
-      </div>
-
-      <!-- Right Panel: AI Onboarding Studio & Registry -->
-      <div class="card panel">
-        <h2>🤖 AI-Assisted Unknown Log Onboarding Studio</h2>
-        <p class="desc">Autonomous parser generation for unformatted logs using local SLM (Ollama Qwen 3B/4B) — zero data exposure to public APIs.</p>
-
-        <div class="form-group">
-          <label for="sample-unparsed">Unparsed Log Samples (10–100 raw events)</label>
-          <textarea id="sample-unparsed" rows="5" placeholder="Paste unknown custom log samples...">device=CustomFW_V2 src_ip=192.168.10.5 dst_ip=1.1.1.1 sport=5000 dport=80 action=DENIED rule_name=BlockBadTraffic
-device=CustomFW_V2 src_ip=192.168.10.12 dst_ip=8.8.8.8 sport=52110 dport=443 action=ALLOWED rule_name=AllowWeb
-device=CustomFW_V2 src_ip=10.0.1.99 dst_ip=10.0.1.1 sport=1234 dport=22 action=DENIED rule_name=BlockSSH</textarea>
         </div>
 
-        <button id="btn-analyze-ai" class="btn ai-btn">✨ Analyze Unknown Format with Local AI Engine</button>
-
-        <div class="ai-results" id="ai-results-box" style="display:none;">
-          <div class="ai-box-title">
-            <h4>Generated Declarative Parser Specification (YAML)</h4>
-            <span class="slm-tag">Ollama Qwen-3B Engine</span>
+        <!-- Export Status Tab -->
+        <div id="tabExport" class="tab-pane">
+          <div class="card p-md">
+            <h3>Downstream Delivery Sink Destinations</h3>
+            <table class="table-dense mt-sm" id="modalExportTable"></table>
           </div>
-          <pre><code id="code-yaml-spec"></code></pre>
-
-          <div class="button-row" style="margin-top:14px;">
-            <button id="btn-generate-parser" class="btn primary">⚙️ Compile Parser (Set DRAFT Status)</button>
-            <button id="btn-approve-parser" class="btn success" style="display:none;">✅ Approve & Promote to ACTIVE</button>
-          </div>
-          <div id="ai-status-msg" class="status-banner" style="margin-top:12px;"></div>
         </div>
 
-        <!-- Production Parser Registry Table -->
-        <div class="registry-section" style="margin-top:24px;">
-          <h3>📋 Active Production Parser Registry</h3>
-          <div class="parser-list-box" id="parser-registry-list">
-            <div class="parser-chip active"><span class="dot green"></span> CEF Parser (cef_v1)</div>
-            <div class="parser-chip active"><span class="dot green"></span> LEEF Parser (leef_v2)</div>
-            <div class="parser-chip active"><span class="dot green"></span> Syslog RFC5424/3164 (syslog_v1)</div>
-            <div class="parser-chip active"><span class="dot green"></span> Structured JSON Parser (json_v1)</div>
-            <div class="parser-chip active"><span class="dot green"></span> Key-Value Parser (kv_v1)</div>
-            <div class="parser-chip active"><span class="dot green"></span> CSV Firewall Parser (csv_v1)</div>
-            <div class="parser-chip active"><span class="dot green"></span> XML Event Log Parser (xml_v1)</div>
+        <!-- Timeline Tab -->
+        <div id="tabTimeline" class="tab-pane">
+          <div class="card p-md">
+            <h3>Processing Lifecycle Timeline</h3>
+            <div class="timeline-container mt-md" id="modalTimelineList"></div>
           </div>
         </div>
       </div>

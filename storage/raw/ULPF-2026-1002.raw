@@ -1,0 +1,1 @@
+LEEF:1.0|IBM|QRadar|7.4|1001|src=172.16.10.5	dst=8.8.4.4	spt=5300	dpt=53	proto=udp	act=allow

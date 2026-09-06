@@ -1,0 +1,1 @@
+LEEF:2.0|Imperva|WAF|1.0|Alert|^	src=172.16.0.1	dst=10.0.0.5	act=deny
