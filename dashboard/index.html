@@ -8,7 +8,7 @@
   <!-- Google Fonts Inter & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
   <!-- TOAST NOTIFICATION CONTAINER -->
@@ -19,7 +19,9 @@
     <aside class="sidebar">
       <div class="sidebar-header">
         <div class="brand-logo">
-          <span class="brand-icon">🛡️</span>
+          <div class="brand-icon">
+            <svg class="svg-icon svg-icon-lg" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+          </div>
           <div>
             <div class="brand-title">ULPF</div>
             <div class="brand-sub">Universal Log Pre-processing Framework</div>
@@ -30,69 +32,97 @@
       <nav class="sidebar-nav">
         <!-- CORE NAVIGATION -->
         <div class="nav-section-title">CONTROL CENTER</div>
-        <a href="#/sih-demo" class="nav-item active" data-route="sih-demo" style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.25), rgba(168, 85, 247, 0.25)); border-left: 3px solid #60a5fa;">
-          <span class="nav-icon">🏆</span>
-          <span class="nav-label" style="font-weight: 700; color: #93c5fd;">SIH Demo (Grand Finale)</span>
+        <a href="#/sih-demo" class="nav-item active" data-route="sih-demo" style="background: linear-gradient(90deg, rgba(229, 9, 46, 0.3), rgba(122, 12, 26, 0.15)); border-left: 3px solid #ff1e44;">
+          <span class="nav-icon">
+            <svg class="svg-icon" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+          </span>
+          <span class="nav-label" style="font-weight: 700; color: #fecdd3;">SIH Demo (Grand Finale)</span>
         </a>
         <a href="#/overview" class="nav-item" data-route="overview">
-          <span class="nav-icon">📊</span>
+          <span class="nav-icon">
+            <svg class="svg-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
+          </span>
           <span class="nav-label">Home / Overview</span>
         </a>
         <a href="#/pipeline" class="nav-item" data-route="pipeline">
-          <span class="nav-icon">⚡</span>
+          <span class="nav-icon">
+            <svg class="svg-icon" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+          </span>
           <span class="nav-label">Live Pipeline</span>
         </a>
         <a href="#/sources" class="nav-item" data-route="sources">
-          <span class="nav-icon">📡</span>
+          <span class="nav-icon">
+            <svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"></circle><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"></path></svg>
+          </span>
           <span class="nav-label">Log Sources</span>
         </a>
         <a href="#/events" class="nav-item" data-route="events">
-          <span class="nav-icon">🔍</span>
+          <span class="nav-icon">
+            <svg class="svg-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          </span>
           <span class="nav-label">Event Explorer</span>
         </a>
 
         <!-- MULTI-VENDOR LAB & PROCESSING -->
         <div class="nav-section-title">PROCESSING & LABS</div>
         <a href="#/lab/multivendor" class="nav-item" data-route="lab/multivendor">
-          <span class="nav-icon">🧪</span>
+          <span class="nav-icon">
+            <svg class="svg-icon" viewBox="0 0 24 24"><path d="M10 2v7.31L4.89 20A2 2 0 0 0 6.64 23h10.72a2 2 0 0 0 1.75-3L14 9.31V2z"></path><line x1="8.5" y1="2" x2="15.5" y2="2"></line></svg>
+          </span>
           <span class="nav-label">Multi-Vendor Lab</span>
         </a>
         <a href="#/processing/testbench" class="nav-item" data-route="processing/testbench">
-          <span class="nav-icon">🔬</span>
+          <span class="nav-icon">
+            <svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          </span>
           <span class="nav-label">Parser Test Bench</span>
         </a>
         <a href="#/processing/parsers" class="nav-item" data-route="processing/parsers">
-          <span class="nav-icon">📚</span>
+          <span class="nav-icon">
+            <svg class="svg-icon" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+          </span>
           <span class="nav-label">Parser Registry</span>
         </a>
 
         <!-- INTELLIGENCE & DATA MANAGEMENT -->
         <div class="nav-section-title">INTELLIGENCE & DATA</div>
         <a href="#/intelligence/ai-onboarding" class="nav-item" data-route="intelligence/ai-onboarding">
-          <span class="nav-icon">🤖</span>
+          <span class="nav-icon">
+            <svg class="svg-icon" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="10" rx="2"></rect><circle cx="12" cy="5" r="2"></circle><path d="M12 7v4"></path><line x1="8" y1="16" x2="8" y2="16"></line><line x1="16" y1="16" x2="16" y2="16"></line></svg>
+          </span>
           <span class="nav-label">AI Parser Onboarding</span>
         </a>
         <a href="#/storage/raw" class="nav-item" data-route="storage/raw">
-          <span class="nav-icon">🗄️</span>
+          <span class="nav-icon">
+            <svg class="svg-icon" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+          </span>
           <span class="nav-label">Raw Evidence & Storage</span>
         </a>
         <a href="#/outputs/siem" class="nav-item" data-route="outputs/siem">
-          <span class="nav-icon">📐</span>
+          <span class="nav-icon">
+            <svg class="svg-icon" viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+          </span>
           <span class="nav-label">Standardized Outputs</span>
         </a>
 
         <!-- DEMO & ANALYTICS -->
         <div class="nav-section-title">DEMO & ANALYTICS</div>
         <a href="#/demo/hub" class="nav-item" data-route="demo/hub">
-          <span class="nav-icon">🏢</span>
+          <span class="nav-icon">
+            <svg class="svg-icon" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
+          </span>
           <span class="nav-label">Demo & Traffic Hub</span>
         </a>
         <a href="#/analytics/overview" class="nav-item" data-route="analytics/overview">
-          <span class="nav-icon">📈</span>
+          <span class="nav-icon">
+            <svg class="svg-icon" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+          </span>
           <span class="nav-label">Stakeholder Analytics</span>
         </a>
         <a href="#/system/health" class="nav-item" data-route="system/health">
-          <span class="nav-icon">💚</span>
+          <span class="nav-icon">
+            <svg class="svg-icon" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+          </span>
           <span class="nav-label">System Health & Metrics</span>
         </a>
       </nav>
@@ -104,7 +134,7 @@
         </div>
         <div class="sidebar-info">
           <div>Version: 1.0.0 Enterprise</div>
-          <div>Environment: Local / Demo</div>
+          <div>Environment: Local / Sovereign Demo</div>
         </div>
       </div>
     </aside>
@@ -114,19 +144,23 @@
       <!-- TOP CONTROL BAR -->
       <header class="top-bar">
         <div class="top-search-container">
-          <span class="search-icon">🔍</span>
+          <span class="search-icon">
+            <svg class="svg-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          </span>
           <input type="text" id="globalSearchInput" placeholder="Search by Event ID (e.g. ULPF-2026-1002), IP, SHA-256, Vendor, Raw text..." />
         </div>
         <div class="top-bar-controls">
-          <!-- 3-Minute Demo Guided Presenter Button -->
-          <button id="btnStartDemoGuide" class="btn btn-sm btn-accent" style="background:linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%); color:#fff; font-weight:700; border:none; box-shadow:0 2px 8px rgba(124, 58, 237, 0.3);">
-            🎬 Start 3-Minute Demo
+          <!-- Guided Demo Button -->
+          <button id="btnStartDemoGuide" class="btn btn-sm btn-primary">
+            <svg class="svg-icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            <span>Interactive Guided Demo</span>
           </button>
 
           <!-- Preset Scenarios Selector -->
           <div class="dropdown-container">
-            <button id="btnScenarioDropdown" class="btn btn-sm btn-outline dropdown-toggle">
-              <span>⚡ Preset Scenarios ▾</span>
+            <button id="btnScenarioDropdown" class="btn btn-sm btn-secondary dropdown-toggle">
+              <svg class="svg-icon" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+              <span>Preset Scenarios</span>
             </button>
             <div id="scenarioDropdownMenu" class="dropdown-menu hidden">
               <button class="dropdown-item" data-scenario="scenario_1">
@@ -148,32 +182,19 @@
             </div>
           </div>
 
-          <button id="btnQuickTraffic" class="btn btn-sm btn-primary">⚡ Quick 10 Events</button>
-          <button id="btnResetDemo" class="btn btn-sm btn-danger-outline" title="Reset state to clean baseline">🔄 Reset Demo</button>
+          <button id="btnQuickTraffic" class="btn btn-sm btn-secondary">
+            <svg class="svg-icon" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+            <span>Quick 10 Events</span>
+          </button>
+          <button id="btnResetDemo" class="btn btn-sm btn-danger-outline" title="Reset state to clean baseline">
+            <svg class="svg-icon" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+            <span>Reset Demo</span>
+          </button>
           <div class="stream-status" id="streamStatusBadge">
             <span class="pulse-dot teal"></span> SSE LIVE
           </div>
         </div>
       </header>
-
-      <!-- 3-MINUTE GUIDED DEMO FLOATING BAR -->
-      <div id="demoGuideFloatingBar" class="demo-guide-bar hidden">
-        <div class="flex-between">
-          <div style="display:flex; align-items:center; gap:12px;">
-            <span class="demo-step-badge" id="demoStepNum">STEP 1/6</span>
-            <div>
-              <strong id="demoStepTitle" style="color:#fff; font-size:13px;">Generate Mixed Enterprise Traffic</strong>
-              <div id="demoStepDesc" class="text-muted text-xs">Simulate real enterprise firewall, proxy, and auth logs entering ULPF.</div>
-            </div>
-          </div>
-          <div style="display:flex; align-items:center; gap:8px;">
-            <button id="btnDemoPrev" class="btn btn-xs btn-outline" style="color:#fff; border-color:#475569;">◂ Previous</button>
-            <button id="btnDemoAction" class="btn btn-xs btn-primary">⚡ Execute Action</button>
-            <button id="btnDemoNext" class="btn btn-xs btn-outline" style="color:#fff; border-color:#475569;">Next ▸</button>
-            <button id="btnCloseDemoGuide" class="btn-close" style="color:#94a3b8; font-size:18px; margin-left:8px;">&times;</button>
-          </div>
-        </div>
-      </div>
 
       <!-- DYNAMIC ROUTE CONTAINER -->
       <div id="contentArea" class="content-area">
@@ -182,18 +203,71 @@
     </main>
   </div>
 
+  <!-- INTERACTIVE GUIDED DEMO FLOATING EXPLANATION COMMAND DECK (HIGH VISIBILITY & CLARITY) -->
+  <div id="demoExplanationDock" class="demo-explanation-dock hidden">
+    <div class="demo-progress-track">
+      <div id="demoProgressBar" class="demo-progress-bar" style="width: 12.5%;"></div>
+    </div>
+    <div class="demo-explanation-header">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span class="demo-step-pill" id="demoStepBadge">STAGE 1 / 8</span>
+        <span style="font-size: 11.5px; font-weight: 700; color: #fef08a;" id="demoSectionPill">CORE PLATFORM</span>
+      </div>
+      <button id="btnCloseDemoTour" class="btn btn-xs btn-danger-outline" title="Cancel and Exit Tour" style="font-weight: 700; padding: 3px 10px;">
+        Cancel & Exit Tour
+      </button>
+    </div>
+    <div class="demo-explanation-body">
+      <div class="demo-explanation-title" id="demoTourTitle">
+        <svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+        <span id="demoTourTitleText">Universal Security Translator (10-Stage Pipeline)</span>
+      </div>
+      <div class="demo-explanation-text" id="demoTourDescription">
+        Think of ULPF as a Universal Translator for cybersecurity. Different firewalls and servers all speak different computer languages. ULPF listens to all of them, takes an exact tamper-proof digital fingerprint (SHA-256), and translates every message into one clean, common standard format without losing a single piece of evidence.
+      </div>
+      <div class="demo-explanation-mechanics" id="demoTourMechanics">
+        <strong>Under The Hood Mechanism:</strong>
+        <span id="demoTourMechanicsText">Byte-level hashing + Universal intermediate representation (ULPF-IR).</span>
+      </div>
+    </div>
+    <div class="demo-explanation-footer">
+      <div style="display: flex; gap: 8px;">
+        <button id="btnTourPrev" class="btn btn-xs btn-secondary">
+          <span>◂ Previous</span>
+        </button>
+        <button id="btnTourAction" class="btn btn-xs btn-primary">
+          <span id="btnTourActionText"> Run Action</span>
+        </button>
+      </div>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <button id="btnTourAutoPlay" class="btn btn-xs btn-outline">
+          <span id="btnTourAutoPlayText">▶ Auto-Play (6s)</span>
+        </button>
+        <button id="btnTourNext" class="btn btn-xs btn-primary">
+          <span>Next Stage ▸</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- EVENT INVESTIGATION DETAIL MODAL -->
   <div id="eventDetailModal" class="modal-overlay hidden">
     <div class="modal-card full-modal">
       <div class="modal-header">
-        <div>
+        <div class="modal-header-nav">
+          <button id="btnModalBackToDash" class="btn btn-xs btn-secondary" onclick="document.getElementById('eventDetailModal').classList.add('hidden')">
+            <svg class="svg-icon" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+            <span>Back to Dashboard</span>
+          </button>
           <div class="modal-title-row">
             <h2 id="modalEventIdTitle">ULPF-2026-0000</h2>
             <span id="modalEventStatusBadge" class="badge badge-teal">SUCCESS</span>
           </div>
-          <p class="modal-subtitle">Full Processing Lifecycle & Data Provenance Investigation View</p>
         </div>
-        <button id="closeEventModal" class="btn-close">&times;</button>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="text-xs text-muted" style="display: inline-block;">ESC or click outside to close</span>
+          <button id="closeEventModal" class="btn-close" style="font-size: 20px; line-height: 1;">&times;</button>
+        </div>
       </div>
 
       <!-- MODAL TABS -->
@@ -220,11 +294,8 @@
 
         <!-- Raw Log Tab -->
         <div id="tabRaw" class="tab-pane">
-          <div class="alert alert-info">
-            <strong>IMMUTABLE RAW EVIDENCE:</strong> Original payload is preserved byte-for-byte with SHA-256 cryptographic verification.
-          </div>
           <div class="code-box-header">
-            <span>Raw Message String</span>
+            <span>Raw Immutable Message String</span>
             <span id="modalRawSha" class="mono text-muted">SHA-256: ---</span>
           </div>
           <pre id="modalRawCode" class="code-box"></pre>
@@ -260,7 +331,7 @@
         <!-- Normalization Tab -->
         <div id="tabNormalization" class="tab-pane">
           <div class="card p-md">
-            <h3>Vendor Field → Canonical ULPF Mapping</h3>
+            <h3>Vendor Field to Canonical ULPF Mapping</h3>
             <table class="table-dense mt-sm" id="modalNormTable"></table>
           </div>
         </div>

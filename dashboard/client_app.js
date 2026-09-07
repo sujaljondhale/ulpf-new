@@ -38,13 +38,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
       item.innerHTML += `
         <div style="font-size: 10.5px; color: var(--accent-indigo); margin-top: 4px;">
-          ✓ ULPF Response Received: Status: <strong>${data.status.toUpperCase()}</strong> | Format: <strong>${data.detected_format}</strong> | Hash: <code>${data.raw_sha256.substring(0, 16)}...</code> (Click to View Full Response)
+          [OK] ULPF Response Received: Status: <strong>${data.status.toUpperCase()}</strong> | Format: <strong>${data.detected_format}</strong> | Hash: <code>${data.raw_sha256.substring(0, 16)}...</code> (Click to View Full Response)
         </div>
       `;
 
       item.addEventListener('click', () => openClientModal(data, logString, sourceName));
     } catch (err) {
-      item.innerHTML += `<div style="font-size: 10.5px; color: var(--accent-rose); margin-top: 4px;">❌ ULPF Server Response Error</div>`;
+      item.innerHTML += `<div style="font-size: 10.5px; color: var(--accent-rose); margin-top: 4px;">[ERR] ULPF Server Response Error</div>`;
     }
   }
 
@@ -53,7 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     modalClientBody.innerHTML = `
       <div class="step-card-box" style="border-left: 4px solid var(--accent-emerald);">
-        <div class="step-card-title" style="color: var(--accent-emerald);">✅ ULPF Server Response Package</div>
+        <div class="step-card-title" style="color: var(--accent-emerald);">[OK] ULPF Server Response Package</div>
         <div style="font-size: 12px; color: var(--text-main); margin-bottom: 6px;">
           Message: ${data.message || 'Log successfully ingested, normalized, and forwarded onward.'}
         </div>
@@ -66,17 +66,17 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>
 
       <div class="step-card-box">
-        <div class="step-card-title">📄 Original Raw Message Dispatched</div>
+        <div class="step-card-title"> Original Raw Message Dispatched</div>
         <pre><code style="font-size: 11px;">${rawLog}</code></pre>
       </div>
 
       <div class="step-card-box">
-        <div class="step-card-title">🌐 Returned Canonical Event (ULPF-IR v0.1)</div>
+        <div class="step-card-title"> Returned Canonical Event (ULPF-IR v0.1)</div>
         <pre><code style="font-size: 11px;">${JSON.stringify(data.canonical_event, null, 2)}</code></pre>
       </div>
 
       <div class="step-card-box">
-        <div class="step-card-title">🛡️ Returned OCSF v1.1 Standardized Schema Package</div>
+        <div class="step-card-title"> Returned OCSF v1.1 Standardized Schema Package</div>
         <pre><code style="font-size: 11px;">${JSON.stringify(data.ocsf_export, null, 2)}</code></pre>
       </div>
     `;
