@@ -96,12 +96,12 @@ curl http://localhost:8000/api/v1/health/live
 
 | Service | URL |
 |---------|-----|
-| 🖥️ Dashboard | `http://<VM_IP>:8000/dashboard/index.html` |
-| 📖 API Docs | `http://<VM_IP>:8000/docs` |
-| 🗄️ MinIO Console | `http://<VM_IP>:9001` |
-| 🔍 OpenSearch | `http://<VM_IP>:9200` |
-| 📡 Syslog UDP | `<VM_IP>:5140` (UDP) |
-| 📡 Syslog TCP | `<VM_IP>:5141` (TCP) |
+| ️ Dashboard | `http://<VM_IP>:8000/dashboard/index.html` |
+|  API Docs | `http://<VM_IP>:8000/docs` |
+| ️ MinIO Console | `http://<VM_IP>:9001` |
+|  OpenSearch | `http://<VM_IP>:9200` |
+|  Syslog UDP | `<VM_IP>:5140` (UDP) |
+|  Syslog TCP | `<VM_IP>:5141` (TCP) |
 
 ---
 
@@ -145,16 +145,16 @@ sudo systemctl restart ulpf
 > Dashboard + REST API + Pipeline work. Syslog UDP/TCP listeners are disabled (Render only supports HTTP). Free tier sleeps after 15 min.
 
 ### What Works on Render
-- ✅ Web Dashboard
-- ✅ REST Ingest API (`POST /api/v1/ingest`)
-- ✅ Full parse → normalize → detect pipeline
-- ✅ File upload ingestion
-- ✅ CEF / Syslog / LEEF / JSON / KV parsers
-- ❌ Syslog UDP listener (no raw UDP on Render)
-- ❌ Syslog TCP listener (no raw TCP on Render)
-- ❌ MinIO (use local storage fallback)
-- ❌ OpenSearch (in-memory only)
-- ❌ AI/Ollama (no RAM on free tier)
+-  Web Dashboard
+-  REST Ingest API (`POST /api/v1/ingest`)
+-  Full parse → normalize → detect pipeline
+-  File upload ingestion
+-  CEF / Syslog / LEEF / JSON / KV parsers
+-  Syslog UDP listener (no raw UDP on Render)
+-  Syslog TCP listener (no raw TCP on Render)
+-  MinIO (use local storage fallback)
+-  OpenSearch (in-memory only)
+-  AI/Ollama (no RAM on free tier)
 
 ---
 
@@ -212,23 +212,61 @@ https://ulpf-demo.onrender.com/dashboard/index.html
 https://ulpf-demo.onrender.com/docs
 ```
 
-> ⚠️ Free tier sleeps after 15 minutes of inactivity. First request after sleep takes ~30 seconds to wake up.
+> ️ Free tier sleeps after 15 minutes of inactivity. First request after sleep takes ~30 seconds to wake up.
 
 ---
 
 ## Comparison
 
-| Feature | Oracle Cloud VM | Render Free |
-|---------|----------------|-------------|
-| **Cost** | Free (Always Free) | Free (limited) |
-| **Sleep** | Never | After 15 min |
-| **Syslog UDP 5140** | ✅ Full | ❌ N/A |
-| **Syslog TCP 5141** | ✅ Full | ❌ N/A |
-| **MinIO Storage** | ✅ Persistent | ❌ Ephemeral |
-| **OpenSearch** | ✅ Full | ❌ N/A |
-| **AI / Ollama** | ✅ (if RAM ≥ 16GB) | ❌ N/A |
-| **Dashboard** | ✅ | ✅ |
-| **REST API** | ✅ | ✅ |
-| **Pipeline** | ✅ Full | ✅ Full |
-| **Custom Domain** | Configure nginx | Included |
-| **Best For** | SIH Live Demo | Public preview link |
+| Feature | Oracle Cloud VM | Render Free | Local Bare-Metal |
+|---------|----------------|-------------|------------------|
+| **Cost** | Free (Always Free) | Free (limited) | Free (Local HW) |
+| **Sleep** | Never | After 15 min | Never |
+| **Syslog UDP 5140** |  Full |  N/A |  Full |
+| **Syslog TCP 5141** |  Full |  N/A |  Full |
+| **Testing Hub 8050** |  Full |  N/A |  Full |
+| **MinIO Storage** |  Persistent |  Ephemeral |  (or local filesystem) |
+| **OpenSearch** |  Full |  N/A |  (or in-memory) |
+| **AI / Ollama** |  (if RAM ≥ 16GB) |  N/A |  (or offline fallback) |
+| **Dashboard** |  |  |  |
+| **REST API** |  |  |  |
+| **Pipeline** |  Full |  Full |  Full |
+| **Custom Domain** | Configure nginx | Included | Local IP / Hostname |
+| **Best For** | SIH Live Demo | Public preview link | Local Dev & Rapid Testing |
+
+---
+
+## Option C — Local Bare-Metal Deployment (Windows / Linux)
+
+For local development, testing, and air-gapped lab environments with zero cloud requirements:
+
+### Prerequisites:
+* Python 3.10+ (tested through 3.13)
+* Dependencies installed: `pip install -r requirements.txt`
+
+### 1. Launch Services:
+* **Core Production Server (`:8000`)**:
+  ```cmd
+  start_main.bat
+  ```
+  Runs FastAPI worker on `0.0.0.0:8000`, UDP Syslog on `5140`, TCP Syslog on `5141`, and mounts Dashboard at `http://localhost:8000/dashboard/index.html`.
+
+* **Testing Simulator Hub (`:8050`)**:
+  ```cmd
+  start_testing.bat
+  ```
+  Runs Testing Hub on `0.0.0.0:8050` (`http://localhost:8050`) for interactive device simulation, attack arsenal, load generation, file upload lab, and remote machine targeting.
+
+* **Run Automated Test Pipeline**:
+  ```cmd
+  test_pipeline.bat
+  ```
+  Executes all 5 verification phases (Pytest, Smoke, Security, Stack, Benchmark).
+
+### 2. Accessing from Another Machine:
+* In the Testing Hub at `http://<TESTING_HOST>:8050`, use the **Target Machine Controller** to point to the server's IP address:
+  - Protocol: `http://` or `https://`
+  - Target Host: `192.168.1.50` (or Docker/Cloud IP)
+  - Port: `8000`
+  - Click ** Ping API** to verify connectivity with real-time latency reporting.
+

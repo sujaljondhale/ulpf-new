@@ -8,13 +8,13 @@ set -e
 API_BASE="http://localhost:8000/api/v1"
 
 echo "======================================================================"
-echo " 🏆 RUNNING ULPF SIH END-TO-END DEMO SUITE"
+echo "  RUNNING ULPF SIH END-TO-END DEMO SUITE"
 echo "======================================================================"
 
 echo ""
 echo "1. Checking System Health..."
-curl -s -f "$API_BASE/health" > /dev/null || (echo "❌ API offline" && exit 1)
-echo "   ✓ ULPF Core Engine Online"
+curl -s -f "$API_BASE/health" > /dev/null || (echo " API offline" && exit 1)
+echo "    ULPF Core Engine Online"
 
 echo ""
 echo "2. Triggering Scenario 1: Mixed Multi-Vendor Normal Traffic..."
@@ -45,6 +45,6 @@ curl -s "$API_BASE/events?limit=1" | python3 -m json.tool || true
 
 echo ""
 echo "======================================================================"
-echo " ✅ SIH Demonstration Pipeline Execution Complete!"
+echo "  SIH Demonstration Pipeline Execution Complete!"
 echo "    Open Dashboard: http://localhost:8000/dashboard/index.html#/sih-demo"
 echo "======================================================================"

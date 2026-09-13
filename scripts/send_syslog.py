@@ -91,7 +91,7 @@ def generate_simulated_log(vendor: str = "all", format_type: str = "auto") -> st
 def send_udp(host: str, port: int, count: int, rate: int, vendor: str, format_type: str):
     """Transmit logs via UDP socket."""
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    print(f"📡 Sending {count} UDP Syslog datagrams to {host}:{port} (Rate: {rate if rate > 0 else 'MAX'} EPS)...")
+    print(f" Sending {count} UDP Syslog datagrams to {host}:{port} (Rate: {rate if rate > 0 else 'MAX'} EPS)...")
 
     delay = 1.0 / rate if rate > 0 else 0
     t0 = time.time()
@@ -108,18 +108,18 @@ def send_udp(host: str, port: int, count: int, rate: int, vendor: str, format_ty
 
     elapsed = max(time.time() - t0, 0.001)
     achieved_eps = round(count / elapsed, 2)
-    print(f"✅ Transmitted {count} UDP packets ({bytes_sent:,} bytes) in {elapsed:.3f}s -> {achieved_eps:,} EPS achieved.")
+    print(f" Transmitted {count} UDP packets ({bytes_sent:,} bytes) in {elapsed:.3f}s -> {achieved_eps:,} EPS achieved.")
     sock.close()
 
 
 def send_tcp(host: str, port: int, count: int, rate: int, vendor: str, format_type: str):
     """Transmit logs via persistent TCP connection."""
-    print(f"📡 Connecting to TCP Syslog server at {host}:{port}...")
+    print(f" Connecting to TCP Syslog server at {host}:{port}...")
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         sock.connect((host, port))
     except Exception as e:
-        print(f"❌ Failed to connect to TCP Syslog server {host}:{port}: {e}")
+        print(f" Failed to connect to TCP Syslog server {host}:{port}: {e}")
         sys.exit(1)
 
     print(f"   Connected! Sending {count} framed TCP log messages...")
@@ -138,7 +138,7 @@ def send_tcp(host: str, port: int, count: int, rate: int, vendor: str, format_ty
 
     elapsed = max(time.time() - t0, 0.001)
     achieved_eps = round(count / elapsed, 2)
-    print(f"✅ Transmitted {count} TCP messages ({bytes_sent:,} bytes) in {elapsed:.3f}s -> {achieved_eps:,} EPS achieved.")
+    print(f" Transmitted {count} TCP messages ({bytes_sent:,} bytes) in {elapsed:.3f}s -> {achieved_eps:,} EPS achieved.")
     sock.close()
 
 
@@ -159,7 +159,7 @@ def main():
         port = 5140 if args.protocol == "udp" else 5141
 
     print("=" * 70)
-    print("  🚀 ULPF NETWORK LOG SIMULATOR (SIMULATED NETWORK DEVICE INGRESS)")
+    print("   ULPF NETWORK LOG SIMULATOR (SIMULATED NETWORK DEVICE INGRESS)")
     print("=" * 70)
 
     if args.protocol == "udp":

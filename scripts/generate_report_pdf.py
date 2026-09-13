@@ -175,7 +175,7 @@ def build_pdf(filename="ULPF_SIH26156_Master_Report.pdf"):
         ("Multi-Node Distributed Collector Agent (PC2 Strategy)", "Deploy lightweight Rust/Go forwarding agents on perimeter gateways (PC2/PC3) streaming compressed raw logs to the central ULPF engine (PC1).")
     ]
     for title, desc in win_features:
-        elements.append(Paragraph(f"<b>🏆 {title}:</b> {desc}", bullet_style))
+        elements.append(Paragraph(f"<b> {title}:</b> {desc}", bullet_style))
 
     # 5. Simultaneous Deployment & Disadvantages Handling (NEW SECTION)
     elements.append(Paragraph("5. Single-PC Microservices Deployment & Disadvantage Handling", h1_style))

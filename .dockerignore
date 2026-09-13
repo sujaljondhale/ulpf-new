@@ -14,6 +14,10 @@ coverage
 storage/raw/*
 storage/*.db
 storage/*.db-journal
+main/storage/raw/*
+main/storage/*.db
+main/storage/*.db-journal
+testing/storage/*
 .DS_Store
 Thumbs.db
 ULPF_SIH26156_Master_Report.pdf

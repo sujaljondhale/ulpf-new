@@ -119,7 +119,7 @@ Yes. The **Log Sources** management module provides real-time IP-level ingestion
 ### Q15: How long does it take for a judge or evaluator to test ULPF?
 **Answer**:
 Under 3 minutes:
-1. Click **`[🎬 Start 3-Minute Demo]`** in the UI.
+1. Click **`[ Start 3-Minute Demo]`** in the UI.
 2. Ingest an 8-vendor burst in the **Multi-Vendor Lab**.
 3. Inspect field provenance and verify SHA-256 integrity in **Event Explorer**.
 4. Test AI regex generation in the **AI Parser Studio**.

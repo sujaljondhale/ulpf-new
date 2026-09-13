@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # ----------------------------------------------------------------------------
   # 1. ULPF Unified API Engine & Web Dashboard
@@ -24,6 +22,13 @@ services:
       - MINIO_BUCKET=ulpf-raw
       - OPENSEARCH_URL=http://opensearch:9200
       - OPENSEARCH_INDEX=ulpf-events
+      - REDPANDA_ENABLED=true
+      - REDPANDA_BROKERS=redpanda:9092
+      - REDPANDA_INPUT_TOPIC=ulpf-raw-ingress
+      - REDPANDA_OUTPUT_TOPIC=ulpf-events-normalized
+      - REDPANDA_ALERTS_TOPIC=ulpf-alerts
+      - REDPANDA_CONSUMER_GROUP=ulpf-workers
+      - REDPANDA_ADMIN_URL=http://redpanda:9644
       - OLLAMA_URL=http://ulpf-ai:11434
       - OLLAMA_MODEL=qwen2.5-coder:3b
       - STORAGE_DIR=/app/storage/raw
@@ -32,8 +37,6 @@ services:
       - ulpf_metadata:/app/storage
     depends_on:
       minio:
-        condition: service_healthy
-      opensearch:
         condition: service_healthy
     networks:
       - ulpf-net
@@ -46,10 +49,129 @@ services:
     restart: unless-stopped
 
   # ----------------------------------------------------------------------------
-  # 2. MinIO — Immutable Raw Log S3 Object Storage (~150MB RAM)
+  # 2. ULPF Distributed Worker Engine (Scale-Out Redpanda Consumer)
+  # ----------------------------------------------------------------------------
+  ulpf-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: ulpf-worker
+    environment:
+      - ULPF_ENV=production
+      - REDPANDA_ENABLED=true
+      - REDPANDA_BROKERS=redpanda:9092
+      - REDPANDA_INPUT_TOPIC=ulpf-raw-ingress
+      - REDPANDA_OUTPUT_TOPIC=ulpf-events-normalized
+      - REDPANDA_CONSUMER_GROUP=ulpf-workers
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=ulpf_admin
+      - MINIO_SECRET_KEY=ulpf_password_2026
+      - MINIO_BUCKET=ulpf-raw
+      - OPENSEARCH_URL=http://opensearch:9200
+      - OPENSEARCH_INDEX=ulpf-events
+      - DB_SQLITE_PATH=/app/storage/ulpf_metadata.db
+    volumes:
+      - ulpf_metadata:/app/storage
+    depends_on:
+      minio:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+    networks:
+      - ulpf-net
+    restart: unless-stopped
+
+  # ----------------------------------------------------------------------------
+  # 2b. ULPF Virtual Device Simulator & Testbed (Core 2)
+  # ----------------------------------------------------------------------------
+  ulpf-simulator:
+    build:
+      context: .
+      dockerfile: Dockerfile.simulator
+    container_name: ulpf-simulator
+    ports:
+      - "8050:8050"
+    environment:
+      - TESTING_HOST=0.0.0.0
+      - TESTING_PORT=8050
+    networks:
+      - ulpf-net
+    restart: unless-stopped
+
+
+  # ----------------------------------------------------------------------------
+  # 3. Redpanda — High-Speed Kafka Streaming Bus (~400MB RAM, C++ Raft)
+  # ----------------------------------------------------------------------------
+  redpanda:
+    image: redpandadata/redpanda:v23.3.14
+    container_name: ulpf-redpanda
+    command:
+      - redpanda
+      - start
+      - --smp
+      - "1"
+      - --memory
+      - 512M
+      - --reserve-memory
+      - 0M
+      - --overprovisioned
+      - --node-id
+      - "0"
+      - --check=false
+      - --kafka-addr
+      - internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr
+      - internal://redpanda:9092,external://localhost:19092
+      - --pandaproxy-addr
+      - internal://0.0.0.0:8082,external://0.0.0.0:18082
+      - --advertise-pandaproxy-addr
+      - internal://redpanda:8082,external://localhost:18082
+      - --schema-registry-addr
+      - internal://0.0.0.0:8081,external://0.0.0.0:18081
+    ports:
+      - "19092:19092"
+      - "9092:9092"
+      - "18082:18082"
+      - "8082:8082"
+      - "18081:18081"
+      - "8081:8081"
+      - "9644:9644"
+    volumes:
+      - redpanda_data:/var/lib/redpanda/data
+    networks:
+      - ulpf-net
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster info || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  # ----------------------------------------------------------------------------
+  # 4. Redpanda Console — Visual Topic, Partition & Event Stream Explorer
+  # ----------------------------------------------------------------------------
+  redpanda-console:
+    image: redpandadata/console:v2.4.5
+    container_name: ulpf-redpanda-console
+    ports:
+      - "8085:8080"
+    environment:
+      - KAFKA_BROKERS=redpanda:9092
+      - KAFKA_SCHEMAREGISTRY_URLS=http://redpanda:8081
+      - REDPANDA_ADMINAPI_URLS=http://redpanda:9644
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    networks:
+      - ulpf-net
+    restart: unless-stopped
+
+  # ----------------------------------------------------------------------------
+  # 5. MinIO — Immutable Raw Log S3 Object Storage (~150MB RAM)
   # ----------------------------------------------------------------------------
   minio:
-    image: minio/minio:RELEASE.2024-01-18T22-51-28Z
+    image: quay.io/minio/minio:latest
     container_name: ulpf-minio
     command: server /data --console-address ":9001"
     environment:
@@ -71,7 +193,7 @@ services:
     restart: unless-stopped
 
   # ----------------------------------------------------------------------------
-  # 3. OpenSearch — Normalized Search & Analytics Node (512MB Heap)
+  # 6. OpenSearch — Normalized Search & Analytics Node (512MB Heap)
   # ----------------------------------------------------------------------------
   opensearch:
     image: opensearchproject/opensearch:2.11.1
@@ -106,7 +228,7 @@ services:
     restart: unless-stopped
 
   # ----------------------------------------------------------------------------
-  # 4. OpenSearch Dashboards — Analytics & SIEM Console (Optional Profile: analytics)
+  # 7. OpenSearch Dashboards — Analytics & SIEM Console (Optional Profile: analytics)
   # ----------------------------------------------------------------------------
   opensearch-dashboards:
     image: opensearchproject/opensearch-dashboards:2.11.1
@@ -126,10 +248,13 @@ services:
     restart: unless-stopped
 
   # ----------------------------------------------------------------------------
-  # 5. Local AI / Ollama Engine (Optional Profile: ai)
+  # 8. Local AI / Ollama Engine (Optional Profile: ai)
   # ----------------------------------------------------------------------------
   ulpf-ai:
-    image: ollama/ollama:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.ai
+    image: ulpf-ai:latest
     container_name: ulpf-ai
     profiles:
       - ai
@@ -146,6 +271,8 @@ volumes:
     name: ulpf_minio_data
   opensearch_data:
     name: ulpf_opensearch_data
+  redpanda_data:
+    name: ulpf_redpanda_data
   ulpf_metadata:
     name: ulpf_metadata_store
   ollama_storage:

@@ -5,7 +5,7 @@
 
 ---
 
-## 🕒 Overview & Timing
+##  Overview & Timing
 
 | Step | Duration | Target Screen | Core Message |
 | :--- | :--- | :--- | :--- |
@@ -18,11 +18,11 @@
 
 ---
 
-## 🎬 Step-by-Step Script
+##  Step-by-Step Script
 
 ### Step 1: Multi-Vendor Ingestion (0:00 - 0:30)
-* **Action**: In the top header bar, click **`[🎬 Start 3-Minute Demo]`** (or navigate to `Processing → Multi-Vendor Lab`).
-* **Click**: Click **`⚡ Ingest Heterogeneous Burst (8 Vendors)`**.
+* **Action**: In the top header bar, click **`[ Start 3-Minute Demo]`** (or navigate to `Processing → Multi-Vendor Lab`).
+* **Click**: Click **` Ingest Heterogeneous Burst (8 Vendors)`**.
 * **Say**:
   > *"Judges, in national security perimeters, every vendor outputs logs differently—Cisco uses Syslog, Palo Alto uses CEF, IBM uses LEEF, Fortinet uses Key=Value, and AWS uses JSON. Watch as we ingest all 8 disparate vendor streams simultaneously into ULPF."*
 
@@ -40,7 +40,7 @@
 ### Step 3: Forensic Traceability & SHA-256 Verification (1:00 - 1:30)
 * **Action**: Navigate to `Explorer → Event Explorer` (or click Next Step in the demo guide).
 * **Action**: Click the **`[Inspect]`** button on any Fortinet or Palo Alto event.
-* **Action**: Scroll down to the **Tamper-Evident Integrity** card and click **`🔒 Verify SHA-256 Integrity`**.
+* **Action**: Scroll down to the **Tamper-Evident Integrity** card and click **` Verify SHA-256 Integrity`**.
 * **Say**:
   > *"For digital forensics and legal admissibility, ULPF never modifies the raw log. We compute a cryptographic SHA-256 hash upon ingress. Notice the field provenance graph showing exactly which raw byte slice populated which normalized field."*
 
@@ -49,14 +49,14 @@
 ### Step 4: Unknown Log Handling & AI Parser Studio (1:30 - 2:15)
 * **Action**: Navigate to `AI Engine → AI Parser Onboarding`.
 * **Action**: Click on the pending proprietary log (e.g., Industrial SCADA / Custom Microservice log).
-* **Action**: Click **`⚡ Generate Dynamic Parser (Local AI)`**.
+* **Action**: Click **` Generate Dynamic Parser (Local AI)`**.
 * **Say**:
   > *"When a novel or zero-day device format arrives, traditional SIEMs drop it or fail. ULPF routes it to our sovereign, offline AI Parser Studio powered by an on-device Small Language Model. It automatically infers the regex pattern and field bindings in seconds."*
 
 ---
 
 ### Step 5: Parser Testbench & Promotion (2:15 - 2:45)
-* **Action**: Review the generated regex, then click **`✅ Approve & Register Parser`**.
+* **Action**: Review the generated regex, then click **` Approve & Register Parser`**.
 * **Action**: Navigate to `AI Engine → Parser Registry` to show the newly activated parser running deterministically.
 * **Say**:
   > *"The human analyst reviews the diff and approves it. The parser is instantly registered into the live deterministic engine with zero restarts and zero downtime."*

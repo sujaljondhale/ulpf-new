@@ -5,11 +5,11 @@
 
 set -e
 
-echo "🔍 Inspecting ULPF System Health & Readiness..."
+echo " Inspecting ULPF System Health & Readiness..."
 echo ""
 
 if ! curl -s -f http://localhost:8000/api/v1/health > /dev/null 2>&1; then
-    echo "❌ ULPF API is unreachable at http://localhost:8000."
+    echo " ULPF API is unreachable at http://localhost:8000."
     echo "   Ensure containers are running with: docker compose ps"
     exit 1
 fi

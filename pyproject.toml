@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ulpf"
-version = "0.1.0"
-description = "Universal Log Pre-processing Framework (ULPF) Phase 1 Core Engine"
+version = "1.0.0"
+description = "Universal Log Pre-processing Framework (ULPF) Enterprise Production (Phase 8)"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -17,9 +17,12 @@ dependencies = [
 ]
 
 [tool.pytest.ini_options]
-pythonpath = ["."]
-testpaths = ["tests"]
+pythonpath = ["main", "."]
+testpaths = ["testing/suites"]
 python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"
+
+[tool.pyright]
+extraPaths = ["main", "testing", "testing/server"]
 

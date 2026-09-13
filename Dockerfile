@@ -30,8 +30,8 @@ RUN groupadd -r ulpfgroup && useradd -r -g ulpfgroup -d /app -s /sbin/nologin ul
 # Create persistent storage directory and set permissions
 RUN mkdir -p /app/storage/raw && chown -R ulpfuser:ulpfgroup /app
 
-# Copy application source code
-COPY --chown=ulpfuser:ulpfgroup . .
+# Copy application source code from main/
+COPY --chown=ulpfuser:ulpfgroup main/ .
 
 # Switch to non-root user
 USER ulpfuser

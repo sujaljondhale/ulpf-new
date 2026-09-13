@@ -2,7 +2,7 @@
 
 **SIH Problem ID:** SIH 26156 (NTRO)  
 **Theme:** Cybersecurity & High-Throughput Log Pre-processing  
-**Status:** Phase 7 — Docker + Persistence + Deployment Hardening
+**Status:** Phase 8 Production — Enterprise Hardening & Unified Benchmarking (v1.0.0)
 
 ---
 
@@ -14,7 +14,7 @@ It preserves raw evidence, creates a common internal event representation (**ULP
 
 ---
 
-## 🚀 One-Command Containerized Deployment
+##  One-Command Containerized Deployment
 
 The complete ULPF platform (API, Dashboard, MinIO Raw Storage, OpenSearch Normalized Index, SQLite Metadata) runs with a single command:
 
@@ -22,9 +22,14 @@ The complete ULPF platform (API, Dashboard, MinIO Raw Storage, OpenSearch Normal
 docker compose up --build
 ```
 
-### Automation Scripts
+### Dual-Core Architecture & Automation Scripts
 
-| Action | Linux / macOS | Windows | Description |
+| Core | Web Interface | Command Line | Windows Shortcut | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| **Main Worker** | [http://localhost:8000/](http://localhost:8000/) | `python main/run_main.py` | `start_main.bat` | Core pipeline, UDP :5140, TCP :5141, SOC Dashboard |
+| **Testing Simulator Hub** | [http://localhost:8050/](http://localhost:8050/) | `python testing/run_testing.py` | `start_testing.bat` | Multi-protocol socket transmitter & custom log studio |
+
+| Stack Action | Linux / macOS | Windows | Description |
 | :--- | :--- | :--- | :--- |
 | **Start Stack** | `./scripts/start.sh` | `scripts\start.bat` | Starts all containers, waits for health, prints URLs |
 | **Stop Stack** | `./scripts/stop.sh` | `scripts\stop.bat` | Gracefully stops services preserving volumes |
@@ -34,15 +39,15 @@ docker compose up --build
 
 ---
 
-## 🌐 Platform URLs
+##  Platform URLs
 
-* 🏆 **SIH Demo Control Center**: [http://localhost:8000/dashboard/index.html#/sih-demo](http://localhost:8000/dashboard/index.html#/sih-demo)
-* 📊 **Main Web Dashboard**: [http://localhost:8000/dashboard/index.html#/overview](http://localhost:8000/dashboard/index.html#/overview)
-* 💻 **Client Event Generator**: [http://localhost:8000/dashboard/client_app.html](http://localhost:8000/dashboard/client_app.html)
-* 📖 **Interactive Swagger OpenAPI**: [http://localhost:8000/docs](http://localhost:8000/docs)
-* 🔌 **REST API Root**: [http://localhost:8000/api/v1](http://localhost:8000/api/v1)
-* 🪣 **MinIO S3 Object Console**: [http://localhost:9001](http://localhost:9001) *(User: `ulpf_admin`, Pass: `ulpf_password_2026`)*
-* 🔍 **OpenSearch Node**: [http://localhost:9200](http://localhost:9200)
+*  **SIH Demo Control Center**: [http://localhost:8000/dashboard/index.html#/sih-demo](http://localhost:8000/dashboard/index.html#/sih-demo)
+*  **Main SOC Web Dashboard**: [http://localhost:8000/dashboard/index.html#/overview](http://localhost:8000/dashboard/index.html#/overview)
+*  **Protocol Simulator & Testing Hub**: [http://localhost:8050/](http://localhost:8050/)
+*  **Interactive Swagger OpenAPI**: [http://localhost:8000/docs](http://localhost:8000/docs)
+*  **REST API Root**: [http://localhost:8000/api/v1](http://localhost:8000/api/v1)
+*  **MinIO S3 Object Console**: [http://localhost:9001](http://localhost:9001) *(User: `ulpf_admin`, Pass: `ulpf_password_2026`)*
+*  **OpenSearch Node**: [http://localhost:9200](http://localhost:9200)
 
 ---
 
@@ -58,7 +63,7 @@ docker compose up --build
           └───────────┼─────────┴───────┘
                       ↓
                      ULPF
-      (Raw Preservation ➔ Detect ➔ Parse ➔ Validate)
+      (Raw Preservation  Detect  Parse  Validate)
                       ↓
                    ULPF-IR
      (Canonical Intermediate Representation & Provenance)
@@ -87,7 +92,7 @@ docker compose up --build
 
 ---
 
-## ⚡ Performance Benchmark (10,000 Events)
+##  Performance Benchmark (10,000 Events)
 
 Reproducible CLI benchmark run: `python benchmark.py --events 10000`
 
@@ -101,7 +106,7 @@ Reproducible CLI benchmark run: `python benchmark.py --events 10000`
 
 ---
 
-## 🔒 Security & Defense Air-Gap Guarantees
+##  Security & Defense Air-Gap Guarantees
 
 * **100% Offline & Sovereign**: Operates strictly within air-gapped secure enclaves with zero external cloud telemetry, zero API keys, and zero tracking.
 * **Tamper-Evident Provenance**: Recalculates SHA-256 hash on-demand against stored raw messages to detect any modification.
@@ -110,20 +115,20 @@ Reproducible CLI benchmark run: `python benchmark.py --events 10000`
 
 ---
 
-## 📁 Technical Documentation Index
+##  Technical Documentation Index
 
-* 📘 [Architecture Specification](docs/architecture.md) — Comprehensive technical design & component breakdown
-* 🚢 [Deployment & Operations Guide](docs/deployment.md) — Bare-metal, Docker Compose, and air-gapped setup
-* 🔄 [Data Flow & Lifecycle](docs/data-flow.md) — Byte-level trace from wire ingress to downstream sinks
-* 🌐 [REST API Reference](docs/api.md) — OpenAPI endpoint schemas, payloads, and response status codes
-* 🎬 [3-Minute Live Jury Script](docs/demo-script.md) — Presenter script and timing guide for SIH evaluation
-* 📊 [Performance Benchmark Report](docs/benchmark.md) — Complete methodology, latency percentiles, and hardware baseline
-* ❓ [Top 15 Jury Q&A Guide](docs/judge-questions.md) — Direct, technically rigorous answers to evaluation questions
-* 🛡️ [Engineering Scope & Limitations](docs/limitations.md) — Honest evaluation of prototype boundaries and production roadmap
+*  [Architecture Specification](docs/architecture.md) — Comprehensive technical design & component breakdown
+*  [Deployment & Operations Guide](docs/deployment.md) — Bare-metal, Docker Compose, and air-gapped setup
+*  [Data Flow & Lifecycle](docs/data-flow.md) — Byte-level trace from wire ingress to downstream sinks
+*  [REST API Reference](docs/api.md) — OpenAPI endpoint schemas, payloads, and response status codes
+*  [3-Minute Live Jury Script](docs/demo-script.md) — Presenter script and timing guide for SIH evaluation
+*  [Performance Benchmark Report](docs/benchmark.md) — Complete methodology, latency percentiles, and hardware baseline
+*  [Top 15 Jury Q&A Guide](docs/judge-questions.md) — Direct, technically rigorous answers to evaluation questions
+* ️ [Engineering Scope & Limitations](docs/limitations.md) — Honest evaluation of prototype boundaries and production roadmap
 
 ---
 
-## 👥 Authors & Acknowledgments
+##  Authors & Acknowledgments
 
 * **Project**: Universal Log Pre-processing Framework (ULPF)
 * **Problem Statement**: SIH 26156 (NTRO)

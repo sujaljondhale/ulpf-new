@@ -1,308 +1,229 @@
-# ULPF Ingestion Architecture
+# ULPF Ingestion Architecture & Log Storage Guide
 
-**Universal Log Pre-processing Framework — Phase 8: Real Network Log Collectors & Streaming Ingestion**
-
----
-
-## Overview
-
-ULPF acts as a real preprocessing gateway between enterprise network devices and downstream SIEM/analytics systems:
-
-```
-Firewall / Router / VPN / IDS / Proxy
-              ↓
-      Network Log Collector
-     (UDP 5140 | TCP 5141 | REST 8000)
-              ↓
-        Ingestion Queue
-      (rate-limited, backpressured)
-              ↓
-       Processing Pipeline
-     (detect → parse → normalize)
-              ↓
-     Storage + Analytics
-   (MinIO raw | OpenSearch canonical)
-```
+**Universal Log Pre-processing Framework (ULPF)**  
+*SIH 26156 — National Technical Research Organisation (NTRO)*
 
 ---
 
-## Collector Components
+## 1. Overview & Transport Matrix
 
-### 1. Syslog UDP Collector (Port 5140)
+ULPF serves as a high-performance preprocessing gateway between heterogeneous enterprise network devices and downstream SIEM/analytics systems:
 
-**RFC 3164 (BSD Syslog) and RFC 5424 (IETF Structured Syslog)**
-
-Listens on `0.0.0.0:5140` for UDP datagrams from firewalls, routers, switches, and VPN concentrators.
-
-**Characteristics:**
-- Non-blocking socket with `select.select()` (0.5s timeout) for clean shutdown
-- Handles up to 65,535-byte datagrams
-- Decodes with `errors="replace"` — malformed/binary payloads never crash the listener
-- Each packet becomes an immutable `RawIngress` object with SHA-256 hash computed before any parsing
-- Fires to `IngestionQueue` (backpressured) or direct `event_callback`
-
-**Example RFC 3164:**
 ```
-<34>Oct 11 22:14:15 mymachine su: 'su root' failed for lonvick on /dev/pts/8
+Firewall / Router / VPN / IDS / Workstation / Server
+                        │
+       ┌────────────────┼────────────────┬────────────────┐
+       ▼                ▼                ▼                ▼
+Syslog UDP (:5140)  Syslog TCP (:5141)  HTTP REST (:8000)  File Drop (storage/logs/)
+       │                │                │                │
+       └────────────────┼────────────────┴────────────────┘
+                        │
+                        ▼
+             [ Ingestion Rate Limiter ]
+                        │
+                        ▼
+             [ 1. Raw Integrity Seal ]
+             ├── Calculate SHA-256 Digest
+             ├── Assign UUID / Event ID
+             └── Write to Immutable Raw Storage (storage/raw/)
+                        │
+                        ▼
+             [ 2. Four-Tier Format Detector ]
+                        │
+         ┌──────────────┴──────────────┐
+         ▼                             ▼
+Known Format (Confidence ≥ 0.70)   Unknown Format (Confidence < 0.70)
+         │                             │
+         ▼                             ▼
+[ Deterministic Parsers ]      [ Unknown Quarantine & AI Onboarding ]
+(CEF, Syslog, JSON, LEEF, KV)  (storage/ulpf_unknown.db & Local SLM)
+         │                             │
+         └──────────────┬──────────────┘
+                        │
+                        ▼
+          [ Semantic Normalization to ULPF-IR ]
+                        │
+         ┌──────────────┼──────────────┐
+         ▼              ▼              ▼
+SQLite Event Ledger   OpenSearch     MinIO S3
+(storage/ulpf_events.db)  (:9200)      (:9000)
 ```
 
-**Example RFC 5424:**
+---
+
+## 2. Ingress Network Collectors
+
+### 2.1 Syslog UDP Collector (Port `5140`)
+* **Protocols**: RFC 3164 (BSD Syslog) and RFC 5424 (IETF Structured Syslog).
+* **Interface**: Listens on `0.0.0.0:5140` for UDP datagrams.
+* **Resilience**: Non-blocking asynchronous socket with `select.select()` and non-crashing `errors="replace"` UTF-8 decoding. Handles packets up to 65,535 bytes.
+* **Integrity**: Immediate SHA-256 evidence hashing before any parsing occurs.
+
+### 2.2 Syslog TCP Collector (Port `5141`)
+* **Protocols**: RFC 5424 persistent TCP streams, newline-delimited (`\n`) and octet-counting framing.
+* **Interface**: Listens on `0.0.0.0:5141` for persistent multi-client TCP connections.
+* **Resilience**: Independent per-client thread buffer handling fragmented packets across multiple `recv()` calls.
+
+### 2.3 HTTP REST Ingest Gateway (Port `8000`)
+* **Endpoints**:
+  * `POST /api/v1/ingest`: JSON payload containing `raw_log` and `source_id`.
+  * `POST /api/v1/upload`: Multipart batch file ingestion for `.log`, `.txt`, `.raw`, `.json`, `.csv`, `.cef`, `.syslog`.
+
+### 2.4 Watched Directory Collector (`storage/logs/`)
+* **Service**: Automated filesystem watchdog monitoring `storage/logs/`.
+* **Behavior**: Detects new log files dropped into the directory, streams them line-by-line through the normalization pipeline, computes cryptographic evidence, and archives the file.
+
+---
+
+## 3. Where Does the Server Store Received Logs? (Raw and Parsed)
+
+ULPF maintains strict segregation between **immutable raw forensic evidence** and **normalized structured events**:
+
 ```
-<165>1 2026-09-06T12:34:56.789Z fw.corp FIREWALL 4242 ID47 [origin ip="10.0.0.1"] TCP BLOCKED src=192.168.1.5 dst=8.8.8.8
+ulpf/
+├── main/
+│   └── storage/
+│       ├── raw/                       # 1. Immutable Raw Log Evidence Store
+│       │   ├── ULPF-2026-1001.raw
+│       │   └── ULPF-2026-1002.raw
+│       ├── logs/                      # 2. Watched Directory for Log Drops
+│       ├── ulpf_events.db             # 3. Normalized Canonical Events (SQLite)
+│       └── ulpf_unknown.db            # 4. Quarantine Queue for Unknown Logs
 ```
 
-**Testing:**
+### 3.1 Raw Logs Storage (`storage/raw/`)
+* **Location**: `main/storage/raw/` on the server filesystem.
+* **Format**: Individual raw bitstream files named by timestamp or assigned event ID:  
+  `storage/raw/ULPF-YYYYMMDD-HHMMSS-<id>.raw`
+* **Integrity Guarantee**:
+  - Raw strings are **never modified, truncated, trimmed, or re-encoded**.
+  - A cryptographic **SHA-256 digest** is computed directly across the raw bytes immediately upon socket ingress.
+  - In distributed deployments, the raw bitstream is also pushed to the immutable **MinIO S3 bucket** (`ulpf-raw-evidence`) with write-once-read-many (WORM) retention policies.
+  - Guarantees court-admissible chain of custody for digital forensics and compliance audits.
+
+### 3.2 Parsed Logs Storage (`storage/ulpf_events.db` & OpenSearch)
+* **Relational Storage**: SQLite database at `main/storage/ulpf_events.db`.
+  - Stored in the `events` table with normalized columns: `event_id`, `timestamp`, `category`, `action`, `severity`, `source_ip`, `source_port`, `destination_ip`, `destination_port`, `vendor`, `product`, `raw_sha256`, and complete ULPF-IR JSON.
+* **Search & Analytics**: OpenSearch cluster (`http://localhost:9200`, index `ulpf-events-v1`).
+  - Indexed with high-performance schemas supporting free-text search, geo-ip enrichment, and security analytics visualizations in OpenSearch Dashboards (port 5601).
+
+### 3.3 Unknown Logs Quarantine (`storage/ulpf_unknown.db`)
+* **Location**: `main/storage/ulpf_unknown.db` (or `unknown_logs` table).
+* **Contents**: Raw payload, ingress timestamp, source IP/port, confidence score (<0.70), failure reason, assigned SHA-256 seal, and current status (`PENDING_REVIEW`, `AI_SYNTHESIZED`, `APPROVED`).
+
+---
+
+## 4. How Logs Get Categorized as "Unknown"
+
+When a raw log string enters the ULPF pipeline, it passes through a **4-stage deterministic decision cascade**:
+
+```
+[ Incoming Raw Log ]
+        │
+        ▼
+[ Phase 1: Magic Header & Signature Check ]
+├── Checks for CEF header ("CEF:0|") ──> CEF Parser (0.99)
+├── Checks for LEEF header ("LEEF:1.0|") ──> LEEF Parser (0.99)
+├── Checks for Syslog PRI ("<134>1 " or "<34>Oct") ──> Syslog Parser (0.95)
+└── Checks for valid JSON ("{ ... }") ──> JSON Parser (1.00)
+        │ (No signature matched)
+        ▼
+[ Phase 2: Key=Value & Delimiter Tokenizer ]
+├── Evaluates field=value pairs (e.g. src=... dst=... action=...)
+└── Computes token density ratio
+        │ (Token density < 0.70 or irregular delimiters)
+        ▼
+[ Phase 3: Schema Validation & Required Fields ]
+├── Requires valid Timestamp
+├── Requires Event Identifier or Action
+└── If mandatory fields cannot be extracted ──> Validation Fails
+        │
+        ▼
+[ Phase 4: Quarantine Fallback ]
+├── Confidence Score < 0.70
+├── Format Tag: "unknown"
+├── Preserves raw bitstream & computes SHA-256 evidence hash
+└── Dispatches to Unknown Quarantine (storage/ulpf_unknown.db)
+        │
+        ▼
+[ AI Onboarding Engine & Human Review Queue ]
+```
+
+### Why Logs Become "Unknown":
+1. **Proprietary / Custom Vendor Formats**: Industrial SCADA systems, legacy mainframe applications, or in-house microservices that do not adhere to RFC standards.
+2. **Corrupted or Truncated Frames**: Packets truncated at MTU boundaries or malformed during transmission.
+3. **Obfuscated or Malicious Payloads**: Exploits designed to bypass WAF or IDS regular expressions by manipulating delimiters.
+4. **Missing Timestamps**: Logs lacking valid ISO 8601 or BSD timestamps that fail chronological indexing requirements.
+
+---
+
+## 5. Multi-Transport File Upload Lab
+
+The Testing Hub (`http://localhost:8050`, Tab 7) provides a dedicated file ingestion lab:
+
+### 5.1 Supported Formats
+* **File Types**: `.log`, `.txt`, `.raw`, `.json`, `.csv`, `.xml`, `.cef`, `.leef`, `.syslog` (up to 10 MB).
+* **Pre-flight Recognition**: Automatically detects format signatures before transmission.
+* **Interactive Editor**: Allows live editing, line counting, and byte size verification.
+
+### 5.2 Four Ingestion Transport Modes:
+1. **Direct HTTP REST Upload** (`POST /api/v1/upload`): Multipart file upload directly to ULPF Core with end-to-end normalization, SQLite storage, OpenSearch indexing, and sample parsed event cards.
+2. **Sequential UDP Syslog Stream** (Port `5140`): Replays log lines as UDP datagrams with adjustable pacing delay (0–200 ms).
+3. **Persistent TCP Syslog Stream** (Port `5141`): Streams log lines over persistent TCP framing.
+4. **File Collector Drop** (`storage/logs/`): Simulates log rotation and automated file watching.
+
+---
+
+## 6. Connecting from Other Devices & Remote Machines
+
+To allow other computers, firewalls, or cloud VMs to send logs to your ULPF server:
+
+### 6.1 Server Host Configuration
+1. **Bind Address**: ULPF collectors bind to `0.0.0.0` (all network interfaces), ensuring they accept traffic from localhost, local LAN, Docker networks, and external VPNs.
+2. **Find Server LAN IP**:
+   * Windows: `ipconfig` (e.g. `192.168.1.50`)
+   * Linux: `ip a` or `hostname -I`
+
+### 6.2 Firewall Ingress Rules
+Ensure the operating system firewall permits inbound traffic on ULPF ingress ports:
+
+* **Windows PowerShell (Run as Administrator)**:
+```powershell
+New-NetFirewallRule -DisplayName "ULPF HTTP API (8000)" -Direction Inbound -Protocol TCP -LocalPort 8000 -Action Allow
+New-NetFirewallRule -DisplayName "ULPF Testing Hub (8050)" -Direction Inbound -Protocol TCP -LocalPort 8050 -Action Allow
+New-NetFirewallRule -DisplayName "ULPF Syslog UDP (5140)" -Direction Inbound -Protocol UDP -LocalPort 5140 -Action Allow
+New-NetFirewallRule -DisplayName "ULPF Syslog TCP (5141)" -Direction Inbound -Protocol TCP -LocalPort 5141 -Action Allow
+```
+
+* **Linux (UFW)**:
 ```bash
-python scripts/send_syslog.py --protocol udp --host localhost --port 5140 --count 100 --rate 10
+sudo ufw allow 8000/tcp comment "ULPF HTTP API & Dashboard"
+sudo ufw allow 8050/tcp comment "ULPF Testing Simulator Hub"
+sudo ufw allow 5140/udp comment "ULPF Syslog UDP"
+sudo ufw allow 5141/tcp comment "ULPF Syslog TCP"
 ```
 
----
-
-### 2. Syslog TCP Collector (Port 5141)
-
-**Multi-client stream with newline and octet-count framing**
-
-Listens on `0.0.0.0:5141` for persistent TCP streams from enterprise devices sending continuous syslog streams.
-
-**Characteristics:**
-- `select.select()` accept loop with per-client threads
-- Per-client receive buffer handles fragmented packets across multiple `recv()` calls
-- Supports newline-delimited (`\n`) and octet-counting framing transparently
-- Persistent connections remain open until client disconnects or server stops
-- Handles `ConnectionResetError` / `socket.timeout` gracefully per client
-
-**Example connection:**
-```bash
-# Using netcat
-echo "<134>1 2026-09-06T12:00:01Z fw01 app1 100 - - TCP test event" | nc localhost 5141
-```
-
-**Testing:**
-```bash
-python scripts/send_syslog.py --protocol tcp --host localhost --port 5141 --count 50 --rate 5
-```
-
----
-
-### 3. Syslog TLS Architecture (Port 6514)
-
-TLS-encrypted syslog support is architecturally prepared. Configuration options:
-
-```ini
-SYSLOG_TLS_ENABLED=true
-SYSLOG_TLS_PORT=6514
-SYSLOG_TLS_CERT_FILE=/certs/server.crt
-SYSLOG_TLS_KEY_FILE=/certs/server.key
-SYSLOG_TLS_CA_FILE=/certs/ca.crt
-```
-
-In the current prototype, UDP (5140) and TCP (5141) collectors are active. TLS wrapping is implemented by passing an `ssl.SSLContext` to the TCP collector's socket.
-
----
-
-### 4. REST Ingestion API (Port 8000)
-
-**POST /api/v1/ingest**
-
-Submit individual logs via HTTP POST. Supports JSON body or raw text.
-
-**Request (JSON):**
-```json
-{
-  "raw_log": "CEF:0|CheckPoint|Firewall|1|100|Accept|7|src=1.2.3.4 dst=5.6.7.8",
-  "vendor": "CheckPoint",
-  "product": "FireWall-1",
-  "format_hint": "cef",
-  "source": "fw-01"
-}
-```
-
-**Response:**
-```json
-{
-  "status": "success",
-  "event_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-  "raw_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "detected_format": "CEF",
-  "forwarded": true
-}
-```
-
-**POST /api/v1/ingest/batch**
-
-Submit up to 1000 logs in a single request:
-```json
-{
-  "logs": ["log line 1", "log line 2"],
-  "source": "batch-client"
-}
-```
-
-**GET /api/v1/collectors/metrics**
-
-Real-time telemetry for all collectors:
-```json
-{
-  "status": "online",
-  "total_received_all_connectors": 15000,
-  "total_processed_all_connectors": 14987,
-  "syslog_collector": { "udp_listener": {...}, "tcp_listener": {...} },
-  "file_collector": { "watched_files_count": 3, ... },
-  "ingestion_queue": { "queue_depth": 12, "total_enqueued": 15000, ... }
-}
-```
-
----
-
-### 5. File Tail Collector
-
-Monitors a directory for `*.log` files, tails newly appended lines, and tracks byte offsets across restarts.
-
-**Configuration:**
-```ini
-FILE_WATCH_DIR=/app/storage/logs
-```
-
-**Behavior:**
-- Scans `watch_dir` for `*.log` files every ~1 second
-- Tracks file offset (byte position) per file
-- **Rotation detection:** If current file size < last known offset, or inode changes → reset offset to 0
-- Each new line becomes a `RawIngress(connector_type="file_tail")` event
-- Files can be added dynamically at runtime via `collector.watch_file(path)`
-
----
-
-## RawIngress Data Model
-
-Every log event from any transport is immediately wrapped in a `RawIngress` object:
-
-```python
-class RawIngress(BaseModel):
-    event_id: str           # UUID (auto-generated)
-    connector_type: str     # "syslog_udp" | "syslog_tcp" | "rest" | "file_tail"
-    source: str             # "client_ip:port" or "file:/path/app.log"
-    received_at: str        # ISO-8601 UTC timestamp
-    raw_text: str           # Verbatim original log (NEVER modified)
-    raw_sha256: str         # SHA-256 of raw_text (auto-computed)
-    transport_metadata: dict  # Protocol-specific metadata
-    vendor_hint: str        # Optional: "Cisco", "Palo Alto"
-    product_hint: str       # Optional: "ASA", "PAN-OS"
-    format_hint: str        # Optional: "cef", "leef", "syslog"
-```
-
-> **Forensic guarantee:** `raw_text` is stored exactly as received, byte-for-byte, before any decoding, parsing, or normalization step. SHA-256 is computed from this verbatim content.
-
----
-
-## Ingestion Queue & Backpressure
-
-The `IngestionQueue` buffers events between network collectors and the processing pipeline.
-
-**Parameters:**
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `max_size` | 50,000 | Maximum queue depth before backpressure |
-| `max_eps` | 25,000 | Maximum events/second (sliding window) |
-| `worker_count` | 2 | Worker threads consuming from queue |
-
-**Rate limiting algorithm:** Sliding 1-second window. Events exceeding `max_eps` are dropped with reason `RATE_LIMIT_EXCEEDED`. Full queue drops with `QUEUE_FULL_BACKPRESSURE`.
-
-**Metrics (`GET /api/v1/collectors/metrics → ingestion_queue`):**
-```json
-{
-  "queue_depth": 42,
-  "max_queue_size": 50000,
-  "max_eps_limit": 25000,
-  "total_enqueued": 100000,
-  "total_processed": 99958,
-  "total_dropped_rate_limit": 0,
-  "total_dropped_backpressure": 42
-}
-```
-
----
-
-## Source Registry
-
-The `SourceRegistry` tracks all connected network devices:
-
-```
-GET /api/v1/sources
-POST /api/v1/sources/{source_id}/block
-```
-
-Each source record includes:
-- `source_id`, `name`, `vendor`, `protocol`, `address`
-- `events_received`, `events_per_sec`, `last_seen`
-- `status`: `ACTIVE | READY | BLOCKED`
-- `is_blocked`: Toggle to accept/deny events from this source
-
----
-
-## Docker Port Mappings
-
-```yaml
-# docker-compose.yml
-ulpf-api:
-  ports:
-    - "8000:8000"       # HTTP API + Web Dashboard
-    - "5140:5140/udp"   # Syslog UDP (RFC 3164 / RFC 5424)
-    - "5141:5141"       # Syslog TCP (persistent streams)
-```
-
-After `docker compose up --build`:
-
-| Service | URL |
-|---------|-----|
-| Dashboard | http://localhost:8000/dashboard/index.html |
-| API Docs | http://localhost:8000/docs |
-| Syslog UDP | `udp://localhost:5140` |
-| Syslog TCP | `tcp://localhost:5141` |
-| MinIO Console | http://localhost:9001 |
-| OpenSearch | http://localhost:9200 |
-
----
-
-## Network Traffic Simulator
-
-```bash
-# Send 100 UDP syslog events at 10 EPS
-python scripts/send_syslog.py --protocol udp --host localhost --port 5140 --count 100 --rate 10
-
-# Send TCP stream burst
-python scripts/send_syslog.py --protocol tcp --host localhost --port 5141 --count 500 --rate 50
-
-# Send multi-vendor mix
-python scripts/send_syslog.py --vendor cisco --count 50
-python scripts/send_syslog.py --vendor palo_alto --count 50
-python scripts/send_syslog.py --vendor suricata --count 50
-```
-
----
-
-## Scale-Out: Redpanda / Kafka Mode
-
-For production deployments exceeding 25,000 EPS, ULPF can be configured to publish `RawIngress` objects to a Redpanda/Kafka topic instead of the local queue:
-
-```ini
-REDPANDA_BROKERS=redpanda:9092
-REDPANDA_TOPIC=ulpf-raw-ingress
-```
-
-When `REDPANDA_BROKERS` is set, the `IngestionQueue` publishes to Kafka instead of the local in-process queue. Multiple ULPF worker instances can then consume from the same topic for horizontal scaling.
-
----
-
-## Testing
-
-```bash
-# Unit + integration tests (10 tests covering all collectors)
-pytest tests/test_network_collectors.py -v
-
-# Full suite (53 tests)
-pytest
-
-# Live network simulator
-python scripts/send_syslog.py --count 200 --rate 20
-```
+### 6.3 Forwarding Configuration on Remote Devices
+* **Linux (`rsyslog.conf`)**:
+  ```ini
+  *.* @192.168.1.50:5140;RSYSLOG_SyslogProtocol23Format
+  ```
+* **Cisco ASA / IOS**:
+  ```cisco
+  logging host inside 192.168.1.50 transport udp port 5140
+  ```
+* **Fortinet FortiGate**:
+  ```fortios
+  config log syslogd setting
+      set status enable
+      set server "192.168.1.50"
+      set mode udp
+      set port 5140
+  end
+  ```
+* **HTTP cURL**:
+  ```bash
+  curl -X POST "http://192.168.1.50:8000/api/v1/ingest" \
+    -H "Content-Type: application/json" \
+    -d '{"raw_log": "CEF:0|Vendor|Product|1.0|100|Event|5|src=10.0.0.1", "source_id": "Remote-Host"}'
+  ```
