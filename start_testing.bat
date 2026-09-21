@@ -9,5 +9,5 @@ echo  [ULPF CORE 2] Starting Protocol Simulator ^& Testing Website...
 echo  Testing Hub: http://localhost:8050/
 echo ======================================================================
 
-python testing\run_testing.py
+python .\testing\run_testing.py
 pause

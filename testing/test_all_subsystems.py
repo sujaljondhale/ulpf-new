@@ -9,12 +9,71 @@ import json
 import time
 import urllib.request
 import urllib.error
+from typing import Tuple, Dict, Any, Optional
 
 # Ensure main is in pythonpath
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "main")))
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 BASE_URL = "http://127.0.0.1:8000"
+_client = None
+_server_live = None
+
+def is_server_live():
+    global _server_live
+    if _server_live is None:
+        try:
+            req = urllib.request.Request(f"{BASE_URL}/health")
+            with urllib.request.urlopen(req, timeout=0.5) as resp:
+                _server_live = (resp.status == 200)
+        except Exception:
+            _server_live = False
+    return _server_live
+
+def get_test_client():
+    global _client
+    if _client is None:
+        try:
+            from fastapi.testclient import TestClient
+            from app.main import app
+            _client = TestClient(app)
+        except Exception:
+            _client = None
+    return _client
+
+def api_request(path: str, method: str = "GET", body: Any = None) -> Tuple[int, Dict[str, Any]]:
+    if is_server_live():
+        url = f"{BASE_URL}{path}"
+        data = json.dumps(body).encode("utf-8") if body is not None else None
+        headers = {"Content-Type": "application/json"} if body is not None else {}
+        req = urllib.request.Request(url, data=data, headers=headers, method=method)
+        try:
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                content = resp.read().decode("utf-8")
+                return resp.status, json.loads(content) if content else {}
+        except urllib.error.HTTPError as e:
+            content = e.read().decode("utf-8")
+            return e.code, json.loads(content) if content else {}
+        except Exception:
+            pass
+
+    client = get_test_client()
+    if client:
+        if method == "GET":
+            r = client.get(path)
+        elif method == "POST":
+            r = client.post(path, json=body if body is not None else {})
+        elif method == "PUT":
+            r = client.put(path, json=body if body is not None else {})
+        elif method == "DELETE":
+            r = client.delete(path)
+        else:
+            r = client.request(method, path, json=body)
+        try:
+            return r.status_code, r.json()
+        except Exception:
+            return r.status_code, {}
+    return 0, {}
 
 def log_test(name: str, passed: bool, detail: str = ""):
     status = "[PASS]" if passed else "[FAIL]"
@@ -47,30 +106,20 @@ def test_docker_and_compose():
 def test_redpanda_streaming():
     print("\n--- 2. Testing Redpanda / Kafka Streaming Bus ---")
     # 1. Redpanda status
-    req = urllib.request.Request(f"{BASE_URL}/api/v1/redpanda/status")
-    with urllib.request.urlopen(req, timeout=3) as resp:
-        data = json.loads(resp.read().decode("utf-8"))
-        assert "status" in data or "collector" in data
-        log_test("Redpanda Status Subsystem", True, f"Status: {data.get('status', 'online')}")
+    status, data = api_request("/api/v1/redpanda/status")
+    assert status == 200 and ("status" in data or "collector" in data)
+    log_test("Redpanda Status Subsystem", True, f"Status: {data.get('status', 'online')}")
 
     # 2. Redpanda produce
     sample_msg = "CEF:0|Testbed|RedpandaStream|1.0|100|StreamingEvent|Low|src=192.168.10.50 dst=10.0.0.1 spt=44332 dpt=443 act=allow"
-    req = urllib.request.Request(
-        f"{BASE_URL}/api/v1/redpanda/produce",
-        data=json.dumps({"message": sample_msg, "source": "test_suite"}).encode("utf-8"),
-        headers={"Content-Type": "application/json"}
-    )
-    with urllib.request.urlopen(req, timeout=3) as resp:
-        prod_data = json.loads(resp.read().decode("utf-8"))
-        assert prod_data.get("status") == "published"
-        assert "raw_sha256" in prod_data
-        log_test("Redpanda Streaming Produce", True, f"Ingested to topic {prod_data.get('topic')}")
+    status, prod_data = api_request("/api/v1/redpanda/produce", method="POST", body={"message": sample_msg, "source": "test_suite"})
+    assert status == 200 and prod_data.get("status") == "published" and "raw_sha256" in prod_data
+    log_test("Redpanda Streaming Produce", True, f"Ingested to topic {prod_data.get('topic')}")
 
     # 3. Redpanda benchmark
-    req = urllib.request.Request(f"{BASE_URL}/api/v1/redpanda/benchmark?burst_count=50", method="POST")
-    with urllib.request.urlopen(req, timeout=5) as resp:
-        bench_data = json.loads(resp.read().decode("utf-8"))
-        log_test("Redpanda High-Throughput Bench", True, f"Burst {bench_data.get('burst_count')} msgs, rate: {bench_data.get('estimated_eps')} EPS")
+    status, bench_data = api_request("/api/v1/redpanda/benchmark?burst_count=50", method="POST")
+    assert status == 200
+    log_test("Redpanda High-Throughput Bench", True, f"Burst {bench_data.get('burst_count')} msgs, rate: {bench_data.get('estimated_eps'):,} EPS")
 
 def test_ulpf_flow():
     print("\n--- 3. Testing Complete ULPF Pipeline Flow ---")
@@ -110,28 +159,24 @@ def test_ulpf_flow():
 def test_ai_model():
     print("\n--- 4. Testing AI Model Integration ---")
     # 1. Check AI providers endpoint
-    req = urllib.request.Request(f"{BASE_URL}/api/v1/ai/providers")
-    with urllib.request.urlopen(req, timeout=3) as resp:
-        prov_data = json.loads(resp.read().decode("utf-8"))
-        assert "providers" in prov_data
-        active_prov = prov_data.get("active_provider")
-        log_test("AI Multi-Provider Registry", True, f"Active: {active_prov}, Available: {len(prov_data['providers'])} providers")
+    status, prov_data = api_request("/api/v1/ai/providers")
+    assert status == 200 and "providers" in prov_data
+    active_prov = prov_data.get("active_provider")
+    log_test("AI Multi-Provider Registry", True, f"Active: {active_prov}, Available: {len(prov_data['providers'])} providers")
 
     # 2. Test AI unknown parser endpoint
-    req = urllib.request.Request(
-        f"{BASE_URL}/api/v1/ai/parse-unknown",
-        data=json.dumps({
+    status, ai_res = api_request(
+        "/api/v1/ai/parse-unknown",
+        method="POST",
+        body={
             "raw_log": "RTU_MODBUS_V4 id=9041 unit=1 func=ReadHoldingRegs addr=40001 val=0x4A2F status=CRITICAL_ALARM src=192.168.99.45 dst=10.200.0.10 proto=tcp sport=502 dport=5020",
             "source": "Substation-RTU-Gateway"
-        }).encode("utf-8"),
-        headers={"Content-Type": "application/json"}
+        }
     )
-    with urllib.request.urlopen(req, timeout=5) as resp:
-        ai_res = json.loads(resp.read().decode("utf-8"))
-        assert ai_res.get("status") == "success"
-        canonical = ai_res.get("canonical_event", {})
-        assert canonical.get("source", {}).get("ip") == "192.168.99.45"
-        log_test("AI Model Parser & Tokenizer", True, f"Extracted canonical model: {ai_res.get('ai_model')}")
+    assert status == 200 and ai_res.get("status") == "success"
+    canonical = ai_res.get("canonical_event", {})
+    assert canonical.get("source", {}).get("ip") == "192.168.99.45"
+    log_test("AI Model Parser & Tokenizer", True, f"Extracted canonical model: {ai_res.get('ai_model')}")
 
 def test_future_unknown_detector():
     print("\n--- 5. Testing Future Unknown Format Detector & AI Review Queue ---")
@@ -144,18 +189,15 @@ def test_future_unknown_detector():
     log_test("Future Unknown Format Detector", True, f"Detected format: '{detection.format}' with confidence {detection.confidence}")
 
     # 2. Test unknown log review queue API
-    req = urllib.request.Request(f"{BASE_URL}/api/v1/unknown-logs")
-    with urllib.request.urlopen(req, timeout=3) as resp:
-        q_data = json.loads(resp.read().decode("utf-8"))
-        logs_queue = q_data.get("logs", [])
-        log_test("AI Onboarding Review Queue", True, f"{len(logs_queue)} novel formats pending review")
+    status, q_data = api_request("/api/v1/unknown-logs")
+    assert status == 200
+    logs_queue = q_data.get("logs", [])
+    log_test("AI Onboarding Review Queue", True, f"{len(logs_queue)} novel formats pending review")
 
     # 3. Test injecting unknown log via scenario
-    req = urllib.request.Request(f"{BASE_URL}/api/v1/demo/scenarios/unknown_vendor", method="POST")
-    with urllib.request.urlopen(req, timeout=3) as resp:
-        scen_data = json.loads(resp.read().decode("utf-8"))
-        assert scen_data.get("scenario") == "Unknown Vendor Format"
-        log_test("Dynamic Unknown Telemetry Injection", True, f"Injected novel mystery log {scen_data.get('new_unknown_id')}")
+    status, scen_data = api_request("/api/v1/demo/scenarios/unknown_vendor", method="POST")
+    assert status == 200 and scen_data.get("scenario") == "Unknown Vendor Format"
+    log_test("Dynamic Unknown Telemetry Injection", True, f"Injected novel mystery log {scen_data.get('new_unknown_id')}")
 
 def main():
     print("=" * 70)

@@ -68,7 +68,7 @@ async def lifespan(app: FastAPI):
 
     # Start background queue, log collectors, and real-time throughput monitor
     ingestion_queue.start()
-    syslog_collector.start()
+    await syslog_collector.start_async()
     file_collector.start()
     global_throughput_monitor.start_console_monitor()
     if settings.redpanda_enabled:
@@ -112,9 +112,15 @@ app.add_middleware(
 # Audit logging & Cache prevention middleware
 @app.middleware("http")
 async def audit_log(request: Request, call_next):
-    logger = logging.getLogger("audit")
-    client_host = request.client.host if request.client else "unknown"
-    logger.info(f"{datetime.now(timezone.utc).isoformat()} - {client_host} - {request.method} {request.url.path}")
+    # Skip noisy polling routes to keep Docker logs clean
+    noisy_routes = ("/api/v1/health", "/api/v1/metrics", "/api/v1/sources", "/api/v1/events")
+    is_noisy = any(request.url.path.startswith(r) for r in noisy_routes)
+
+    if not is_noisy:
+        logger = logging.getLogger("audit")
+        client_host = request.client.host if request.client else "unknown"
+        logger.info(f"{datetime.now(timezone.utc).isoformat()} - {client_host} - {request.method} {request.url.path}")
+        
     response = await call_next(request)
     if request.url.path.startswith("/dashboard"):
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
@@ -130,9 +136,6 @@ def read_root():
     return RedirectResponse(url="/dashboard/")
 
 
-@app.get("/client")
-def read_client():
-    return RedirectResponse(url="/dashboard/client_app.html")
 
 
 # Mount Web Dashboard static directory if present

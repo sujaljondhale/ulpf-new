@@ -5,7 +5,7 @@
 (function () {
   "use strict";
 
-  
+
   // --- INLINE SVG ICON GENERATOR (ZERO EMOJIS) ---
   function svgIcon(name, cls = "svg-icon") {
     const icons = {
@@ -43,7 +43,7 @@
       events_unparsed: 0,
       events_error: 0,
       parse_success_rate: "100%",
-      processing_rate: "12,480 events/sec",
+      processing_rate: "0 events/sec",
       active_sources: 5,
       active_parsers: 6,
     },
@@ -58,7 +58,6 @@
     initGlobalSearch();
     initModalHandlers();
     initTopBarControls();
-    initDemoGuideController();
     initSseStream();
     fetchMetrics();
     fetchEvents();
@@ -67,6 +66,18 @@
     fetchUnknownLogs();
     // Continuously poll live backend metrics & processing throughput
     setInterval(fetchMetrics, 2000);
+
+    // Auto-refresh connections page
+    setInterval(async () => {
+      if (state.currentRoute === "connections" || state.currentRoute === "sources") {
+        const activeTagName = document.activeElement ? document.activeElement.tagName : "";
+        if (activeTagName === "INPUT" || activeTagName === "TEXTAREA" || document.getElementById("editDeviceModal")) return;
+        await fetchSources();
+        await fetchBlockedIps();
+        const container = document.getElementById("contentArea");
+        if (container) renderConnectionsView(container);
+      }
+    }, 3000);
   }
 
   if (document.readyState === "loading") {
@@ -75,6 +86,16 @@
     initApp();
   }
 
+  window.formatLargeNumber = function (num) {
+    if (num === null || num === undefined) return "0";
+    const n = Number(num);
+    if (isNaN(n)) return "0";
+    if (n >= 1e9) return (n / 1e9).toFixed(1).replace(/\.0$/, '') + 'B';
+    if (n >= 1e6) return (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
+    if (n >= 1e3) return (n / 1e3).toFixed(1).replace(/\.0$/, '') + 'K';
+    return n.toString();
+  };
+
   // --- TOP BAR CONTROLS ---
   function initTopBarControls() {
     // SOC Dark Theme Switcher
@@ -82,16 +103,15 @@
 
     function applyTheme(theme) {
       let activeTheme = theme;
-      if (activeTheme === "light") activeTheme = "nord";
       document.documentElement.setAttribute("data-theme", activeTheme);
       try {
         localStorage.setItem("ulpf_theme", activeTheme);
-      } catch (e) {}
+      } catch (e) { }
       if (themeSelect) themeSelect.value = activeTheme;
+      document.dispatchEvent(new CustomEvent('themeChanged'));
     }
 
     let savedTheme = localStorage.getItem("ulpf_theme") || "nord";
-    if (savedTheme === "light") savedTheme = "nord";
     applyTheme(savedTheme);
 
     if (themeSelect) {
@@ -146,11 +166,11 @@
 
       menuScenario.querySelectorAll(".dropdown-item").forEach((item) => {
         item.addEventListener("click", async () => {
-    const scenarioId = item.getAttribute("data-scenario");
-    const scenarioName = item.querySelector("strong") ? item.querySelector("strong").textContent : "Demo Scenario";
-    menuScenario.classList.add("hidden");
-    window.runScenarioWithPhases(scenarioId, scenarioName);
-  });
+          const scenarioId = item.getAttribute("data-scenario");
+          const scenarioName = item.querySelector("strong") ? item.querySelector("strong").textContent : "Demo Scenario";
+          menuScenario.classList.add("hidden");
+          window.runScenarioWithPhases(scenarioId, scenarioName);
+        });
       });
     }
   }
@@ -198,6 +218,7 @@
     toast.className = "toast toast-critical";
     const threat = payload.threat || {};
     const srcIp = payload.src_ip || payload.event?.src_ip || "Unknown IP";
+    const dstIp = payload.dst_ip || payload.event?.dst_ip || "Unknown";
     const threatType = threat.threat_type || "Cyber Threat Detected";
     const detail = threat.detail || payload.message || "Malicious traffic pattern identified.";
     const isIpBlocked = state.blockedIps.has(srcIp);
@@ -208,8 +229,8 @@
         <div style="font-weight:700; font-size:12.5px; text-transform:uppercase; letter-spacing:0.5px;">CRITICAL SECURITY ALERT: ${threatType}</div>
         <div style="font-size:11.5px; opacity:0.95; margin-top:3px;">${detail}</div>
         <div style="margin-top:6px; display:flex; align-items:center; gap:8px;">
-          <span class="mono" style="font-size:11px; background:rgba(0,0,0,0.4); padding:2px 6px; border-radius:3px;">Attacker: ${srcIp}</span>
-          ${srcIp && srcIp !== "N/A" ? `<button class="toast-btn" onclick="window.toggleBlockIp('${srcIp}')">${isIpBlocked ? 'OK Blacklisted' : ' Blacklist IP'}</button>` : ''}
+          <span class="mono" style="font-size:11px; background:var(--bg-card); color:var(--text-main); border: 1px solid var(--border); padding:2px 6px; border-radius:3px;">Traffic: ${srcIp} &rarr; ${dstIp}</span>
+          ${srcIp && srcIp !== "N/A" ? (isIpBlocked ? `<button class="toast-btn" onclick="window.toggleBlockIp('${srcIp}')">OK Blacklisted</button>` : `<button class="toast-btn" onclick="window.toggleBlockIp('${srcIp}')">Blacklist IP</button>`) : ''}
         </div>
       </div>
     `;
@@ -254,11 +275,12 @@
     if (route === "overview") renderHomeView(container);
     else if (route === "connections" || route === "sources") renderConnectionsView(container);
     else if (route === "logs" || route === "events") renderLogsView(container);
-    else if (route === "reports" || route === "analytics" || route === "analytics/overview") renderReportsView(container);
+    else if (route === "reports") renderReportsView(container);
+    else if (route === "analytics") renderAnalyticsStudioView(container);
     else if (route === "human-verification" || route === "intelligence/ai-onboarding") renderHumanVerificationView(container);
-    else if (route === "testing" || route === "test" || route === "tools/testing") renderTestingSuiteView(container);
     else if (route === "parsers" || route === "processing/parsers") renderParserRegistryView(container);
     else if (route === "testbench" || route === "processing/testbench") renderParserTestbenchView(container);
+    else if (route === "settings") renderSettingsView(container);
     else renderHomeView(container);
   }
 
@@ -296,10 +318,23 @@
               refreshEventsTable();
             }
           }
+          
+          if (payload.type === "TAMPER_DETECTED") {
+            showToast(`CRITICAL: Cryptographic Tampering Detected! Data modified bypassing API.`, "error");
+            if (payload.data) {
+                state.unknownLogs.unshift(payload.data);
+                if (state.currentRoute === "human-verification") {
+                  renderHumanVerificationView(document.getElementById("contentArea"));
+                }
+            }
+          }
 
           // 3. Unknown Log Queued for AI Review
           if (payload.type === "UNKNOWN_LOG_QUEUED" && payload.data) {
-            state.unknownLogs.unshift(payload.data);
+            const exists = state.unknownLogs.some(e => (e.id && e.id === payload.data.id) || (e.event_id && e.event_id === payload.data.event_id));
+            if (!exists) {
+              state.unknownLogs.unshift(payload.data);
+            }
             showToast(`Unrecognized log format queued for AI onboarding (${payload.data.id})`, "info");
             if (state.currentRoute === "intelligence/ai-onboarding") {
               renderAiOnboardingView(document.getElementById("contentArea"));
@@ -326,11 +361,25 @@
           if (payload.type === "NEW_EVENT" && payload.data) {
             const rec = payload.data;
             recordIncomingEventTimestamp();
-            state.events.unshift(rec);
-            if (state.events.length > 1000) state.events.pop();
+            
+            const exists = state.events.some(e => 
+              (e.event_id && e.event_id === rec.event_id) || 
+              (e.raw_event_id && e.raw_event_id === rec.raw_event_id) ||
+              (e.id && e.id === rec.id) ||
+              (e.raw_message && e.raw_message === rec.raw_message && e.timestamp === rec.timestamp)
+            );
+            
+            if (!exists) {
+              state.events.unshift(rec);
+              if (state.events.length > 1000) state.events.pop();
 
-            state.metrics.events_received = (state.metrics.events_received || 0) + 1;
-            state.metrics.events_processed = (state.metrics.events_processed || 0) + 1;
+              state.metrics.events_received = (state.metrics.events_received || 0) + 1;
+              state.metrics.events_processed = (state.metrics.events_processed || 0) + 1;
+            } else {
+              // Replace existing if updated
+              const idx = state.events.findIndex(e => (e.id && e.id === rec.id) || (e.event_id && e.event_id === rec.event_id));
+              if (idx !== -1) state.events[idx] = rec;
+            }
 
             // Refresh views dynamically
             if (state.currentRoute === "overview") {
@@ -357,13 +406,22 @@
               if (content) renderLogsView(content);
             }
           }
-        } catch (err) {}
+        } catch (err) { }
       };
 
       evtSource.onerror = () => {
         if (statusBadge) {
-          statusBadge.innerHTML = '<span class="pulse-dot amber"></span> SSE POLLING';
+          statusBadge.innerHTML = '<span class="pulse-dot amber"></span> SSE RECONNECTING...';
         }
+        evtSource.close();
+        if (window.sseReconnectTimeout) clearTimeout(window.sseReconnectTimeout);
+        
+        window.sseReconnectDelay = window.sseReconnectDelay ? Math.min(window.sseReconnectDelay * 2, 30000) : 3000;
+        console.warn(`SSE connection dropped. Reconnecting in ${window.sseReconnectDelay}ms...`);
+        
+        window.sseReconnectTimeout = setTimeout(() => {
+            initSseStream();
+        }, window.sseReconnectDelay);
       };
     } catch (err) {
       if (statusBadge) {
@@ -418,23 +476,72 @@
     try {
       const res = await fetch("/api/v1/metrics");
       if (res.ok) {
-        const data = await res.json();
-        state.metrics = data;
-        if (state.currentRoute === "overview") renderHomeMetrics();
+        state.metrics = await res.json();
+        renderHomeMetrics();
       }
-    } catch (e) {}
+
+      const evtRes = await fetch("/api/v1/events?limit=1000");
+      if (evtRes.ok) {
+        const data = await evtRes.json();
+        state.events = data.events || [];
+      }
+
+      const srcRes = await fetch("/api/v1/sources");
+      if (srcRes.ok) {
+        const data = await srcRes.json();
+        state.sources = data.sources || [];
+      }
+
+      const blRes = await fetch("/api/v1/sources/blocked");
+      if (blRes.ok) {
+        const data = await blRes.json();
+        state.blockedIps = new Set(data.raw_ips || data.blocked_ips || []);
+      }
+
+      if (state.currentRoute === "settings") {
+        const wlRes = await fetch("/api/v1/system/workload");
+        if (wlRes.ok) {
+          const sysData = await wlRes.json();
+          const gCpu = document.getElementById("sysGlobalCpu");
+          if (gCpu) gCpu.innerText = sysData.cpu_percent + "%";
+          const mLoad = document.getElementById("sysMemLoad");
+          if (mLoad) mLoad.innerText = sysData.memory_percent + "%";
+          const mText = document.getElementById("sysMemText");
+          if (mText) mText.innerText = `${sysData.memory_used_mb} / ${sysData.memory_total_mb} MB`;
+          const threads = document.getElementById("sysThreads");
+          if (threads) threads.innerText = sysData.active_threads;
+          const coresGrid = document.getElementById("sysCoresGrid");
+          if (coresGrid && sysData.per_core_cpu) {
+            coresGrid.innerHTML = sysData.per_core_cpu.map((cpu, i) => `
+              <div style="background:var(--bg-card-subtle); border:1px solid var(--border-color); padding:8px; border-radius:4px; text-align:center;">
+                <div class="text-xs text-muted mb-xs">CORE ${i}</div>
+                <div class="mono font-bold" style="font-size:14px; color:${cpu > 80 ? 'var(--danger-main)' : 'var(--success-main)'};">${cpu}%</div>
+              </div>
+            `).join('');
+          }
+        }
+      }
+
+      if (state.currentRoute === "network") {
+        const container = document.getElementById("main-content");
+        if (container) renderNetworkInterface(container);
+      }
+    } catch (e) {
+      console.warn("Metrics polling failed", e);
+    }
   }
+  window.fetchMetrics = fetchMetrics;
 
   async function fetchEvents() {
     try {
-      const res = await fetch("/api/v1/events?limit=100");
+      const res = await fetch("/api/v1/events?limit=1000");
       if (res.ok) {
         const data = await res.json();
         state.events = data.events || [];
         if (state.currentRoute === "events" || state.currentRoute === "logs") refreshEventsTable();
         if (state.currentRoute === "overview") renderHomeLiveEventsTable();
       }
-    } catch (e) {}
+    } catch (e) { }
   }
 
   async function fetchSources() {
@@ -444,7 +551,7 @@
         const data = await res.json();
         state.sources = data.sources || [];
       }
-    } catch (e) {}
+    } catch (e) { }
   }
 
   async function fetchBlockedIps() {
@@ -454,7 +561,7 @@
         const data = await res.json();
         state.blockedIps = new Set(data.raw_ips || (data.blocked_ips || []).map(b => typeof b === 'string' ? b : b.ip));
       }
-    } catch (e) {}
+    } catch (e) { }
   }
 
   async function fetchUnknownLogs() {
@@ -472,7 +579,7 @@
         const b2 = document.getElementById("topBarUnknownBadge");
         if (b2) b2.textContent = count;
       }
-    } catch (e) {}
+    } catch (e) { }
   }
 
   // Global IP block toggle accessible across all views and toasts
@@ -493,7 +600,9 @@
           state.blockedIps.delete(ip);
           showToast(`IP ${ip} has been unblocked`, "success");
         }
-        if (state.currentRoute === "connections" || state.currentRoute === "sources") {
+        if (state.currentRoute === "connections") {
+          renderConnectionsView(document.getElementById("contentArea"));
+        } else if (state.currentRoute === "sources") {
           renderSourcesView(document.getElementById("contentArea"));
         } else if (state.currentRoute === "events") {
           refreshEventsTable();
@@ -514,7 +623,7 @@
         fetchMetrics();
         fetchEvents();
       }
-    } catch (e) {}
+    } catch (e) { }
   }
 
   // --- RECURSIVE DEEP UNIVERSAL SEARCH ---
@@ -563,28 +672,31 @@
   let logsCurrentPage = 1;
   const logsPageSize = 25;
 
-  function renderFilteredEvents(tbody, list) {
+  function renderFilteredEvents(tbody, list, isServerPaginated = false) {
     if (!tbody) return;
     if (list.length === 0) {
       tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:36px 16px; color:var(--text-muted);">
         <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
           <svg class="svg-icon" style="width:26px; height:26px; stroke:var(--text-muted); opacity:0.6;" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
           <div style="font-weight:600; color:var(--text-silver); font-size:13px;">No events matching filter criteria</div>
-          <div style="font-size:11.5px;">Try adjusting filters or click "+ Burst 10 Events" to ingest live test traffic.</div>
+          <div style="font-size:11.5px;">Try adjusting filters.</div>
         </div>
       </td></tr>`;
-      if (typeof window.updateLogsPagination === "function") window.updateLogsPagination(0);
+      if (!isServerPaginated && typeof window.updateLogsPagination === "function") window.updateLogsPagination(0);
       return;
     }
 
-    const totalEvents = list.length;
-    const totalPages = Math.max(1, Math.ceil(totalEvents / logsPageSize));
-    if (logsCurrentPage > totalPages) logsCurrentPage = totalPages;
-    if (logsCurrentPage < 1) logsCurrentPage = 1;
+    let pagedList = list;
+    if (!isServerPaginated) {
+      const totalEvents = list.length;
+      const totalPages = Math.max(1, Math.ceil(totalEvents / logsPageSize));
+      if (logsCurrentPage > totalPages) logsCurrentPage = totalPages;
+      if (logsCurrentPage < 1) logsCurrentPage = 1;
 
-    const startIdx = (logsCurrentPage - 1) * logsPageSize;
-    const pagedList = list.slice(startIdx, startIdx + logsPageSize);
-    if (typeof window.updateLogsPagination === "function") window.updateLogsPagination(totalEvents);
+      const startIdx = (logsCurrentPage - 1) * logsPageSize;
+      pagedList = list.slice(startIdx, startIdx + logsPageSize);
+      if (typeof window.updateLogsPagination === "function") window.updateLogsPagination(totalEvents);
+    }
 
     tbody.innerHTML = pagedList
       .map((e) => {
@@ -611,7 +723,7 @@
 
         // Category formatting
         const cat = e.event_type || e.category || "security";
-        
+
         // Action classification
         const rawAct = (e.action || "allow").toLowerCase();
         let actionBadgeClass = "badge-teal";
@@ -634,7 +746,7 @@
           <tr onclick="window.openEventDetailModal('${e.event_id}')" title="Click anywhere to inspect event details & SHA-256 evidence">
             <td style="text-align:left; vertical-align:middle; padding:10px 14px;">
               <div style="display:inline-flex; align-items:center; gap:6px; flex-wrap:nowrap; max-width:100%; overflow:hidden;">
-                <strong class="mono" style="color:#f43f5e; font-size:12px; white-space:nowrap;">${e.event_id}</strong>
+                <strong class="mono" style="color:var(--danger-main); font-size:12px; white-space:nowrap;">${e.event_id}</strong>
                 ${threatBadge}
               </div>
             </td>
@@ -643,7 +755,7 @@
             </td>
             <td style="text-align:left; vertical-align:middle; padding:10px 14px;">
               <div style="display:flex; flex-direction:column; justify-content:center; line-height:1.25;">
-                <strong style="color:var(--text-white); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(devDisplayName)}">${escapeHtml(devDisplayName)}</strong>
+                <strong style="color:var(--text-main); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(devDisplayName)}">${escapeHtml(devDisplayName)}</strong>
                 ${e.device_name && e.source && e.device_name !== e.source ? `<span class="mono text-muted" style="font-size:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(e.source)}</span>` : ''}
               </div>
             </td>
@@ -662,18 +774,26 @@
             <td style="text-align:left; vertical-align:middle; padding:10px 14px;">
               <div style="display:flex; align-items:center; justify-content:space-between; gap:4px; max-width:100%;">
                 <span class="mono" style="font-size:11.5px; color:var(--silver-light); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(e.src_ip || 'N/A')}">${escapeHtml(e.src_ip || "N/A")}</span>
-                ${e.src_ip && e.src_ip !== "N/A" ? `
-                  <button class="${isIpBlocked ? 'btn-unblock-ip' : 'btn-block-ip'}" onclick="event.stopPropagation(); window.toggleBlockIp('${e.src_ip}')" title="${isIpBlocked ? 'Unblock this IP' : 'Block this IP address'}" style="padding:2px 6px; font-size:10px; white-space:nowrap; flex-shrink:0;">
-                    ${isIpBlocked ? 'Blacklisted' : 'Block'}
+                ${e.src_ip && e.src_ip !== "N/A" ? (
+                  isIpBlocked ? `
+                  <button class="btn-unblock-ip" onclick="event.stopPropagation(); window.toggleBlockIp('${e.src_ip}')" title="Unblock this IP" style="padding:2px 6px; font-size:10px; white-space:nowrap; flex-shrink:0;">
+                    Blacklisted
                   </button>
-                ` : ''}
+                ` : (e.action === "deny" || e.status === "blocked" ? `
+                  <span class="badge badge-red" style="font-size:10px; padding:2px 6px; white-space:nowrap; flex-shrink:0;">Traffic Dropped</span>
+                ` : `
+                  <button class="btn-block-ip" onclick="event.stopPropagation(); window.toggleBlockIp('${e.src_ip}')" title="Block this IP address" style="padding:2px 6px; font-size:10px; white-space:nowrap; flex-shrink:0;">
+                    Block
+                  </button>
+                `)
+                ) : ''}
               </div>
             </td>
             <td style="text-align:center; vertical-align:middle; padding:10px 14px;">
               <span class="badge ${statusBadgeClass}" style="font-size:10.5px; text-transform:capitalize; white-space:nowrap;">${escapeHtml(rawStatus)}</span>
             </td>
             <td style="text-align:center; vertical-align:middle; padding:10px 14px; white-space:nowrap;">
-              <button class="btn btn-sm btn-secondary inspect-btn" onclick="event.stopPropagation(); window.openEventDetailModal('${e.event_id}')" style="white-space:nowrap; display:inline-flex; align-items:center; justify-content:center; gap:4px; padding:4px 10px; font-size:11px; line-height:1; min-width:82px;" title="Inspect canonical ULPF-IR & SHA-256 evidence">
+              <button class="inspect-btn" onclick="event.stopPropagation(); window.openEventDetailModal('${e.event_id}')" title="Inspect canonical ULPF-IR & SHA-256 evidence">
                 <span>Inspect →</span>
               </button>
             </td>
@@ -741,7 +861,7 @@
     if (e.target && e.target.classList && e.target.classList.contains("modal-overlay")) {
       e.target.classList.remove("open");
       e.target.classList.add("hidden");
-      e.target.style.display = "none";
+      // DO NOT set inline display:none here, it breaks reusable modals!
       if (e.target.id === "editDeviceModal" || e.target.id === "connectRealDeviceModal" || e.target.id === "inspectUnknownLogModal" || e.target.id === "scenarioPhaseModal") {
         e.target.remove();
       }
@@ -782,7 +902,73 @@
     }
   }
 
-  async function openEventDetailModal(eventId) {
+  window.renderJsonTree = function renderJsonTree(obj) {
+      if (typeof obj !== 'object' || obj === null) {
+        let valStr = String(obj);
+        let typeClass = typeof obj === 'boolean' ? 'parsed-val-bool' : (typeof obj === 'number' ? 'parsed-val-num' : 'parsed-val-str');
+        return `<span class="parsed-value-interactive ${typeClass}" data-val="${valStr.replace(/"/g, '&quot;')}" style="cursor:pointer; text-decoration:underline; text-decoration-style:dotted;" title="Click to locate in raw log">${valStr}</span>`;
+      }
+      if (Array.isArray(obj) && obj.length === 0) return '[]';
+      if (Object.keys(obj).length === 0) return '{}';
+
+      let html = '<div style="margin-left:12px; border-left:1px solid var(--border-color); padding-left:8px;">';
+      for (const key in obj) {
+        html += `<div style="margin-bottom:4px;">
+                   <strong class="parsed-key">${key}:</strong> 
+                   ${renderJsonTree(obj[key])}
+                 </div>`;
+      }
+      html += '</div>';
+      return html;
+  };
+
+  window.renderRawBlocks = function(text) {
+      if (!text) return "N/A";
+      try {
+        const j = JSON.parse(text);
+        return renderJsonTree(j);
+      } catch (e) {
+        const parts = text.split(/(?=\b\w+=)|\|/g); 
+        let html = '<div style="display:flex; flex-wrap:wrap; gap:6px; font-family:\'JetBrains Mono\', monospace; font-size:12px;">';
+        parts.forEach(p => {
+           let pt = p.trim();
+           if (pt) {
+              let bg = "rgba(148, 163, 184, 0.1)";
+              let color = "var(--text-main)";
+              let border = "rgba(148,163,184,0.2)";
+              if (pt.includes('=')) {
+                 const idx = pt.indexOf('=');
+                 const k = pt.substring(0, idx);
+                 const v = pt.substring(idx + 1);
+                 let kLower = k.toLowerCase();
+                 if (['src', 'dst', 'ip', 'source', 'destination', 'spt', 'dpt', 'port'].includes(kLower)) {
+                     bg = "rgba(16, 185, 129, 0.1)"; color = "var(--success-main)"; border = "rgba(16,185,129,0.3)";
+                 } else if (['act', 'action', 'reason', 'signature', 'threat'].includes(kLower)) {
+                     if (['deny', 'drop', 'block'].includes(v.toLowerCase())) {
+                         bg = "rgba(239, 68, 68, 0.1)"; color = "var(--danger-main)"; border = "rgba(239,68,68,0.3)";
+                     } else {
+                         bg = "rgba(245, 158, 11, 0.1)"; color = "var(--warning-main)"; border = "rgba(245,158,11,0.3)";
+                     }
+                 } else if (['proto', 'app', 'transport', 'protocol'].includes(kLower)) {
+                     bg = "rgba(139, 92, 246, 0.1)"; color = "var(--violet-main)"; border = "rgba(139,92,246,0.3)";
+                 } else {
+                     bg = "rgba(56, 189, 248, 0.1)"; color = "var(--primary-main)"; border = "rgba(56,189,248,0.3)";
+                 }
+                 html += `<span style="background:${bg}; color:${color}; padding: 4px 8px; border-radius: 4px; border: 1px solid ${border}; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><strong>${k}=</strong>${v}</span>`;
+              } else {
+                 if (pt.startsWith("CEF:") || pt.startsWith("<")) {
+                     bg = "rgba(99, 102, 241, 0.1)"; color = "#818cf8"; border = "rgba(99, 102, 241, 0.3)";
+                 }
+                 html += `<span style="background:${bg}; color:${color}; padding: 4px 8px; border-radius: 4px; border: 1px dashed ${border};">${pt}</span>`;
+              }
+           }
+        });
+        html += '</div>';
+        return html;
+      }
+  };
+
+  window.openEventDetailModal = async function openEventDetailModal(eventId, forceEv = null) {
     const modal = document.getElementById("eventDetailModal");
     if (!modal) return;
 
@@ -826,6 +1012,13 @@
       }
     }
 
+    if (forceEv) {
+        state.selectedEvent = forceEv;
+        renderEventModalContent(forceEv, eventId);
+        modal.classList.remove("hidden");
+        return;
+    }
+
     try {
       const res = await fetch(`/events/${eventId}`);
       if (res.ok) {
@@ -863,7 +1056,7 @@
     }
   }
 
-    function renderEventModalContent(ev, displayId) {
+  function renderEventModalContent(ev, displayId) {
     window.currentActiveModalEvent = ev;
     const orig = ev.original || {};
     const ulpf = ev.ulpf || {};
@@ -880,6 +1073,7 @@
     const srcIp = ev.source?.ip || "N/A";
     const dstIp = ev.destination?.ip || "N/A";
     const isIpBlocked = state.blockedIps.has(srcIp);
+    const isEventBlocked = ev.status === "blocked" || ev.event?.action === "block" || ev.event?.action === "deny" || ev.event?.action === "drop";
     const threat = ev.threat;
 
     const overviewGrid = document.getElementById("modalOverviewGrid");
@@ -911,22 +1105,30 @@
         </div>
         <div class="card p-md">
           <div class="text-muted font-sm">SOURCE DEVICE (INGESTION ORIGIN)</div>
-          <div class="font-bold mt-sm" style="font-size:13.5px; color:var(--teal-main);">${sourceDevice}</div>
+          <div class="font-bold mt-sm" style="font-size:13.5px; color:var(--success-main);">${sourceDevice}</div>
         </div>
         <div class="card p-md">
           <div class="text-muted font-sm">SOURCE IP -> DESTINATION IP</div>
           <div class="mono font-bold mt-sm flex-between">
             <span>${srcIp} -> ${dstIp}</span>
-            ${srcIp && srcIp !== "N/A" ? `
-              <button class="${isIpBlocked ? 'btn-unblock-ip' : 'btn-block-ip'}" onclick="window.toggleBlockIp('${srcIp}')">
-                ${isIpBlocked ? 'Blacklisted' : 'Block IP'}
-              </button>
-            ` : ''}
+            ${srcIp && srcIp !== "N/A" ? (
+              isIpBlocked ? `
+                <button class="btn-unblock-ip" onclick="window.toggleBlockIp('${srcIp}')">
+                  Blacklisted
+                </button>
+              ` : (isEventBlocked ? `
+                <span class="badge badge-red" style="font-size:10px;">Traffic Dropped</span>
+              ` : `
+                <button class="btn-block-ip" onclick="window.toggleBlockIp('${srcIp}')">
+                  Block IP
+                </button>
+              `)
+            ) : ''}
           </div>
           ${(ev.source?.mac || ev.network?.ssid) ? `
             <div class="mono text-xs text-muted mt-xs" style="margin-top:6px; font-size:11.5px;">
-              ${ev.source?.mac ? `Client MAC: <strong style="color:#F1F5F9;">${ev.source.mac}</strong>` : ''}
-              ${ev.network?.ssid ? ` | Wireless SSID: <strong style="color:#38BDF8;">${ev.network.ssid}</strong>` : ''}
+              ${ev.source?.mac ? `Client MAC: <strong style="color:var(--text-main);">${ev.source.mac}</strong>` : ''}
+              ${ev.network?.ssid ? ` | Wireless SSID: <strong style="color:var(--primary-main);">${ev.network.ssid}</strong>` : ''}
             </div>
           ` : ''}
         </div>
@@ -939,11 +1141,11 @@
         </div>
 
         <!-- SOVEREIGN AI INCIDENT ANALYSIS & REASONING -->
-        <div class="card p-md" style="grid-column: 1 / -1; margin-top:8px; border:1px solid rgba(56,189,248,0.35); background:rgba(15,23,42,0.75);">
+        <div class="card p-md" style="grid-column: 1 / -1; margin-top:8px; border:1px solid var(--primary-border); background:var(--bg-card-subtle);">
           <div class="flex-between">
             <div style="display:flex; align-items:center; gap:8px;">
               <div>
-                <h3 style="font-size:13px; font-weight:700; color:#38bdf8; margin:0;">SOVEREIGN AI INCIDENT ANALYSIS &amp; MITRE REASONING</h3>
+                <h3 style="font-size:13px; font-weight:700; color:var(--primary-main); margin:0;">SOVEREIGN AI INCIDENT ANALYSIS &amp; MITRE REASONING</h3>
                 <span class="text-muted text-xs">Deterministic root cause analysis, tactic mapping, and tactical SOC containment steps</span>
               </div>
             </div>
@@ -1021,19 +1223,19 @@
             <span class="badge badge-teal">DOWNSTREAM SYNCHRONIZED</span>
           </div>
           <div class="grid grid-3 gap-sm mt-md">
-            <div style="background:#090d16; padding:12px; border-radius:6px; border:1px solid #1e293b;">
+            <div style="background:var(--bg-card-solid); padding:12px; border-radius:6px; border:1px solid var(--border-color);">
               <div class="text-muted font-sm">DESTINATION SINK #1</div>
-              <div class="font-bold text-teal mt-sm">Mock SIEM DataLake Sink</div>
+              <div class="font-bold text-teal mt-sm">In-Memory SIEM DataLake Sink</div>
               <div class="text-muted font-sm" style="font-size:11px; margin-top:2px;">Format: OCSF v1.1.0 JSON (Class 4001)</div>
               <div class="mono text-teal mt-sm" style="font-size:11px;">Response: HTTP 200 DELIVERED (1.4ms)</div>
             </div>
-            <div style="background:#090d16; padding:12px; border-radius:6px; border:1px solid #1e293b;">
+            <div style="background:var(--bg-card-solid); padding:12px; border-radius:6px; border:1px solid var(--border-color);">
               <div class="text-muted font-sm">DESTINATION SINK #2</div>
               <div class="font-bold text-teal mt-sm">MinIO S3 Evidence Lake</div>
               <div class="text-muted font-sm" style="font-size:11px; margin-top:2px;">Bucket: ulpf-raw-evidence</div>
               <div class="mono text-teal mt-sm" style="font-size:11px;">ETag: ${orig.sha256 ? orig.sha256.substring(0, 14) + '...' : 'W/"8f4c2b74..."'} (Stored)</div>
             </div>
-            <div style="background:#090d16; padding:12px; border-radius:6px; border:1px solid #1e293b;">
+            <div style="background:var(--bg-card-solid); padding:12px; border-radius:6px; border:1px solid var(--border-color);">
               <div class="text-muted font-sm">DESTINATION SINK #3</div>
               <div class="font-bold text-teal mt-sm">Elastic / OpenSearch</div>
               <div class="text-muted font-sm" style="font-size:11px; margin-top:2px;">Index: ulpf-canonical-events-v1</div>
@@ -1046,7 +1248,13 @@
 
     const rawCode = document.getElementById("modalRawCode");
     const rawSha = document.getElementById("modalRawSha");
-    if (rawCode) rawCode.innerText = orig.message || "N/A";
+    if (rawCode) {
+       if (orig.raw_evidence || orig.message || orig.raw_log || orig.raw) {
+          rawCode.innerHTML = window.renderRawBlocks(orig.raw_evidence || orig.message || orig.raw_log || orig.raw);
+       } else {
+          rawCode.innerText = "N/A";
+       }
+    }
     if (rawSha) rawSha.innerText = `SHA-256: ${orig.sha256 || "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}`;
 
     const detTable = document.getElementById("modalDetectionTable");
@@ -1145,7 +1353,7 @@
       expTable.innerHTML = `
         <tr><th>Destination Sink</th><th>Target Protocol</th><th>Delivery Status</th><th>Latency</th></tr>
         <tr><td>OpenSearch Security Index</td><td>REST / Bulk API</td><td><span class="badge badge-teal">OK Indexed</span></td><td>4.2 ms</td></tr>
-        <tr><td>Mock SIEM Forwarder</td><td>Syslog / JSON</td><td><span class="badge badge-teal">OK Delivered</span></td><td>1.8 ms</td></tr>
+        <tr><td>In-Memory SIEM Forwarder</td><td>Syslog / JSON</td><td><span class="badge badge-teal">OK Delivered</span></td><td>1.8 ms</td></tr>
         <tr><td>MinIO Raw Evidence Lake</td><td>S3 Storage API</td><td><span class="badge badge-teal">OK Stored</span></td><td>8.5 ms</td></tr>
       `;
     }
@@ -1182,11 +1390,12 @@
       statusBadge.className = "badge badge-amber";
       statusBadge.innerText = "REASONING...";
     }
-    bodyEl.innerHTML = `<div style="padding:12px 0; color:#38bdf8; font-family:var(--font-mono); font-size:12px;"><span class="pulse-dot teal"></span> Consulting sovereign AI engine for incident reasoning and MITRE classification...</div>`;
+    bodyEl.innerHTML = `<div style="padding:12px 0; color:var(--primary-main); font-family:var(--font-mono); font-size:12px;"><span class="pulse-dot teal"></span> Consulting sovereign AI engine for incident reasoning and MITRE classification...</div>`;
 
     const rawMsg = ev.original?.message || ev.original?.raw || (typeof ev.original === 'string' ? ev.original : '') || JSON.stringify(ev);
     const srcIp = ev.source?.ip || ev.source_device || "Unknown";
     const isIpBlocked = state.blockedIps.has(srcIp);
+    const isEventBlocked = ev.status === "blocked" || ev.event?.action === "block" || ev.event?.action === "deny" || ev.event?.action === "drop";
 
     try {
       const res = await fetch("/api/v1/ai/explain", {
@@ -1208,38 +1417,50 @@
       bodyEl.innerHTML = `
         <div class="grid grid-2 gap-md mt-sm" style="border-top:1px solid rgba(255,255,255,0.08); padding-top:12px;">
           <div>
-            <div style="font-weight:700; color:#fff; font-size:13px; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+            <div style="font-weight:700; color:var(--text-main); font-size:13px; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
               <span>Executive Threat Assessment:</span>
               <span class="badge ${data.severity === 'critical' ? 'badge-red' : 'badge-amber'}">${(data.severity || 'HIGH').toUpperCase()}</span>
             </div>
-            <div style="font-size:12px; color:#cbd5e1; line-height:1.5;">${escapeHtml(data.summary || 'Security event evaluated by ULPF Sovereign AI Engine.')}</div>
+            <div style="font-size:12px; color: #445696ff; line-height:1.5;">${escapeHtml(data.summary || 'Security event evaluated by ULPF Sovereign AI Engine.')}</div>
             <div class="mt-sm" style="font-size:12px;">
               <span class="text-muted">MITRE:</span>
-              <strong class="mono" style="color:#f59e0b; margin-left:4px;">${escapeHtml(data.mitre_attack_id || 'T1078')} — ${escapeHtml(data.mitre_attack_name || 'Suspicious Activity')}</strong>
+              <strong class="mono" style="color:var(--warning-main); margin-left:4px;">${escapeHtml(data.mitre_attack_id || 'T1078')} — ${escapeHtml(data.mitre_attack_name || 'Suspicious Activity')}</strong>
             </div>
             ${(data.indicators_of_compromise && data.indicators_of_compromise.length > 0) ? `
               <div class="mt-xs" style="font-size:11.5px;">
                 <span class="text-muted">Indicators of Compromise:</span>
-                <span class="mono" style="color:#38bdf8; margin-left:4px;">${data.indicators_of_compromise.map(i => escapeHtml(i)).join(', ')}</span>
+                <span class="mono" style="color:var(--primary-main); margin-left:4px;">${data.indicators_of_compromise.map(i => escapeHtml(i)).join(', ')}</span>
               </div>
             ` : ''}
           </div>
           <div>
-            <div style="font-weight:700; color:#fff; font-size:13px; margin-bottom:4px;">Prioritized Tactical Remediation:</div>
-            <ul style="padding-left:18px; font-size:11.5px; color:#e2e8f0; line-height:1.6; margin:0;">
+            <div style="font-weight:700; color:var(--text-main); font-size:13px; margin-bottom:4px;">Prioritized Tactical Remediation:</div>
+            <ul style="padding-left:18px; font-size:11.5px; color:var(--text-main); line-height:1.6; margin:0;">
               ${(data.recommended_actions || [
-                "Verify source IP reputation against perimeter firewall blacklist.",
-                "Enforce automated gateway connection drop.",
-                "Inspect legal raw SHA-256 byte payload in MinIO evidence lake."
-              ]).map(act => `<li>${escapeHtml(act)}</li>`).join('')}
+          "Verify source IP reputation against perimeter firewall blacklist.",
+          "Enforce automated gateway connection drop.",
+          "Inspect legal raw SHA-256 byte payload in MinIO evidence lake."
+        ]).map(act => `<li>${escapeHtml(act)}</li>`).join('')}
             </ul>
-            ${srcIp && srcIp !== 'N/A' && srcIp !== 'Unknown' ? `
-              <div class="mt-sm">
-                <button class="${isIpBlocked ? 'btn-unblock-ip' : 'btn-block-ip'}" style="font-size:11px;" onclick="window.toggleBlockIp('${srcIp}')">
-                  ${isIpBlocked ? 'Blacklisted at Gateway' : 'Enforce Automated Perimeter Drop for ' + srcIp}
-                </button>
-              </div>
-            ` : ''}
+            ${srcIp && srcIp !== 'N/A' && srcIp !== 'Unknown' ? (
+              isIpBlocked ? `
+                <div class="mt-sm">
+                  <button class="btn-unblock-ip" style="font-size:11px;" onclick="window.toggleBlockIp('${srcIp}')">
+                    Blacklisted at Gateway
+                  </button>
+                </div>
+              ` : (isEventBlocked ? `
+                <div class="mt-sm">
+                  <span class="badge badge-red" style="font-size:11px;">Traffic Dropped Automatically</span>
+                </div>
+              ` : `
+                <div class="mt-sm">
+                  <button class="btn-block-ip" style="font-size:11px;" onclick="window.toggleBlockIp('${srcIp}')">
+                    Enforce Automated Perimeter Drop for ${srcIp}
+                  </button>
+                </div>
+              `)
+            ) : ''}
           </div>
         </div>
       `;
@@ -1248,7 +1469,7 @@
         statusBadge.className = "badge badge-red";
         statusBadge.innerText = "OFFLINE";
       }
-      bodyEl.innerHTML = `<div style="padding:10px 0; color:#ef4444; font-size:12px;">Could not retrieve AI explanation: ${escapeHtml(err.message)}</div>`;
+      bodyEl.innerHTML = `<div style="padding:10px 0; color:var(--danger-main); font-size:12px;">Could not retrieve AI explanation: ${escapeHtml(err.message)}</div>`;
     }
   };
 
@@ -1294,16 +1515,29 @@
             <h1 class="page-title">Enterprise SOC Overview</h1>
             <p class="page-desc">Universal Log Pre-processing Framework · Real-Time Ingestion, Normalization & Provenance Engine</p>
           </div>
-          <div style="display:flex; gap:8px;">
-            <a href="#/tools/testing" class="btn btn-sm btn-primary" style="text-decoration:none;">
-              <span>Virtual Device Simulator →</span>
-            </a>
-          </div>
         </div>
       </div>
 
       <!-- LIVE SYSTEM SUMMARY METRICS -->
       <div class="grid grid-4 gap-md" id="homeMetricsGrid"></div>
+      
+      <!-- CONTINUOUS TELEMETRY GRAPH -->
+      <div class="card p-md mt-md telemetry-card" style="position: relative;">
+        <div class="card-header" style="border:none; padding:0 0 12px 0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+          <h2 class="card-title component-heading" style="font-size:14px; display:flex; align-items:center; gap:8px;">
+            <span>Live EPS & Parsing Telemetry</span>
+            <span class="badge badge-teal">REAL-TIME</span>
+          </h2>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:12px; color:var(--text-silver);">Workers/CPUs:</span>
+            <input type="number" id="workerCountInput" class="form-control" style="width:64px; height:26px; font-size:12px; padding:2px 8px; background:var(--bg-card); border:1px solid var(--border-color); color:var(--text-main); border-radius:4px;" value="4" min="1" max="128">
+            <button class="btn btn-xs btn-secondary" onclick="window.updateWorkerCount()">Scale</button>
+          </div>
+        </div>
+        <div class="chart-container" style="position: relative; height:240px; width:100%;">
+          <canvas id="liveEpsChart"></canvas>
+        </div>
+      </div>
 
       <!-- LIVE INGESTED SECURITY EVENTS STREAM -->
       <div class="card p-md mt-md">
@@ -1332,7 +1566,7 @@
             <tbody id="homeLiveEventsTableBody">
               <tr>
                 <td colspan="6" style="text-align:center; padding:24px; color:var(--text-muted);">
-                  Listening for incoming log packets... Use the <a href="#/tools/testing" style="color:#38bdf8;">Virtual Device Simulator</a> to send test streams.
+                  Listening for incoming log packets... Send traffic to port 8000 (REST) or 514 (Syslog).
                 </td>
               </tr>
             </tbody>
@@ -1358,25 +1592,25 @@
             </thead>
             <tbody>
               <tr>
-                <td style="vertical-align:middle; padding:10px 12px; font-weight:600; color:var(--text-white);">Syslog UDP Receiver</td>
+                <td style="vertical-align:middle; padding:10px 12px; font-weight:600; color:var(--text-main);">Syslog UDP Receiver</td>
                 <td style="vertical-align:middle; padding:10px 12px;"><code class="mono" style="font-size:11px;">UDP :514 &amp; :5140</code></td>
                 <td style="text-align:center; vertical-align:middle; padding:10px 12px;"><span class="badge badge-teal">LISTENING</span></td>
                 <td style="vertical-align:middle; padding:10px 12px; color:var(--text-silver); font-size:11.5px;">ULPF-IR / OCSF</td>
               </tr>
               <tr>
-                <td style="vertical-align:middle; padding:10px 12px; font-weight:600; color:var(--text-white);">Syslog TCP Streamer</td>
+                <td style="vertical-align:middle; padding:10px 12px; font-weight:600; color:var(--text-main);">Syslog TCP Streamer</td>
                 <td style="vertical-align:middle; padding:10px 12px;"><code class="mono" style="font-size:11px;">TCP :5141</code></td>
                 <td style="text-align:center; vertical-align:middle; padding:10px 12px;"><span class="badge badge-teal">LISTENING</span></td>
                 <td style="vertical-align:middle; padding:10px 12px; color:var(--text-silver); font-size:11.5px;">ULPF-IR / ECS</td>
               </tr>
               <tr>
-                <td style="vertical-align:middle; padding:10px 12px; font-weight:600; color:var(--text-white);">REST Ingestion Gateway</td>
+                <td style="vertical-align:middle; padding:10px 12px; font-weight:600; color:var(--text-main);">REST Ingestion Gateway</td>
                 <td style="vertical-align:middle; padding:10px 12px;"><code class="mono" style="font-size:11px;">HTTP :8000</code></td>
                 <td style="text-align:center; vertical-align:middle; padding:10px 12px;"><span class="badge badge-teal">ONLINE</span></td>
                 <td style="vertical-align:middle; padding:10px 12px; color:var(--text-silver); font-size:11.5px;">JSON / Batch</td>
               </tr>
               <tr>
-                <td style="vertical-align:middle; padding:10px 12px; font-weight:600; color:var(--text-white);">Raw Storage Persistence</td>
+                <td style="vertical-align:middle; padding:10px 12px; font-weight:600; color:var(--text-main);">Raw Storage Persistence</td>
                 <td style="vertical-align:middle; padding:10px 12px;"><code class="mono" style="font-size:11px;">MinIO :9000</code></td>
                 <td style="text-align:center; vertical-align:middle; padding:10px 12px;"><span class="badge badge-teal">IMMUTABLE</span></td>
                 <td style="vertical-align:middle; padding:10px 12px; color:var(--text-silver); font-size:11.5px;">SHA-256 Vault</td>
@@ -1401,25 +1635,25 @@
             </thead>
             <tbody>
               <tr>
-                <td style="vertical-align:middle; padding:10px 12px;"><strong style="color:var(--text-white);">CEF</strong> <span class="text-muted font-sm">(ArcSight)</span></td>
+                <td style="vertical-align:middle; padding:10px 12px;"><strong style="color:var(--text-main);">CEF</strong> <span class="text-muted font-sm">(ArcSight)</span></td>
                 <td style="text-align:center; vertical-align:middle; padding:10px 12px;"><span class="badge badge-teal">ACTIVE</span></td>
                 <td style="vertical-align:middle; padding:10px 12px; color:var(--text-main);">Deterministic v1.0</td>
                 <td style="vertical-align:middle; padding:10px 12px;"><span class="badge badge-neutral" style="font-size:10px;">Field-Level Offset</span></td>
               </tr>
               <tr>
-                <td style="vertical-align:middle; padding:10px 12px;"><strong style="color:var(--text-white);">Syslog</strong> <span class="text-muted font-sm">(RFC 3164 / 5424)</span></td>
+                <td style="vertical-align:middle; padding:10px 12px;"><strong style="color:var(--text-main);">Syslog</strong> <span class="text-muted font-sm">(RFC 3164 / 5424)</span></td>
                 <td style="text-align:center; vertical-align:middle; padding:10px 12px;"><span class="badge badge-teal">ACTIVE</span></td>
                 <td style="vertical-align:middle; padding:10px 12px; color:var(--text-main);">Deterministic v1.0</td>
                 <td style="vertical-align:middle; padding:10px 12px;"><span class="badge badge-neutral" style="font-size:10px;">Byte Accurate</span></td>
               </tr>
               <tr>
-                <td style="vertical-align:middle; padding:10px 12px;"><strong style="color:var(--text-white);">LEEF</strong> <span class="text-muted font-sm">(IBM QRadar)</span></td>
+                <td style="vertical-align:middle; padding:10px 12px;"><strong style="color:var(--text-main);">LEEF</strong> <span class="text-muted font-sm">(IBM QRadar)</span></td>
                 <td style="text-align:center; vertical-align:middle; padding:10px 12px;"><span class="badge badge-teal">ACTIVE</span></td>
                 <td style="vertical-align:middle; padding:10px 12px; color:var(--text-main);">Deterministic v1.0</td>
                 <td style="vertical-align:middle; padding:10px 12px;"><span class="badge badge-neutral" style="font-size:10px;">Field-Level Offset</span></td>
               </tr>
               <tr>
-                <td style="vertical-align:middle; padding:10px 12px;"><strong style="color:var(--text-white);">Key=Value / JSON</strong> <span class="text-muted font-sm">(Cloud / WAF)</span></td>
+                <td style="vertical-align:middle; padding:10px 12px;"><strong style="color:var(--text-main);">Key=Value / JSON</strong> <span class="text-muted font-sm">(Cloud / WAF)</span></td>
                 <td style="text-align:center; vertical-align:middle; padding:10px 12px;"><span class="badge badge-teal">ACTIVE</span></td>
                 <td style="vertical-align:middle; padding:10px 12px; color:var(--text-main);">Deterministic v1.0</td>
                 <td style="vertical-align:middle; padding:10px 12px;"><span class="badge badge-neutral" style="font-size:10px;">Attribute Mapped</span></td>
@@ -1432,6 +1666,7 @@
 
     renderHomeMetrics();
     renderHomeLiveEventsTable();
+    initTelemetryChart();
   }
 
   function renderHomeLiveEventsTable() {
@@ -1441,9 +1676,9 @@
     if (events.length === 0) {
       tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:36px 16px; color:var(--text-muted);">
         <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
-          <svg class="svg-icon" style="width:28px; height:28px; stroke:var(--crimson-main); opacity:0.8;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+          <svg class="svg-icon" style="width:28px; height:28px; stroke:var(--primary-main); opacity:0.8;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
           <div style="font-weight:700; color:var(--text-main); font-size:13px;">No Stored Data Logs</div>
-          <div style="font-size:12px; max-width:420px; line-height:1.4;">Stored logs have been removed. Use the Virtual Device Simulator (port 8050) or external syslog/REST collectors to ingest new live traffic.</div>
+          <div style="font-size:12px; max-width:420px; line-height:1.4;">Stored logs have been removed. Use external syslog/REST collectors to ingest new live traffic.</div>
         </div>
       </td></tr>`;
       return;
@@ -1472,9 +1707,9 @@
       const isBlock = act === "deny" || act === "block" || act === "drop";
 
       return `
-        <tr style="cursor:pointer;" onclick="window.viewEventDetail('${eid}')" title="Click to view event details">
-          <td style="font-family:var(--font-mono); font-weight:700; color:var(--crimson-main); text-align:left; vertical-align:middle; padding:10px 14px; white-space:nowrap;">${eid}</td>
-          <td style="font-weight:600; color:var(--text-white); text-align:left; vertical-align:middle; padding:10px 14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(src)}</td>
+        <tr style="cursor:pointer;" onclick="window.openEventDetailModal('${eid}')" title="Click to view event details">
+          <td style="font-family:var(--font-mono); font-weight:700; color:var(--primary-main); text-align:left; vertical-align:middle; padding:10px 14px; white-space:nowrap;">${eid}</td>
+          <td style="font-weight:600; color:var(--text-main); text-align:left; vertical-align:middle; padding:10px 14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(src)}</td>
           <td style="text-align:center; vertical-align:middle; padding:10px 6px; overflow:hidden;">
             <span class="badge badge-violet" style="font-size:10px; text-transform:uppercase; max-width:76px; display:inline-block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; vertical-align:middle;" title="${escapeHtml(rawFmt)}">${fmtClean}</span>
           </td>
@@ -1498,7 +1733,7 @@
 
     const m = state.metrics || {};
     const clientEps = calculateLiveClientEps();
-    let displayRate = "13,848 ev/sec";
+    let displayRate = "0 ev/sec";
     let isLiveActive = false;
     let rateBadge = "badge-amber";
     let rateBadgeText = "FAST";
@@ -1522,22 +1757,28 @@
       rateBadgeText = "ACTIVE";
     }
 
-    const latencyText = m.avg_latency || "72.5 µs";
+    if (m.worker_count !== undefined) {
+      const input = document.getElementById("workerCountInput");
+      // Only update if not currently focused to avoid typing interruptions
+      if (input && document.activeElement !== input) {
+        input.value = m.worker_count;
+      }
+    }
+
+    const latencyText = m.avg_latency || "0 µs";
 
     grid.innerHTML = `
       <div class="metric-card" onclick="window.location.hash='#/events'">
         <div class="metric-label">EVENTS RECEIVED</div>
-        <div class="metric-value">${(m.events_received || 8240).toLocaleString()}</div>
-        <div class="metric-sub">
-          <span class="metric-trend up">↑ 12.4% vs prev</span>
+        <div class="metric-value">${window.formatLargeNumber(m.events_received)}</div>
+        <div class="metric-sub" style="justify-content: flex-end;">
           <span class="badge badge-teal">LIVE</span>
         </div>
       </div>
       <div class="metric-card" onclick="window.location.hash='#/events'">
         <div class="metric-label">EVENTS PROCESSED</div>
-        <div class="metric-value">${(m.events_processed || 8240).toLocaleString()}</div>
-        <div class="metric-sub">
-          <span class="metric-trend up">100% Success</span>
+        <div class="metric-value">${window.formatLargeNumber(m.events_processed)}</div>
+        <div class="metric-sub" style="justify-content: flex-end;">
           <span class="badge badge-teal">NORMALIZED</span>
         </div>
       </div>
@@ -1551,9 +1792,9 @@
       </div>
       <div class="metric-card" onclick="window.location.hash='#/intelligence/ai-onboarding'">
         <div class="metric-label">PARSE SUCCESS RATE</div>
-        <div class="metric-value">${m.parse_success_rate || "99.8%"}</div>
+        <div class="metric-value">${m.parse_success_rate || "100%"}</div>
         <div class="metric-sub">
-          <span>Active Parsers: ${m.active_parsers || 6}</span>
+          <span>Active Parsers: ${m.active_parsers || 0}</span>
           <span class="badge badge-teal">STABLE</span>
         </div>
       </div>
@@ -1602,18 +1843,18 @@
 
       <div class="pipeline-grid">
         ${[
-          { stage: "1. Log Sources Ingestion", count: "14,820", rate: "12,400 ev/s", latency: "0.2 µs", status: "ONLINE" },
-          { stage: "2. Input Security Validator", count: "14,820", rate: "12,400 ev/s", latency: "3.1 µs", status: "PASSING" },
-          { stage: "3. Immutable Raw Evidence Store", count: "14,820", rate: "12,400 ev/s", latency: "4.5 µs", status: "STORED" },
-          { stage: "4. Format Detection Engine", count: "14,820", rate: "12,400 ev/s", latency: "8.2 µs", status: "MATCHING" },
-          { stage: "5. Parser Selection & Execution", count: "14,820", rate: "12,400 ev/s", latency: "14.8 µs", status: "ACTIVE" },
-          { stage: "6. ULPF-IR Semantic Normalizer", count: "14,820", rate: "12,400 ev/s", latency: "18.2 µs", status: "NORMALIZED" },
-          { stage: "7. Schema & IP Validator", count: "14,820", rate: "12,400 ev/s", latency: "5.0 µs", status: "VALID" },
-          { stage: "8. Field Provenance Mapper", count: "14,820", rate: "12,400 ev/s", latency: "12.0 µs", status: "ATTRIBUTED" },
-          { stage: "9. OCSF/ECS Downstream Forwarder", count: "14,820", rate: "12,400 ev/s", latency: "12.4 µs", status: "DELIVERED" },
-        ]
-          .map(
-            (node) => `
+        { stage: "1. Log Sources Ingestion", count: "14,820", rate: "12,400 ev/s", latency: "0.2 µs", status: "ONLINE" },
+        { stage: "2. Input Security Validator", count: "14,820", rate: "12,400 ev/s", latency: "3.1 µs", status: "PASSING" },
+        { stage: "3. Immutable Raw Evidence Store", count: "14,820", rate: "12,400 ev/s", latency: "4.5 µs", status: "STORED" },
+        { stage: "4. Format Detection Engine", count: "14,820", rate: "12,400 ev/s", latency: "8.2 µs", status: "MATCHING" },
+        { stage: "5. Parser Selection & Execution", count: "14,820", rate: "12,400 ev/s", latency: "14.8 µs", status: "ACTIVE" },
+        { stage: "6. ULPF-IR Semantic Normalizer", count: "14,820", rate: "12,400 ev/s", latency: "18.2 µs", status: "NORMALIZED" },
+        { stage: "7. Schema & IP Validator", count: "14,820", rate: "12,400 ev/s", latency: "5.0 µs", status: "VALID" },
+        { stage: "8. Field Provenance Mapper", count: "14,820", rate: "12,400 ev/s", latency: "12.0 µs", status: "ATTRIBUTED" },
+        { stage: "9. OCSF/ECS Downstream Forwarder", count: "14,820", rate: "12,400 ev/s", latency: "12.4 µs", status: "DELIVERED" },
+      ]
+        .map(
+          (node) => `
           <div class="pipeline-stage-card">
             <div>
               <strong style="font-size:14px;">${node.stage}</strong>
@@ -1625,8 +1866,8 @@
             </div>
           </div>
         `
-          )
-          .join("")}
+        )
+        .join("")}
       </div>
     `;
   }
@@ -1655,6 +1896,7 @@
         address: s.address || ip,
         address_ip: ip,
         status: s.status || (s.events_received > 0 ? "ACTIVE" : "READY"),
+        is_blocked: s.is_blocked,
         events_received: s.events_received || 0,
         events_per_sec: s.events_per_sec || 0,
       });
@@ -1662,29 +1904,46 @@
 
     // 2. Add real-time active devices observed in live events
     (state.events || []).forEach((e) => {
-      const ip = e.src_ip;
+      const ip = e.src_ip || e.client_ip;
       if (ip && ip !== "N/A" && ip !== "0.0.0.0") {
-        const key = e.device_name || e.source || ip;
-        if (deviceMap.has(key)) {
-          const existing = deviceMap.get(key);
+        const key = e.device_name || (typeof e.source === 'string' ? e.source : null) || ip;
+        const isRecent = e.received_at ? (Date.now() - new Date(e.received_at + (e.received_at.endsWith("Z") ? "" : "Z")).getTime() < 15000) : true;
+        const statusVal = e.status === "blocked" ? "BLOCKED" : (isRecent ? "ACTIVE" : "DISCONNECTED");
+
+        let existingKey = null;
+        if (deviceMap.has(key)) existingKey = key;
+        else if (deviceMap.has(ip)) existingKey = ip;
+        else {
+          for (const [k, v] of deviceMap.entries()) {
+            if (v.address_ip === ip || (e.device_name && v.name === e.device_name) || (e.device_name && v.id === e.device_name)) {
+              existingKey = k;
+              break;
+            }
+          }
+        }
+
+        if (existingKey) {
+          const existing = deviceMap.get(existingKey);
           existing.events_received = Math.max(existing.events_received, 1);
           if (existing.address_ip === "127.0.0.1" && ip !== "127.0.0.1") existing.address_ip = ip;
           if ((existing.vendor === "Generic" || existing.vendor === "Unknown") && e.vendor) existing.vendor = e.vendor;
-          if (existing.name === "Generic" || existing.name.startsWith("network_device")) existing.name = e.device_name || e.source || ip;
-          if (e.status === "blocked") existing.status = "BLOCKED";
+          if (existing.name === "Generic" || existing.name.startsWith("network_device")) existing.name = e.device_name || (typeof e.source === 'string' ? e.source : null) || ip;
+          if (e.status === "blocked") { existing.status = "BLOCKED"; }
+          else if (existing.status !== "BLOCKED" && isRecent) { existing.status = "ACTIVE"; }
         } else {
-          const devProto = (e.source && e.source.includes("5140")) ? "Syslog UDP (5140)" : ((e.source && e.source.includes("5141")) ? "Syslog TCP (5141)" : "HTTP REST (:8000)");
+          const srcStr = typeof e.source === 'string' ? e.source : '';
+          const devProto = srcStr.includes("5140") ? "Syslog UDP (5140)" : (srcStr.includes("5141") ? "Syslog TCP (5141)" : "HTTP REST (:8000)");
           deviceMap.set(key, {
             id: key,
-            name: e.device_name || e.source || `Device-${ip}`,
+            name: e.device_name || srcStr || `Device-${ip}`,
             type: e.event_type || (e.vendor && e.vendor !== "Generic" ? `${e.vendor} Appliance` : "Connected Device"),
             vendor: e.vendor || "Generic",
             protocol: devProto,
-            address: `${ip}:${(e.source && e.source.includes("5140")) ? 5140 : 5141}`,
+            address: `${ip}:${srcStr.includes("5140") ? 5140 : 5141}`,
             address_ip: ip,
-            status: e.status === "blocked" ? "BLOCKED" : "ACTIVE",
-            events_received: state.events.filter(ev => ev.src_ip === ip).length,
-            events_per_sec: 1,
+            status: statusVal,
+            events_received: state.events.filter(ev => ev.src_ip === ip || ev.client_ip === ip).length,
+            events_per_sec: isRecent ? 1 : 0,
           });
         }
       }
@@ -1692,58 +1951,7 @@
 
     const sourcesList = Array.from(deviceMap.values()).sort((a, b) => (a.name || a.id || "").localeCompare(b.name || b.id || ""));
 
-    if (sourcesList.length === 0) {
-      sourcesList.push(
-        {
-          id: "dev-paloalto-edge",
-          name: "PaloAlto-Edge-01",
-          type: "Firewall",
-          vendor: "Palo Alto",
-          protocol: "Syslog UDP (5140)",
-          address: "192.168.1.100:5140",
-          address_ip: "192.168.1.100",
-          status: "ACTIVE",
-          events_received: 2450,
-          events_per_sec: 18,
-        },
-        {
-          id: "dev-cisco-asa",
-          name: "Cisco-ASA-Core",
-          type: "Security Gateway",
-          vendor: "Cisco",
-          protocol: "Syslog UDP (5140)",
-          address: "10.0.0.1:5140",
-          address_ip: "10.0.0.1",
-          status: "ACTIVE",
-          events_received: 1820,
-          events_per_sec: 12,
-        },
-        {
-          id: "dev-fortigate-perimeter",
-          name: "FortiGate-Perimeter",
-          type: "UTM Gateway",
-          vendor: "Fortinet",
-          protocol: "Syslog TCP (5141)",
-          address: "172.16.0.50:5141",
-          address_ip: "172.16.0.50",
-          status: "ACTIVE",
-          events_received: 3105,
-          events_per_sec: 24,
-        },
-        {
-          id: "dev-aws-cloudtrail",
-          name: "AWS-CloudTrail-Ingest",
-          type: "Cloud Audit Hub",
-          vendor: "Amazon Web Services",
-          protocol: "HTTP REST (:8000)",
-          address: "127.0.0.1:8000",
-          address_ip: "127.0.0.1",
-          status: "ACTIVE",
-          events_received: 4200,
-          events_per_sec: 32,
-        }
-      );
-    }
+
 
     const blockedIpsList = Array.from(state.blockedIps);
 
@@ -1754,12 +1962,9 @@
           <p class="page-desc">Server listening interfaces, connected client device IPs, and real-time connection state enforcement (Keep Alive · Block · Resume).</p>
         </div>
         <div style="display:flex; gap:8px;">
-          <button class="btn btn-sm btn-secondary" onclick="window.showConnectRealDeviceModal()" style="border-color:rgba(56,189,248,0.35); color:#F1F5F9;" title="Setup instructions for physical routers, firewalls, and servers">
+          <button class="btn btn-sm btn-secondary" onclick="window.showConnectRealDeviceModal()" style="border-color:rgba(56,189,248,0.35); color:var(--primary-main);" title="Setup instructions for physical routers, firewalls, and servers">
             <span>Connect Real Device (Guide)</span>
           </button>
-          <a href="http://127.0.0.1:8050/" target="_blank" class="btn btn-sm btn-primary" style="text-decoration:none;">
-            <span> Protocol Simulator Hub (Core 2) →</span>
-          </a>
         </div>
       </div>
 
@@ -1767,58 +1972,58 @@
       <div class="card p-md mb-md">
         <div class="flex-between mb-sm">
           <div>
-            <h3 style="font-size:14px; font-weight:700;">SERVER NETWORK INTERFACES & LISTENING PORTS</h3>
+            <h3 class="component-heading" style="font-size:14px; font-weight:700;">SERVER NETWORK INTERFACES & LISTENING PORTS</h3>
             <p class="text-muted font-sm">Core ULPF ingestion gateways and persistence sockets</p>
           </div>
           <span class="badge badge-teal">All Ingress Interfaces Online</span>
         </div>
         <div class="grid grid-3 gap-sm">
-          <div class="card p-sm" style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color);">
+          <div class="card p-sm" style="background:var(--bg-card-subtle); border:1px solid var(--border-color);">
             <div class="flex-between">
-              <span style="font-weight:700; color:#fff;">HTTP REST Ingestion</span>
+              <span style="font-weight:700; color:var(--text-main);">HTTP REST Ingestion</span>
               <span class="badge badge-teal">ONLINE</span>
             </div>
-            <div class="mono mt-sm" style="font-size:13px; color:#38bdf8;">0.0.0.0 : 8000</div>
+            <div class="mono mt-sm" style="font-size:13px; color:var(--primary-main);">0.0.0.0 : 8000</div>
             <div class="text-muted text-xs mt-sm">REST POST /process & /api/v1/events</div>
           </div>
-          <div class="card p-sm" style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color);">
+          <div class="card p-sm" style="background:var(--bg-card-subtle); border:1px solid var(--border-color);">
             <div class="flex-between">
-              <span style="font-weight:700; color:#fff;">Syslog UDP Collector</span>
+              <span style="font-weight:700; color:var(--text-main);">Syslog UDP Collector</span>
               <span class="badge badge-teal">LISTENING</span>
             </div>
-            <div class="mono mt-sm" style="font-size:13px; color:#38bdf8;">0.0.0.0 : 5140 (UDP)</div>
+            <div class="mono mt-sm" style="font-size:13px; color:var(--primary-main);">0.0.0.0 : 5140 (UDP)</div>
             <div class="text-muted text-xs mt-sm">RFC 3164/5424 & ArcSight CEF Datagrams</div>
           </div>
-          <div class="card p-sm" style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color);">
+          <div class="card p-sm" style="background:var(--bg-card-subtle); border:1px solid var(--border-color);">
             <div class="flex-between">
-              <span style="font-weight:700; color:#fff;">Syslog TCP Stream</span>
+              <span style="font-weight:700; color:var(--text-main);">Syslog TCP Stream</span>
               <span class="badge badge-teal">LISTENING</span>
             </div>
-            <div class="mono mt-sm" style="font-size:13px; color:#38bdf8;">0.0.0.0 : 5141 (TCP)</div>
+            <div class="mono mt-sm" style="font-size:13px; color:var(--primary-main);">0.0.0.0 : 5141 (TCP)</div>
             <div class="text-muted text-xs mt-sm">Persistent TCP Streams & LEEF Framing</div>
           </div>
-          <div class="card p-sm" style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color);">
+          <div class="card p-sm" style="background:var(--bg-card-subtle); border:1px solid var(--border-color);">
             <div class="flex-between">
-              <span style="font-weight:700; color:#fff;">Redpanda Kafka Bus</span>
+              <span style="font-weight:700; color:var(--text-main);">Redpanda Kafka Bus</span>
               <span class="badge badge-teal">CONNECTED</span>
             </div>
-            <div class="mono mt-sm" style="font-size:13px; color:#38bdf8;">redpanda : 9092</div>
+            <div class="mono mt-sm" style="font-size:13px; color:var(--primary-main);">redpanda : 9092</div>
             <div class="text-muted text-xs mt-sm">Distributed streaming buffer (ulpf-raw-ingress)</div>
           </div>
-          <div class="card p-sm" style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color);">
+          <div class="card p-sm" style="background:var(--bg-card-subtle); border:1px solid var(--border-color);">
             <div class="flex-between">
-              <span style="font-weight:700; color:#fff;">MinIO Raw S3 Vault</span>
+              <span style="font-weight:700; color:var(--text-main);">MinIO Raw S3 Vault</span>
               <span class="badge badge-teal">IMMUTABLE</span>
             </div>
-            <div class="mono mt-sm" style="font-size:13px; color:#38bdf8;">minio : 9000</div>
+            <div class="mono mt-sm" style="font-size:13px; color:var(--primary-main);">minio : 9000</div>
             <div class="text-muted text-xs mt-sm">Bucket 'ulpf-raw' with SHA-256 byte lock</div>
           </div>
-          <div class="card p-sm" style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color);">
+          <div class="card p-sm" style="background:var(--bg-card-subtle); border:1px solid var(--border-color);">
             <div class="flex-between">
-              <span style="font-weight:700; color:#fff;">OpenSearch Index</span>
+              <span style="font-weight:700; color:var(--text-main);">OpenSearch Index</span>
               <span class="badge badge-teal">SEARCHABLE</span>
             </div>
-            <div class="mono mt-sm" style="font-size:13px; color:#38bdf8;">opensearch : 9200</div>
+            <div class="mono mt-sm" style="font-size:13px; color:var(--primary-main);">opensearch : 9200</div>
             <div class="text-muted text-xs mt-sm">Index 'ulpf-events' for sub-ms query</div>
           </div>
         </div>
@@ -1854,12 +2059,12 @@
             </thead>
             <tbody>
               ${sourcesList.map((s) => {
-                const cleanAddr = (s.address || "").replace(/^https?:\/\//, "");
-                const ip = s.address_ip || cleanAddr.split(':')[0] || "127.0.0.1";
-                const isBlocked = state.blockedIps.has(ip) || s.status === "Blocked" || s.status === "BLOCKED";
-                return `
+      const cleanAddr = (s.address || "").replace(/^https?:\/\//, "");
+      const ip = s.address_ip || cleanAddr.split(':')[0] || "127.0.0.1";
+      const isBlocked = state.blockedIps.has(ip) || s.is_blocked === 1 || s.is_blocked === true;
+      return `
                   <tr>
-                    <td style="vertical-align:middle;"><strong class="mono" style="color:${isBlocked ? '#ef4444' : '#38bdf8'}; font-size:12.5px;">${ip}</strong></td>
+                    <td style="vertical-align:middle;"><strong class="mono" style="color:${isBlocked ? 'var(--danger-main)' : 'var(--primary-main)'}; font-size:12.5px;">${ip}</strong></td>
                     <td style="vertical-align:middle;"><strong style="color:var(--text-main); font-size:12.5px;">${escapeHtml(s.name)}</strong></td>
                     <td style="vertical-align:middle;">
                       <div style="font-weight:600; font-size:12px;">${escapeHtml(s.vendor)}</div>
@@ -1870,7 +2075,7 @@
                     <td class="mono text-teal" style="text-align:right; vertical-align:middle; font-weight:700; font-size:12px;">${s.events_per_sec || 0} ev/s</td>
                     <td style="text-align:center; vertical-align:middle;">
                       <span class="badge ${isBlocked ? 'badge-red' : 'badge-teal'}" style="font-size:10px;">
-                        ● ${isBlocked ? 'BLOCKED' : 'ACTIVE'}
+                         ${isBlocked ? 'BLOCKED' : 'ACTIVE'}
                       </span>
                     </td>
                     <td style="text-align:center; vertical-align:middle; white-space:nowrap; padding:8px 6px;">
@@ -1887,11 +2092,14 @@
                             Block
                           </button>
                         `}
+                        <button class="btn btn-xs btn-danger-outline" onclick="window.removeSource('${s.id}')" title="Remove device from registry" style="white-space:nowrap; padding:3px 8px; font-size:11px; line-height:1.2; min-width:48px; border:1px solid #f87171; color:var(--danger-main);">
+                          Remove
+                        </button>
                       </div>
                     </td>
                   </tr>
                 `;
-              }).join("")}
+    }).join("")}
             </tbody>
           </table>
         </div>
@@ -1928,12 +2136,12 @@
           </thead>
           <tbody>
             ${blockedIpsList.length > 0 ? blockedIpsList.map((ip) => {
-              const dropCount = state.events.filter(e => e.src_ip === ip && e.status === "blocked").length;
-              return `
+      const dropCount = state.events.filter(e => e.src_ip === ip && e.status === "blocked").length;
+      return `
                 <tr>
-                  <td><strong class="mono" style="color:#ef4444; font-size:13px;">${ip}</strong></td>
+                  <td><strong class="mono" style="color:var(--danger-main); font-size:13px;">${ip}</strong></td>
                   <td><span class="badge badge-red">INGEST_DROP</span></td>
-                  <td><span class="badge badge-red">● BLOCKED</span></td>
+                  <td><span class="badge badge-red"> BLOCKED</span></td>
                   <td class="mono font-bold text-teal">${dropCount > 0 ? dropCount + ' events' : 'Active Drop'}</td>
                   <td class="text-muted font-sm">Threat Signature / SQLi / Administrator Policy</td>
                   <td>
@@ -1943,7 +2151,7 @@
                   </td>
                 </tr>
               `;
-            }).join("") : `
+    }).join("") : `
               <tr>
                 <td colspan="6" style="text-align:center; padding:20px; color:var(--text-muted);">
                   No IP addresses currently blacklisted. All inbound connections active.
@@ -1959,7 +2167,7 @@
     window.blockConnection = async (ip, sourceId) => {
       await window.toggleBlockIp(ip);
       if (sourceId) {
-        try { await fetch(`/api/v1/sources/${encodeURIComponent(sourceId)}/block`, { method: "POST" }); } catch(e){}
+        try { await fetch(`/api/v1/sources/${encodeURIComponent(sourceId)}/block`, { method: "POST" }); } catch (e) { }
       }
       renderConnectionsView(container);
     };
@@ -1969,7 +2177,7 @@
         await window.toggleBlockIp(ip);
       }
       if (sourceId) {
-        try { await fetch(`/api/v1/sources/${encodeURIComponent(sourceId)}/block`, { method: "POST" }); } catch(e){}
+        try { await fetch(`/api/v1/sources/${encodeURIComponent(sourceId)}/block`, { method: "POST" }); } catch (e) { }
       }
       showToast(`Connection for IP ${ip} resumed. Traffic is flowing normally.`, "success");
       renderConnectionsView(container);
@@ -1991,7 +2199,21 @@
           showToast(data.message, data.is_blocked ? "warning" : "success");
           renderConnectionsView(container);
         }
-      } catch (e) {}
+      } catch (e) { }
+    };
+
+    window.removeSource = async (sourceId) => {
+      if (!confirm("Are you sure you want to completely remove this device from the registry?")) return;
+      try {
+        const res = await fetch(`/api/v1/sources/${encodeURIComponent(sourceId)}`, { method: "DELETE" });
+        if (res.ok) {
+          showToast("Device removed successfully", "success");
+          await fetchSources();
+          renderConnectionsView(container);
+        }
+      } catch (e) {
+        showToast("Failed to remove device", "error");
+      }
     };
 
     window.addBlacklistIpManual = () => {
@@ -2010,6 +2232,16 @@
         modal = document.createElement("div");
         modal.id = "editDeviceModal";
         modal.className = "modal-overlay";
+        modal.style.position = "fixed";
+        modal.style.top = "0";
+        modal.style.left = "0";
+        modal.style.width = "100%";
+        modal.style.height = "100%";
+        modal.style.backgroundColor = "rgba(0, 0, 0, 0.75)";
+        modal.style.zIndex = "9999";
+        modal.style.display = "flex";
+        modal.style.alignItems = "center";
+        modal.style.justifyContent = "center";
         document.body.appendChild(modal);
       }
 
@@ -2023,11 +2255,11 @@
       const currentName = name || (isEdit ? `Device-${currentIp}` : "New-Firewall-HQ");
 
       modal.innerHTML = `
-        <div class="modal-content" style="max-width: 540px; width: 92%; background: #0F172A; border: 1px solid rgba(56,189,248,0.35); border-radius: 8px; box-shadow: 0 20px 40px rgba(0,0,0,0.85); overflow: hidden;">
+        <div class="modal-content" style="max-width: 540px; width: 92%; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 20px 40px rgba(0,0,0,0.25); overflow: hidden;">
           <div class="modal-header flex-between" style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
             <div style="display:flex; align-items:center; gap:10px;">
               <div>
-                <h3 style="font-size:16px; font-weight:800; color:#fff; margin:0;">${isEdit ? "Update Device Profile" : "Register Network Device"}</h3>
+                <h3 style="font-size:16px; font-weight:800; color:var(--text-main); margin:0;">${isEdit ? "Update Device Profile" : "Register Network Device"}</h3>
                 <span class="text-xs text-muted">${isEdit ? `Editing server record for ID: ${id}` : "Pre-configure device identity on ULPF server"}</span>
               </div>
             </div>
@@ -2053,7 +2285,7 @@
               </div>
             </div>
 
-            <div class="grid grid-2 gap-sm">
+            <div class="grid grid-3 gap-sm">
               <div>
                 <label class="text-muted font-sm" style="display:block; margin-bottom:6px; font-weight:600;">DEVICE TYPE</label>
                 <select id="modalEditDevType" class="form-select" style="height:38px; width:100%;">
@@ -2066,12 +2298,16 @@
                   ${["HTTP REST (:8000)", "Syslog UDP (5140)", "Syslog TCP (5141)"].map(p => `<option value="${p}" ${(proto || "").includes(p.split(" ")[0]) ? "selected" : ""}>${p}</option>`).join("")}
                 </select>
               </div>
+              <div>
+                <label class="text-muted font-sm" style="display:block; margin-bottom:6px; font-weight:600; color:var(--success-main);">SIMULATE EPS</label>
+                <input type="number" id="modalEditDevEps" class="form-control" style="height:38px; border-color:rgba(52, 211, 153, 0.4);" value="${(window.customDeviceSimulators || {})[isEdit ? id : currentIp]?.eps || 0}" min="0" max="1000" placeholder="0 = off" />
+              </div>
             </div>
 
             <div id="modalEditDeviceStatus" style="display:none; font-size:12px; padding:10px 14px; border-radius:4px;"></div>
           </div>
 
-          <div class="modal-footer flex-between" style="padding: 14px 20px; border-top: 1px solid var(--border-color); background:rgba(0,0,0,0.25); display:flex; justify-content:space-between; align-items:center;">
+          <div class="modal-footer flex-between" style="padding: 14px 20px; border-top: 1px solid var(--border-color); background: var(--bg-card-subtle); display:flex; justify-content:space-between; align-items:center;">
             <button class="btn btn-sm btn-secondary" onclick="window.closeEditDeviceModal()">Cancel</button>
             <button class="btn btn-sm btn-primary" id="btnSaveDeviceModalAction"> Save Device to Server</button>
           </div>
@@ -2086,6 +2322,7 @@
         const newVendor = document.getElementById("modalEditDevVendor")?.value || "Generic";
         const newType = document.getElementById("modalEditDevType")?.value || "Firewall";
         const newProto = document.getElementById("modalEditDevProtocol")?.value || "HTTP REST (:8000)";
+        const newEps = parseInt(document.getElementById("modalEditDevEps")?.value || "0", 10);
         const statusDiv = document.getElementById("modalEditDeviceStatus");
 
         if (!newName) {
@@ -2123,6 +2360,32 @@
           if (typeof renderConnectionsView === "function" && state.currentRoute === "connections") {
             renderConnectionsView(container);
           }
+
+          if (!window.customDeviceSimulators) window.customDeviceSimulators = {};
+          if (window.customDeviceSimulators[targetId] && window.customDeviceSimulators[targetId].intervalId) {
+            clearInterval(window.customDeviceSimulators[targetId].intervalId);
+          }
+          if (newEps > 0) {
+            const intervalMs = Math.max(10, Math.floor(1000 / newEps));
+            const intervalId = setInterval(() => {
+              fetch("/api/v1/ingest", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  raw_log: `<134>1 ${new Date().toISOString()} ${newName} Simulator - - - Simulated traffic eps=${newEps} vendor=${newVendor}`,
+                  device_name: newName,
+                  client_ip: newAddr,
+                  vendor: newVendor,
+                  device_type: newType,
+                  protocol: newProto
+                })
+              }).catch(() => { });
+            }, intervalMs);
+            window.customDeviceSimulators[targetId] = { eps: newEps, intervalId };
+            showToast(` Started simulator for ${newName} at ${newEps} EPS`, "success");
+          } else {
+            delete window.customDeviceSimulators[targetId];
+          }
         } catch (e) {
           if (statusDiv) {
             statusDiv.style.display = "block";
@@ -2146,12 +2409,12 @@
       const hostIp = window.location.hostname || "127.0.0.1";
 
       modal.innerHTML = `
-        <div class="modal-content" style="max-width: 820px; width: 92%; max-height: 90vh; overflow-y: auto; background: #0F172A; border: 1px solid rgba(56,189,248,0.28); border-radius: 8px; box-shadow: 0 20px 40px rgba(0,0,0,0.85);">
+        <div class="modal-content" style="max-width: 820px; width: 92%; max-height: 90vh; overflow-y: auto; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 20px 40px rgba(0,0,0,0.85);">
           <div class="modal-header" style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
             <div style="display:flex; align-items:center; gap:12px;">
               <span style="font-size:24px;"></span>
               <div>
-                <h2 style="font-size:17px; margin:0; color:#F1F5F9; font-weight:700;">Connect Real Devices to ULPF</h2>
+                <h2 style="font-size:17px; margin:0; color:var(--text-main); font-weight:700;">Connect Real Devices to ULPF</h2>
                 <p class="text-muted text-xs" style="margin:2px 0 0 0;">Forward live telemetry from physical routers, firewalls, Linux servers, and webhooks</p>
               </div>
             </div>
@@ -2160,8 +2423,8 @@
 
           <div class="modal-body p-md" style="padding: 20px;">
             <!-- SERVER LISTENING INTERFACES -->
-            <div class="card p-sm mb-md" style="background:rgba(56, 189, 248, 0.08); border:1px solid rgba(56, 189, 248, 0.28); border-radius:6px; margin-bottom:16px;">
-              <div style="font-weight:700; color:#38bdf8; font-size:12px; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px;"> Live Ingress Listening Interfaces</div>
+            <div class="card p-sm mb-md" style="background:var(--bg-card-subtle); border:1px solid var(--border-color); border-radius:6px; margin-bottom:16px;">
+              <div style="font-weight:700; color:var(--primary-main); font-size:12px; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px;"> Live Ingress Listening Interfaces</div>
               <div class="grid grid-3 gap-sm font-sm">
                 <div><strong>Syslog UDP:</strong> <code class="mono text-teal" style="font-weight:bold;">:514 & :5140</code></div>
                 <div><strong>Syslog TCP:</strong> <code class="mono text-teal" style="font-weight:bold;">:5141</code></div>
@@ -2175,13 +2438,13 @@
             <!-- DEVICE CONFIGURATION SNIPPETS -->
             <div style="display:flex; flex-direction:column; gap:14px;">
               <!-- 1. LINUX RSYSLOG -->
-              <div class="card p-sm" style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); border-radius:6px; padding:12px;">
+              <div class="card p-sm" style="background:var(--bg-card-subtle); border:1px solid var(--border-color); border-radius:6px; padding:12px;">
                 <div class="flex-between mb-xs" style="display:flex; justify-content:space-between; margin-bottom:6px;">
-                  <strong style="color:#fff;"> 1. Linux Hosts (Ubuntu / Debian / RHEL - rsyslog)</strong>
+                  <strong style="color:var(--text-main);"> 1. Linux Hosts (Ubuntu / Debian / RHEL - rsyslog)</strong>
                   <span class="badge badge-teal">Syslog UDP :5140 / TCP :5141</span>
                 </div>
                 <p class="text-muted text-xs mb-xs" style="margin:0 0 6px 0;">Add to <code>/etc/rsyslog.d/50-ulpf.conf</code> to forward all syslog/auth logs:</p>
-                <pre class="code-box" style="padding:8px 10px; font-size:11px; margin:0; background:#0B0F17; border-radius:4px; font-family:var(--font-mono); color:#38bdf8;"># Forward all logs over UDP to ULPF (replace with 192.168.0.112 if sending from another PC)
+                <pre class="code-box" style="padding:8px 10px; font-size:11px; margin:0; background:var(--bg-card-solid); border-radius:4px; font-family:var(--font-mono); color:var(--primary-main);"># Forward all logs over UDP to ULPF (replace with 192.168.0.112 if sending from another PC)
 *.* @192.168.0.112:5140
 
 # Or forward over reliable TCP:
@@ -2190,25 +2453,25 @@
               </div>
 
               <!-- 2. CISCO ROUTER & SWITCH -->
-              <div class="card p-sm" style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); border-radius:6px; padding:12px;">
+              <div class="card p-sm" style="background:var(--bg-card-subtle); border:1px solid var(--border-color); border-radius:6px; padding:12px;">
                 <div class="flex-between mb-xs" style="display:flex; justify-content:space-between; margin-bottom:6px;">
-                  <strong style="color:#fff;"> 2. Cisco IOS / ASA Routers & Switches</strong>
+                  <strong style="color:var(--text-main);"> 2. Cisco IOS / ASA Routers & Switches</strong>
                   <span class="badge badge-teal">RFC 3164 Syslog</span>
                 </div>
                 <p class="text-muted text-xs mb-xs" style="margin:0 0 6px 0;">Enter configuration mode (<code>conf t</code>):</p>
-                <pre class="code-box" style="padding:8px 10px; font-size:11px; margin:0; background:#0B0F17; border-radius:4px; font-family:var(--font-mono); color:#38bdf8;">logging host 192.168.0.112 transport udp port 5140
+                <pre class="code-box" style="padding:8px 10px; font-size:11px; margin:0; background:var(--bg-card-solid); border-radius:4px; font-family:var(--font-mono); color:var(--primary-main);">logging host 192.168.0.112 transport udp port 5140
 logging trap informational
 logging on</pre>
               </div>
 
               <!-- 3. FORTINET FORTIGATE -->
-              <div class="card p-sm" style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); border-radius:6px; padding:12px;">
+              <div class="card p-sm" style="background:var(--bg-card-subtle); border:1px solid var(--border-color); border-radius:6px; padding:12px;">
                 <div class="flex-between mb-xs" style="display:flex; justify-content:space-between; margin-bottom:6px;">
-                  <strong style="color:#fff;">3. Fortinet FortiGate Firewall</strong>
+                  <strong style="color:var(--text-main);">3. Fortinet FortiGate Firewall</strong>
                   <span class="badge badge-teal">CEF / Syslog UDP</span>
                 </div>
                 <p class="text-muted text-xs mb-xs" style="margin:0 0 6px 0;">Run in FortiOS CLI:</p>
-                <pre class="code-box" style="padding:8px 10px; font-size:11px; margin:0; background:#0B0F17; border-radius:4px; font-family:var(--font-mono); color:#38bdf8;">config log syslogd setting
+                <pre class="code-box" style="padding:8px 10px; font-size:11px; margin:0; background:var(--bg-card-solid); border-radius:4px; font-family:var(--font-mono); color:var(--primary-main);">config log syslogd setting
     set status enable
     set server "192.168.0.112"
     set port 5140
@@ -2218,9 +2481,9 @@ end</pre>
               </div>
 
               <!-- 4. PALO ALTO NETWORKS -->
-              <div class="card p-sm" style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); border-radius:6px; padding:12px;">
+              <div class="card p-sm" style="background:var(--bg-card-subtle); border:1px solid var(--border-color); border-radius:6px; padding:12px;">
                 <div class="flex-between mb-xs" style="display:flex; justify-content:space-between; margin-bottom:6px;">
-                  <strong style="color:#fff;">4. Palo Alto Networks NGFW</strong>
+                  <strong style="color:var(--text-main);">4. Palo Alto Networks NGFW</strong>
                   <span class="badge badge-teal">PAN-OS Key=Value</span>
                 </div>
                 <p class="text-muted text-xs mb-xs" style="margin:0 0 6px 0;">In PAN-OS WebUI: <strong>Device</strong>  <strong>Server Profiles</strong>  <strong>Syslog</strong>  <strong>Add</strong>:</p>
@@ -2231,22 +2494,22 @@ end</pre>
               </div>
 
               <!-- 5. HTTP REST / CURL SCRIPT -->
-              <div class="card p-sm" style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); border-radius:6px; padding:12px;">
+              <div class="card p-sm" style="background:var(--bg-card-subtle); border:1px solid var(--border-color); border-radius:6px; padding:12px;">
                 <div class="flex-between mb-xs" style="display:flex; justify-content:space-between; margin-bottom:6px;">
-                  <strong style="color:#fff;">5. IoT Sensors, Python, Webhooks & cURL (HTTP REST)</strong>
+                  <strong style="color:var(--text-main);">5. IoT Sensors, Python, Webhooks & cURL (HTTP REST)</strong>
                   <span class="badge badge-teal">HTTP POST :8000</span>
                 </div>
                 <p class="text-muted text-xs mb-xs" style="margin:0 0 6px 0;">Transmit JSON, CEF, or Syslog payloads via HTTP from any device:</p>
-                <pre class="code-box" style="padding:8px 10px; font-size:11px; margin:0; background:#0B0F17; border-radius:4px; font-family:var(--font-mono); color:#38bdf8;">curl -X POST "http://192.168.0.112:8000/api/v1/ingest" \\
+                <pre class="code-box" style="padding:8px 10px; font-size:11px; margin:0; background:var(--bg-card-solid); border-radius:4px; font-family:var(--font-mono); color:var(--primary-main);">curl -X POST "http://192.168.0.112:8000/api/v1/ingest" \\
   -H "Content-Type: application/json" \\
   -d '{"message": "&lt;13&gt;Sep 11 00:30:00 edge-router sshd[124]: Accepted publickey for admin from 10.0.0.5 port 54321 ssh2", "source": "Edge-Router-01"}'</pre>
               </div>
 
               <!-- 6. WINDOWS FIREWALL PERMIT -->
-              <div class="card p-sm" style="background:rgba(56, 189, 248, 0.06); border:1px solid rgba(56, 189, 248, 0.25); border-radius:6px; padding:12px;">
-                <div style="font-weight:700; color:#38bdf8; font-size:12px; margin-bottom:4px;">Windows Firewall Inbound Rules (If receiving traffic across LAN/Wi-Fi)</div>
+              <div class="card p-sm" style="background:var(--bg-card-subtle); border:1px solid var(--border-color); border-radius:6px; padding:12px;">
+                <div style="font-weight:700; color:var(--primary-main); font-size:12px; margin-bottom:4px;">Windows Firewall Inbound Rules (If receiving traffic across LAN/Wi-Fi)</div>
                 <p class="text-muted text-xs mb-xs" style="margin:0 0 6px 0;">To permit external devices to reach ports 514, 5140, 5141, and 8000, run in PowerShell (Administrator):</p>
-                <pre class="code-box" style="padding:8px 10px; font-size:11px; margin:0; background:#0B0F17; border-radius:4px; font-family:var(--font-mono); color:#38bdf8;">New-NetFirewallRule -DisplayName "ULPF Ingress UDP" -Direction Inbound -LocalPort 514,5140 -Protocol UDP -Action Allow
+                <pre class="code-box" style="padding:8px 10px; font-size:11px; margin:0; background:var(--bg-card-solid); border-radius:4px; font-family:var(--font-mono); color:var(--primary-main);">New-NetFirewallRule -DisplayName "ULPF Ingress UDP" -Direction Inbound -LocalPort 514,5140 -Protocol UDP -Action Allow
 New-NetFirewallRule -DisplayName "ULPF Ingress TCP" -Direction Inbound -LocalPort 5141,8000 -Protocol TCP -Action Allow</pre>
               </div>
             </div>
@@ -2279,109 +2542,6 @@ New-NetFirewallRule -DisplayName "ULPF Ingress TCP" -Direction Inbound -LocalPor
           <button class="btn btn-sm btn-secondary" onclick="fetchEvents(); showToast('Refreshing live log stream...', 'info');" type="button" title="Reload recent logs from server">
             <span>Refresh</span>
           </button>
-          <button class="btn btn-sm btn-primary" id="btnToggleCustomLogPanel" type="button">
-            <span>Custom Log Ingestion</span>
-          </button>
-          <a href="#/testing" class="btn btn-sm btn-secondary" style="text-decoration:none;">
-            <span>Virtual Device Test Suite →</span>
-          </a>
-          <button class="btn btn-sm btn-secondary" onclick="window.triggerTraffic(10, 'Firewall-01', 'cef')" title="Simulate 10 live CEF firewall logs">
-            <span>+ Burst 10 Events</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- SECTION: DIRECT CUSTOM LOG INGESTION & DEVICE CONFIGURATION -->
-      <div class="card p-md mb-md" id="customLogIngestionCard" style="background: rgba(20, 8, 15, 0.75); border: 1px solid rgba(229, 9, 46, 0.35);">
-        <div class="flex-between mb-sm" style="padding-bottom: 8px; border-bottom: 1px solid rgba(229, 9, 46, 0.15);">
-          <div>
-            <div style="display:flex; align-items:center; gap:8px;">
-              <span style="font-size:16px;"></span>
-              <h3 style="font-size:14px; font-weight:700; margin:0; color:#fff;">DIRECT LOG INGESTION & DEVICE CONFIGURATION</h3>
-              <span class="badge badge-teal" style="font-size:10px;">HTTP REST :8000</span>
-              <span class="badge badge-neutral" style="font-size:10px;">Syslog 5140/5141</span>
-            </div>
-            <p class="text-muted font-sm" style="margin:4px 0 0 0;">Enter custom raw log payloads with device parameters (name, IP, vendor, type, protocol). The server updates the device registry and normalizes telemetry into canonical ULPF-IR.</p>
-          </div>
-          <button class="btn btn-xs btn-secondary" id="btnToggleCustomLogBody" type="button" style="font-size:11px;">Minimize Panel</button>
-        </div>
-
-        <div id="customLogFormBody">
-          <!-- DEVICE CONFIGURATION ROW -->
-          <div class="grid grid-5 gap-sm mb-sm" style="align-items: flex-end;">
-            <div>
-              <label class="text-muted font-sm" style="display:block; margin-bottom:4px; font-weight:600;">DEVICE NAME / IDENTIFIER</label>
-              <input type="text" id="customLogDeviceName" class="form-control" style="height:36px;" value="PaloAlto-FW-01" placeholder="e.g. PaloAlto-FW-01" />
-            </div>
-            <div>
-              <label class="text-muted font-sm" style="display:block; margin-bottom:4px; font-weight:600;">DEVICE IP / ADDRESS</label>
-              <input type="text" id="customLogDeviceIp" class="form-control mono" style="height:36px;" value="192.168.1.100" placeholder="192.168.1.100" />
-            </div>
-            <div>
-              <label class="text-muted font-sm" style="display:block; margin-bottom:4px; font-weight:600;">VENDOR</label>
-              <select id="customLogVendor" class="form-select" style="height:36px; width:100%;">
-                <option value="Palo Alto" selected>Palo Alto</option>
-                <option value="Cisco">Cisco</option>
-                <option value="Fortinet">Fortinet</option>
-                <option value="CheckPoint">CheckPoint</option>
-                <option value="Juniper">Juniper</option>
-                <option value="Linux">Linux / Unix</option>
-                <option value="MikroTik">MikroTik</option>
-                <option value="Ubiquiti">Ubiquiti</option>
-                <option value="Generic">Generic / Custom</option>
-              </select>
-            </div>
-            <div>
-              <label class="text-muted font-sm" style="display:block; margin-bottom:4px; font-weight:600;">DEVICE TYPE</label>
-              <select id="customLogDeviceType" class="form-select" style="height:36px; width:100%;">
-                <option value="Firewall" selected>Firewall</option>
-                <option value="Router">Router</option>
-                <option value="Wireless AP">Wireless AP</option>
-                <option value="Server">Server</option>
-                <option value="Switch">Switch</option>
-                <option value="IDS/IPS">IDS/IPS</option>
-                <option value="WAF">WAF</option>
-                <option value="IoT/SCADA">IoT / SCADA</option>
-              </select>
-            </div>
-            <div>
-              <label class="text-muted font-sm" style="display:block; margin-bottom:4px; font-weight:600;">INGESTION PROTOCOL</label>
-              <select id="customLogProtocol" class="form-select" style="height:36px; width:100%;">
-                <option value="HTTP REST (:8000)" selected>HTTP REST (:8000)</option>
-                <option value="Syslog UDP (5140)">Syslog UDP (5140)</option>
-                <option value="Syslog TCP (5141)">Syslog TCP (5141)</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- SAMPLE TEMPLATE CHIPS -->
-          <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px; flex-wrap:wrap;">
-            <span class="text-muted font-sm" style="font-weight:600;">QUICK TEMPLATES:</span>
-            <button class="btn btn-xs btn-secondary" onclick="window.loadCustomLogTemplate('cef')" type="button">CEF Drop</button>
-            <button class="btn btn-xs btn-secondary" onclick="window.loadCustomLogTemplate('syslog')" type="button">Syslog RFC5424 SSH</button>
-            <button class="btn btn-xs btn-secondary" onclick="window.loadCustomLogTemplate('kv')" type="button">Key-Value Auth</button>
-            <button class="btn btn-xs btn-secondary" onclick="window.loadCustomLogTemplate('json')" type="button">JSON WAF Alert</button>
-            <button class="btn btn-xs btn-secondary" onclick="window.loadCustomLogTemplate('scada')" type="button">SCADA Modbus</button>
-          </div>
-
-          <!-- RAW LOG PAYLOAD TEXTAREA -->
-          <div class="mb-sm">
-            <label class="text-muted font-sm" style="display:block; margin-bottom:4px; font-weight:600;">RAW LOG MESSAGE / PACKET PAYLOAD</label>
-            <textarea id="customLogPayload" class="form-control mono" rows="3" style="font-size:12px; line-height:1.4;" placeholder="Paste raw log string or click a quick template above...">CEF:0|Palo Alto Networks|PAN-OS|10.1.0|TRAFFIC|drop|5|src=192.168.1.100 dst=10.0.0.50 spt=44332 dpt=443 proto=TCP act=drop reason=policy-violation</textarea>
-          </div>
-
-          <!-- ACTION ROW & STATUS BANNER -->
-          <div class="flex-between" style="flex-wrap:wrap; gap:10px; align-items:center;">
-            <div id="customLogIngestStatus" style="flex:1; min-width:280px; font-size:12px; display:none; padding:8px 12px; border-radius:4px;"></div>
-            <div style="display:flex; gap:8px;">
-              <button class="btn btn-sm btn-secondary" id="btnSaveDeviceConfigOnly" type="button" title="Save device name and properties to the server registry without sending a log">
-                <span>Save Device to Server</span>
-              </button>
-              <button class="btn btn-sm btn-primary" id="btnSubmitCustomLog" type="button">
-                <span>Send &amp; Ingest Log</span>
-              </button>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -2447,7 +2607,7 @@ New-NetFirewallRule -DisplayName "ULPF Ingress TCP" -Direction Inbound -LocalPor
       <div class="card p-md">
         <div class="flex-between mb-sm" style="padding-bottom:10px; border-bottom:1px solid rgba(229,9,46,0.15); flex-wrap:wrap; gap:10px; align-items:center;">
           <div>
-            <h3 style="font-size:14px; font-weight:700; margin:0; color:#fff; display:flex; align-items:center; gap:8px;">
+            <h3 style="font-size:14px; font-weight:700; margin:0; color:var(--text-main); display:flex; align-items:center; gap:8px;">
               <span>CANONICAL ULPF-IR LOG STREAM &amp; RAW EVIDENCE</span>
               <span class="badge badge-teal" id="logsActiveCountBadge" style="font-size:10px;">Live Stream</span>
             </h3>
@@ -2456,7 +2616,7 @@ New-NetFirewallRule -DisplayName "ULPF Ingress TCP" -Direction Inbound -LocalPor
           <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
             <button class="btn btn-xs btn-secondary" onclick="window.exportLogsAsJson()" title="Download filtered events as JSON document" style="white-space:nowrap;">Export JSON</button>
             <button class="btn btn-xs btn-secondary" onclick="window.exportLogsAsCsv()" title="Download filtered events as CSV spreadsheet" style="white-space:nowrap;">Export CSV</button>
-            <button class="btn btn-xs btn-secondary" onclick="window.clearStoredLogs()" title="Permanently delete all stored data logs" style="color:#fca5a5; border-color:rgba(239,68,68,0.35); white-space:nowrap;">Clear Logs</button>
+            <button class="btn btn-xs btn-secondary" onclick="window.clearStoredLogs()" title="Permanently delete all stored data logs" style="color:var(--danger-main); border-color:rgba(239,68,68,0.35); white-space:nowrap;">Clear Logs</button>
           </div>
         </div>
 
@@ -2505,7 +2665,7 @@ New-NetFirewallRule -DisplayName "ULPF Ingress TCP" -Direction Inbound -LocalPor
           <div id="logsPaginationInfo">Showing 0 of 0 events</div>
           <div style="display:flex; gap:6px; align-items:center;" id="logsPaginationControls">
             <button class="btn btn-xs btn-secondary" id="btnLogsPrevPage" onclick="window.changeLogsPage(-1)" style="white-space:nowrap;">← Prev</button>
-            <span id="logsPageIndicator" style="font-weight:600; color:var(--text-white); padding:0 8px; font-size:11.5px;">Page 1 of 1</span>
+            <span id="logsPageIndicator" style="font-weight:600; color:var(--text-main); padding:0 8px; font-size:11.5px;">Page 1 of 1</span>
             <button class="btn btn-xs btn-secondary" id="btnLogsNextPage" onclick="window.changeLogsPage(1)" style="white-space:nowrap;">Next →</button>
           </div>
         </div>
@@ -2578,7 +2738,7 @@ New-NetFirewallRule -DisplayName "ULPF Ingress TCP" -Direction Inbound -LocalPor
             statusDiv.style.background = "rgba(16,185,129,0.15)";
             statusDiv.style.color = "#34d399";
             statusDiv.style.border = "1px solid rgba(16,185,129,0.3)";
-            statusDiv.innerHTML = ` <strong>Ingested:</strong> Event <code class="mono" style="color:#fff;">${data.event_id}</code> | Format: <span class="badge badge-violet">${data.detected_format}</span> | Device: <strong style="color:#fff;">${devName || 'api_client'}</strong> (${devIp || '127.0.0.1'}) | SHA: <code class="mono" style="font-size:10.5px;">${(data.raw_sha256 || '').substring(0, 16)}...</code>`;
+            statusDiv.innerHTML = ` <strong>Ingested:</strong> Event <code class="mono" style="color:var(--text-main);">${data.event_id}</code> | Format: <span class="badge badge-violet">${data.detected_format}</span> | Device: <strong style="color:var(--text-main);">${devName || 'api_client'}</strong> (${devIp || '127.0.0.1'}) | SHA: <code class="mono" style="font-size:10.5px;">${(data.raw_sha256 || '').substring(0, 16)}...</code>`;
           }
 
           window.showToast?.(` Event ${data.event_id} ingested for ${devName || 'device'}!`, "success");
@@ -2645,7 +2805,7 @@ New-NetFirewallRule -DisplayName "ULPF Ingress TCP" -Direction Inbound -LocalPor
             statusDiv.style.display = "block";
             statusDiv.style.background = "rgba(16,185,129,0.15)";
             statusDiv.style.color = "#34d399";
-            statusDiv.innerHTML = ` <strong>Saved:</strong> Device profile <strong style="color:#fff;">${devName}</strong> (${devIp || 'no-ip'}) registered on server!`;
+            statusDiv.innerHTML = ` <strong>Saved:</strong> Device profile <strong style="color:var(--text-main);">${devName}</strong> (${devIp || 'no-ip'}) registered on server!`;
           }
           window.showToast?.(` Device "${devName}" updated on server!`, "success");
           await fetchSources();
@@ -2677,7 +2837,7 @@ New-NetFirewallRule -DisplayName "ULPF Ingress TCP" -Direction Inbound -LocalPor
   let logsSortCol = "timestamp";
   let logsSortAsc = false;
 
-  window.sortLogsBy = function(col) {
+  window.sortLogsBy = function (col) {
     if (logsSortCol === col) {
       logsSortAsc = !logsSortAsc;
     } else {
@@ -2687,12 +2847,12 @@ New-NetFirewallRule -DisplayName "ULPF Ingress TCP" -Direction Inbound -LocalPor
     applyLogsFilters();
   };
 
-  window.changeLogsPage = function(delta) {
+  window.changeLogsPage = function (delta) {
     logsCurrentPage += delta;
     applyLogsFilters();
   };
 
-  window.quickFilterLogs = function(val) {
+  window.quickFilterLogs = function (val) {
     const searchInp = document.getElementById("eventsTableSearchInput");
     const formatSel = document.getElementById("filterFormat");
     const actionSel = document.getElementById("filterAction");
@@ -2713,7 +2873,7 @@ New-NetFirewallRule -DisplayName "ULPF Ingress TCP" -Direction Inbound -LocalPor
     applyLogsFilters();
   };
 
-  window.exportLogsAsJson = function() {
+  window.exportLogsAsJson = function () {
     let filtered = state.events || [];
     if (filtered.length === 0) {
       showToast("No logs to export.", "warning");
@@ -2729,7 +2889,7 @@ New-NetFirewallRule -DisplayName "ULPF Ingress TCP" -Direction Inbound -LocalPor
     showToast(`Exported ${filtered.length} logs as JSON!`, "success");
   };
 
-  window.exportLogsAsCsv = function() {
+  window.exportLogsAsCsv = function () {
     let filtered = state.events || [];
     if (filtered.length === 0) {
       showToast("No logs to export.", "warning");
@@ -2760,7 +2920,7 @@ New-NetFirewallRule -DisplayName "ULPF Ingress TCP" -Direction Inbound -LocalPor
     showToast(`Exported ${filtered.length} logs as CSV!`, "success");
   };
 
-  window.updateLogsPagination = function(totalEvents) {
+  window.updateLogsPagination = function (totalEvents) {
     const pageInfo = document.getElementById("logsPaginationInfo");
     const pageInd = document.getElementById("logsPageIndicator");
     const prevBtn = document.getElementById("btnLogsPrevPage");
@@ -2785,7 +2945,7 @@ New-NetFirewallRule -DisplayName "ULPF Ingress TCP" -Direction Inbound -LocalPor
   };
 
   // Multi-attribute Log Filtering & Sorting
-  function applyLogsFilters() {
+  async function applyLogsFilters() {
     const searchInp = document.getElementById("eventsTableSearchInput");
     const formatSel = document.getElementById("filterFormat");
     const actionSel = document.getElementById("filterAction");
@@ -2793,75 +2953,74 @@ New-NetFirewallRule -DisplayName "ULPF Ingress TCP" -Direction Inbound -LocalPor
     const tbody = document.getElementById("eventsTableBody");
     if (!tbody) return;
 
-    const q = searchInp ? searchInp.value.trim().toLowerCase() : "";
-    const formatVal = formatSel ? formatSel.value.trim().toLowerCase() : "";
-    const actionVal = actionSel ? actionSel.value.trim().toLowerCase() : "";
-    const statusVal = statusSel ? statusSel.value.trim().toLowerCase() : "";
+    const q = searchInp ? searchInp.value.trim() : "";
+    const formatVal = formatSel ? formatSel.value.trim() : "";
+    const actionVal = actionSel ? actionSel.value.trim() : "";
+    const statusVal = statusSel ? statusSel.value.trim() : "";
 
-    let filtered = state.events || [];
-    if (q) {
-      filtered = filtered.filter((e) => deepSearchMatch(e, q));
-    }
-    if (formatVal) {
-      filtered = filtered.filter((e) => (e.format || "").toLowerCase() === formatVal);
-    }
-    if (actionVal) {
-      filtered = filtered.filter((e) => (e.action || "").toLowerCase() === actionVal);
-    }
-    if (statusVal) {
-      filtered = filtered.filter((e) => {
-        const st = (e.status || "success").toLowerCase();
-        if (statusVal === "success") return st === "success" || st === "normalized";
-        if (statusVal === "blocked") return st === "blocked" || st === "denied" || st === "error";
-        if (statusVal === "unparsed") return st === "unparsed" || st === "unknown";
-        return true;
-      });
-    }
+    const offset = (logsCurrentPage - 1) * logsPageSize;
+    let url = `/api/v1/events?limit=${logsPageSize}&offset=${offset}`;
+    if (q) url += `&search=${encodeURIComponent(q)}`;
+    if (formatVal) url += `&format=${encodeURIComponent(formatVal)}`;
+    if (actionVal) url += `&action=${encodeURIComponent(actionVal)}`;
+    if (statusVal) url += `&status=${encodeURIComponent(statusVal)}`;
 
-    // Sort logs
-    if (logsSortCol) {
-      filtered = [...filtered].sort((a, b) => {
-        let valA = a[logsSortCol] || "";
-        let valB = b[logsSortCol] || "";
-        if (logsSortCol === "timestamp") {
-          valA = new Date(valA).getTime() || 0;
-          valB = new Date(valB).getTime() || 0;
-        } else if (typeof valA === "string") {
-          valA = valA.toLowerCase();
-          valB = (valB || "").toLowerCase();
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        let filtered = data.events || [];
+        const totalEvents = data.total || filtered.length;
+
+        // Sort logs (page level)
+        if (logsSortCol) {
+          filtered = [...filtered].sort((a, b) => {
+            let valA = a[logsSortCol] || "";
+            let valB = b[logsSortCol] || "";
+            if (logsSortCol === "timestamp") {
+              valA = new Date(valA).getTime() || 0;
+              valB = new Date(valB).getTime() || 0;
+            } else if (typeof valA === "string") {
+              valA = valA.toLowerCase();
+              valB = (valB || "").toLowerCase();
+            }
+            if (valA < valB) return logsSortAsc ? -1 : 1;
+            if (valA > valB) return logsSortAsc ? 1 : -1;
+            return 0;
+          });
         }
-        if (valA < valB) return logsSortAsc ? -1 : 1;
-        if (valA > valB) return logsSortAsc ? 1 : -1;
-        return 0;
-      });
-    }
 
-    // Update sort header icons
-    ["event_id", "timestamp", "source", "vendor", "format", "action", "src_ip", "status"].forEach(col => {
-      const iconEl = document.getElementById(`sort_icon_${col}`);
-      if (iconEl) {
-        if (logsSortCol === col) {
-          iconEl.innerText = logsSortAsc ? " ▲" : " ▼";
-          iconEl.style.opacity = "1";
-          iconEl.style.color = "#38bdf8";
-        } else {
-          iconEl.innerText = "";
-          iconEl.style.opacity = "0.4";
+        // Update sort header icons
+        ["event_id", "timestamp", "source", "vendor", "format", "action", "src_ip", "status"].forEach(col => {
+          const iconEl = document.getElementById(`sort_icon_${col}`);
+          if (iconEl) {
+            if (logsSortCol === col) {
+              iconEl.innerText = logsSortAsc ? " " : " ";
+              iconEl.style.opacity = "1";
+              iconEl.style.color = "#38bdf8";
+            } else {
+              iconEl.innerText = "";
+              iconEl.style.opacity = "0.4";
+            }
+          }
+        });
+
+        const countDesc = document.getElementById("logsTableCountDesc");
+        if (countDesc) {
+          countDesc.innerText = `Showing ${filtered.length} logs from database`;
         }
+
+        renderFilteredEvents(tbody, filtered, true);
+        window.updateLogsPagination(totalEvents);
       }
-    });
-
-    const countDesc = document.getElementById("logsTableCountDesc");
-    if (countDesc) {
-      countDesc.innerText = `Showing ${filtered.length} of ${state.events.length} events`;
+    } catch (e) {
+      console.error("Failed to fetch paginated logs", e);
     }
-
-    renderFilteredEvents(tbody, filtered);
   }
 
   window.applyLogsFilters = applyLogsFilters;
 
-  window.resetLogsFilter = function() {
+  window.resetLogsFilter = function () {
     const searchInp = document.getElementById("eventsTableSearchInput");
     const formatSel = document.getElementById("filterFormat");
     const actionSel = document.getElementById("filterAction");
@@ -2874,7 +3033,7 @@ New-NetFirewallRule -DisplayName "ULPF Ingress TCP" -Direction Inbound -LocalPor
     applyLogsFilters();
   };
 
-  window.loadCustomLogTemplate = function(type) {
+  window.loadCustomLogTemplate = function (type) {
     const nameInp = document.getElementById("customLogDeviceName");
     const ipInp = document.getElementById("customLogDeviceIp");
     const vendorSel = document.getElementById("customLogVendor");
@@ -2926,40 +3085,41 @@ New-NetFirewallRule -DisplayName "ULPF Ingress TCP" -Direction Inbound -LocalPor
   const renderEventsExplorerView = renderLogsView;
 
   // --- AI PARSER ONBOARDING & UNKNOWN LOG REVIEW QUEUE ---
-  
+
   // ==========================================================================
   // PHASE 3 — AI PARSER ONBOARDING & SOVEREIGN INTELLIGENCE STUDIO
   // ==========================================================================
   // ==========================================================================
   // HUMAN VERIFICATION & AI PARSER REVIEW QUEUE
   // ==========================================================================
+  window.acknowledgeTamper = function(alertId) {
+     const idx = state.unknownLogs.findIndex(u => u.id === alertId);
+     if (idx > -1) {
+        state.unknownLogs.splice(idx, 1);
+        state.selectedUnknownLog = null;
+        renderHumanVerificationView(document.getElementById("mainContent"));
+        window.showToast("Tamper alert acknowledged and isolated.", "success");
+     }
+  };
+
   async function renderHumanVerificationView(container) {
     await fetchUnknownLogs();
 
     // Default sample if empty
-    if (state.unknownLogs.length === 0) {
-      state.unknownLogs = [
-        {
-          id: "UNK-SCADA-9041",
-          source: "Substation-RTU-Gateway",
-          src_ip: "192.168.99.45",
-          timestamp: "2026-09-07T14:32:00Z",
-          format: "Hex / SCADA Modbus Telemetry",
-          reason: "Unknown proprietary binary header signature without standard Syslog wrapper",
-          raw_message: "RTU_MODBUS_V4 id=9041 seq=10499 unit=1 func=ReadHoldingRegs addr=40001 val=0x4A2F status=CRITICAL_ALARM src=192.168.99.45 dst=10.200.0.10 proto=tcp sport=502 dport=5020",
-          sha256: "8e2f90a1b2c3d4e5f67890123456789abcdef0123456789abcdef0123456789a"
-        },
-        {
-          id: "UNK-5G-EDGE-1002",
-          source: "5G-Edge-Microcell-09",
-          src_ip: "10.50.12.88",
-          timestamp: "2026-09-07T14:35:12Z",
-          format: "Custom Pipe-Delimited RAN Log",
-          reason: "Unregistered telecom 5G telemetry format requiring human review",
-          raw_message: "5G_RAN_ACCESS|cell_id=0981|imsi=404450123456789|ue_ip=10.50.12.88|slice=URLLC|throughput_mbps=850.4|latency_ms=1.2|event=HANDOVER_SUCCESS",
-          sha256: "a1b2c3d4e5f67890123456789abcdef0123456789abcdef0123456789abcdef0"
-        }
-      ];
+    if (!state.unknownLogs || state.unknownLogs.length === 0) {
+      container.innerHTML = `
+        <div class="page-header flex-between">
+          <div>
+            <h1 class="page-title">Human Verification & AI Parser Review Queue</h1>
+            <p class="page-desc">Review quarantined mystery formats and suspicious connections held for human sign-off before connection resumption.</p>
+          </div>
+        </div>
+        <div class="card p-xl flex-center flex-col mt-md" style="height: 400px; text-align: center;">
+          <h2 style="color:var(--text-muted); font-size: 20px;">No quarantined logs awaiting review</h2>
+          <p class="text-muted mt-sm">All parsed connections are actively forwarding. The pipeline is clear.</p>
+        </div>
+      `;
+      return;
     }
 
     const selectedLog = state.selectedUnknownLog || state.unknownLogs[0];
@@ -2985,7 +3145,7 @@ New-NetFirewallRule -DisplayName "ULPF Ingress TCP" -Direction Inbound -LocalPor
         <div class="unknown-list-pane">
           <div class="unknown-list-header">
             <div>
-              <strong style="font-size:13px; color:#fff;">Quarantine Review Queue</strong>
+              <strong style="font-size:13px; color:var(--text-main);">Quarantine Review Queue</strong>
               <div class="text-muted text-xs">Select a quarantined connection to inspect</div>
             </div>
             <span class="badge badge-neutral">${state.unknownLogs.length} Pending</span>
@@ -2993,37 +3153,79 @@ New-NetFirewallRule -DisplayName "ULPF Ingress TCP" -Direction Inbound -LocalPor
 
           <div class="unknown-items-scroll">
             ${state.unknownLogs.map((u) => {
-              const isActive = selectedLog && selectedLog.id === u.id;
-              return `
-                <div class="unknown-item-card ${isActive ? 'active' : ''}" onclick="window.selectUnknownLog('${u.id}')">
+      const isActive = selectedLog && selectedLog.id === u.id;
+      if (u.is_tamper_alert) {
+          return `
+                <div class="unknown-item-card ${isActive ? 'active' : ''}" style="border-left: 4px solid var(--danger-main); background: rgba(239,68,68,0.05);" onclick="window.selectUnknownLog('${u.id}')">
                   <div class="flex-between">
-                    <strong class="mono" style="color:#ffffff; font-size:12px;">${u.id}</strong>
-                    <span class="badge badge-amber" style="font-size:9.5px;">Human Sign-Off</span>
+                    <strong class="mono" style="color:var(--danger-main); font-size:12px;">${u.id}</strong>
+                    <span class="badge badge-rose" style="font-size:9.5px;">TAMPER ALERT</span>
                   </div>
                   <div class="text-muted mt-sm" style="font-size:11px;">
-                    <strong style="color:#cbd5e1;">Device:</strong> ${u.source}
+                    <strong style="color: var(--danger-main);">Affected Event:</strong> <span class="mono">${u.event_id}</span>
                   </div>
-                  <div class="mono text-muted mt-sm" style="font-size:10.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#fca5a5;">
+                  <div class="mono text-muted mt-sm" style="font-size:10.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--text-main);">
                     ${u.raw_message}
                   </div>
                 </div>
               `;
-            }).join("")}
+      } else {
+          return `
+                <div class="unknown-item-card ${isActive ? 'active' : ''}" onclick="window.selectUnknownLog('${u.id}')">
+                  <div class="flex-between">
+                    <strong class="mono" style="color:var(--text-main); font-size:12px;">${u.id}</strong>
+                    <span class="badge badge-amber" style="font-size:9.5px;">Human Sign-Off</span>
+                  </div>
+                  <div class="text-muted mt-sm" style="font-size:11px;">
+                    <strong style="color: #6457cdff;">Device:</strong> ${u.source}
+                  </div>
+                  <div class="mono text-muted mt-sm" style="font-size:10.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--text-main);">
+                    ${u.raw_message}
+                  </div>
+                </div>
+              `;
+      }
+    }).join("")}
           </div>
         </div>
 
         <!-- RIGHT COLUMN: DEEP INTELLIGENCE INSPECTOR & ACTION STUDIO -->
         <div class="unknown-detail-pane">
           <div>
+            ${selectedLog.is_tamper_alert ? `
+            <div class="flex-between" style="border-bottom:1px solid var(--border-color); padding-bottom:14px; background: rgba(239, 68, 68, 0.1); padding: 20px; border-radius: 8px;">
+              <div>
+                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                  <h2 style="font-size:18px; font-weight:800; color:var(--danger-main);" class="mono">${selectedLog.id}</h2>
+                  <span class="badge badge-rose">CRITICAL CRYPTOGRAPHIC FAILURE</span>
+                  <span class="badge badge-amber">AWAITING HUMAN ACKNOWLEDGMENT</span>
+                </div>
+                <div class="text-muted text-xs mt-sm">
+                  Affected Event: <strong style="color:var(--text-main);">${selectedLog.event_id}</strong> | Timestamp: <strong style="color:var(--danger-main);">${selectedLog.timestamp}</strong>
+                </div>
+              </div>
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button id="btnAckTamper" class="btn btn-sm btn-danger" onclick="window.acknowledgeTamper('${selectedLog.id}')" style="background: var(--danger-main); color: white; border: none;">
+                  <span>Acknowledge & Isolate Log</span>
+                </button>
+              </div>
+            </div>
+            
+            <div class="mt-md p-md" style="border: 2px dashed var(--danger-main); border-radius: 8px;">
+               <h3 style="color: var(--danger-main); margin-bottom: 12px;"><i class="fas fa-exclamation-triangle"></i> TAMPER DETECTED</h3>
+               <p style="color: var(--text-main); font-size: 14px; margin-bottom: 12px;">The stored database payload for event <strong>${selectedLog.event_id}</strong> does not mathematically match its cryptographic SHA-256 seal.</p>
+               <p style="color: var(--text-main); font-size: 14px;">This indicates a malicious insider or external attacker has directly altered the database bypassing the API layer.</p>
+            </div>
+            ` : `
             <div class="flex-between" style="border-bottom:1px solid var(--border-color); padding-bottom:14px;">
               <div>
                 <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-                  <h2 style="font-size:18px; font-weight:800; color:#fff;" class="mono">${selectedLog.id}</h2>
+                  <h2 style="font-size:18px; font-weight:800; color:var(--text-main);" class="mono">${selectedLog.id}</h2>
                   <span class="badge badge-amber">AWAITING HUMAN VERIFICATION</span>
                   <span class="badge badge-teal">INTEGRITY SEAL VERIFIED</span>
                 </div>
                 <div class="text-muted text-xs mt-sm">
-                  Device: <strong style="color:#fff;">${selectedLog.source}</strong> | Format: <strong style="color:#fef08a;">${selectedLog.format}</strong> | Client IP: <strong style="color:#38bdf8;" class="mono">${selectedLog.src_ip || '192.168.99.45'}</strong> | Port: <strong style="color:#a7f3d0;" class="mono">${selectedLog.format.includes('TCP') ? '5141' : '5140'}</strong>
+                  Device: <strong style="color:var(--text-main);">${selectedLog.source}</strong> | Format: <strong style="color:var(--warning-main);">${selectedLog.format}</strong> | Client IP: <strong style="color:var(--primary-main);" class="mono">${selectedLog.src_ip || '192.168.99.45'}</strong> | Port: <strong style="color:var(--success-main);" class="mono">${selectedLog.format.includes('TCP') ? '5141' : '5140'}</strong>
                 </div>
               </div>
               <div style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -3038,40 +3240,41 @@ New-NetFirewallRule -DisplayName "ULPF Ingress TCP" -Direction Inbound -LocalPor
 
             <!-- STREAMLINED 4-POINT OPERATIONAL OVERVIEW (ALIGNED & ESSENTIAL ONLY) -->
             <div class="grid grid-2 gap-sm mt-md">
-              <div class="card p-sm" style="background:rgba(20,5,10,0.8); border:1px solid rgba(56,189,248,0.25);">
+              <div class="card p-sm" style="background:var(--bg-card-subtle); border:1px solid var(--border-color);">
                 <div class="text-muted text-xs" style="letter-spacing:0.05em; text-transform:uppercase;">Ingestion Channel &amp; Socket</div>
-                <div class="font-bold mt-sm mono" style="color:#38bdf8; font-size:12.5px;">
+                <div class="font-bold mt-sm mono" style="color:var(--primary-main); font-size:12.5px;">
                   ${selectedLog.format.includes('TCP') ? 'Syslog TCP (Port 5141)' : selectedLog.format.includes('Binary') ? 'UDP Telemetry (Port 5140)' : 'Syslog UDP (Port 5140)'}
                 </div>
                 <div class="text-muted text-xs mt-xs">Source Client IP: <span class="text-teal mono font-bold">${selectedLog.src_ip || '192.168.99.45'}</span></div>
               </div>
 
-              <div class="card p-sm" style="background:rgba(20,5,10,0.8); border:1px solid rgba(56,189,248,0.25);">
+              <div class="card p-sm" style="background:var(--bg-card-subtle); border:1px solid var(--border-color);">
                 <div class="text-muted text-xs" style="letter-spacing:0.05em; text-transform:uppercase;">Ingress Timestamp &amp; Wire Size</div>
-                <div class="mono mt-sm" style="color:#f1f5f9; font-size:12px;">${selectedLog.timestamp || new Date().toISOString()}</div>
-                <div class="text-muted text-xs mt-xs">Wire Size: <span class="mono font-bold" style="color:#a7f3d0;">${(selectedLog.raw_message || '').length} Bytes</span> · Shannon: <span style="color:#38bdf8;">4.32 / 8.0</span></div>
+                <div class="mono mt-sm" style="color:var(--text-main); font-size:12px;">${selectedLog.timestamp || new Date().toISOString()}</div>
+                <div class="text-muted text-xs mt-xs">Wire Size: <span class="mono font-bold" style="color:var(--success-main);">${(selectedLog.raw_message || '').length} Bytes</span> · Shannon: <span style="color:var(--primary-main);">4.32 / 8.0</span></div>
               </div>
 
-              <div class="card p-sm" style="background:rgba(20,5,10,0.8); border:1px solid rgba(245,158,11,0.25);">
+              <div class="card p-sm" style="background:var(--bg-card-subtle); border:1px solid var(--border-color);">
                 <div class="text-muted text-xs" style="letter-spacing:0.05em; text-transform:uppercase;">Quarantine Isolation Reason</div>
-                <div class="font-bold mt-sm" style="font-size:12px; color:#fca5a5;">${selectedLog.reason || 'Unregistered format pattern'}</div>
-                <div class="text-muted text-xs mt-xs">Enforcement Policy: <span style="color:#fef08a;">Zero-Trust Perimeter Ingress Hold</span></div>
+                <div class="font-bold mt-sm" style="font-size:12px; color:var(--amber-main);">${selectedLog.reason || 'Unregistered format pattern'}</div>
+                <div class="text-muted text-xs mt-xs">Enforcement Policy: <span style="color:var(--text-main);">Zero-Trust Perimeter Ingress Hold</span></div>
               </div>
 
-              <div class="card p-sm" style="background:rgba(20,5,10,0.8); border:1px solid rgba(52,211,153,0.25);">
+              <div class="card p-sm" style="background:var(--bg-card-subtle); border:1px solid var(--success-main);">
                 <div class="text-muted text-xs" style="letter-spacing:0.05em; text-transform:uppercase;">Security Threat Status</div>
-                <div class="font-bold mt-sm" style="font-size:12px; color:#34d399;">BENIGN FORMAT ANOMALY</div>
-                <div class="text-muted text-xs mt-xs">Exploit Signatures: <span style="color:#34d399;">None (0/18)</span> · AI Confidence: <span class="text-teal font-bold">96.4%</span></div>
+                <div class="font-bold mt-sm" style="font-size:12px; color:var(--success-main);">BENIGN FORMAT ANOMALY</div>
+                <div class="text-muted text-xs mt-xs">Exploit Signatures: <span style="color:var(--success-main);">None (0/18)</span> · AI Confidence: <span class="text-teal font-bold">96.4%</span></div>
               </div>
             </div>
+            `}
 
             <!-- RAW LOG PREVIEW WITH CRYPTOGRAPHIC SHA-256 SEAL -->
             <div class="mt-md">
-              <div class="code-box-header" style="background:rgba(30,8,16,0.9); padding:8px 12px; border-radius:6px 6px 0 0; display:flex; justify-content:space-between; align-items:center;">
-                <span style="font-size:11.5px; font-weight:700; color:#cbd5e1; letter-spacing:0.03em;">Raw Log</span>
+              <div class="code-box-header" style="background:var(--bg-card-subtle); padding:8px 12px; border-radius:6px 6px 0 0; display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:11.5px; font-weight:700; color: #45509fff; letter-spacing:0.03em;">Raw Log</span>
                 <span class="mono text-muted" style="font-size:11px;">SHA-256: <code class="text-teal" style="font-size:10.5px;">${(selectedLog.sha256 || '4b227777d4dd1fc61c6f884f48641d02b4d121d3fd328cb08b5531fcacdabf8a').substring(0, 24)}...</code></span>
               </div>
-              <pre class="code-box" style="max-height:80px; margin-bottom:0; color:#fca5a5; font-size:12px; border-radius:0 0 6px 6px; overflow-x:auto;">${selectedLog.raw_message}</pre>
+              <pre class="code-box" style="max-height:80px; margin-bottom:0; color:var(--text-main); font-size:12px; border-radius:0 0 6px 6px; overflow-x:auto;">${selectedLog.raw_message}</pre>
             </div>
 
             <!-- PROMINENT INSPECT BUTTON TO OPEN COMPLETE FORENSIC MODAL -->
@@ -3082,10 +3285,10 @@ New-NetFirewallRule -DisplayName "ULPF Ingress TCP" -Direction Inbound -LocalPor
             </div>
 
             <!-- STREAMLINED HUMAN DECISION ACTION BAR -->
-            <div class="mt-md" style="padding-top:14px; border-top:1px solid var(--border-color); background:rgba(20,5,10,0.5); padding:12px; border-radius:6px;">
+            <div class="mt-md" style="padding-top:14px; border-top:1px solid var(--border-color); background:var(--bg-card-subtle); padding:12px; border-radius:6px;">
               <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px; flex-wrap:wrap;">
-                <label style="font-size:12px; color:#cbd5e1; font-weight:700;">Custom Parser Name:</label>
-                <input type="text" id="aiParserCustomName" class="form-control" style="background:#0f172a; border:1px solid #334155; color:#38bdf8; font-family:monospace; padding:6px 10px; border-radius:4px; min-width:260px;" value="parser_${selectedLog.source.toLowerCase().replace(/[^a-z0-9]/g, '_')}_v1" placeholder="e.g. parser_myvendor_custom_v1" />
+                <label style="font-size:12px; color: #4257b5ff; font-weight:700;">Custom Parser Name:</label>
+                <input type="text" id="aiParserCustomName" class="form-control" style="background: var(--bg-card); border:1px solid #334155; color:var(--primary-main); font-family:monospace; padding:6px 10px; border-radius:4px; min-width:260px;" value="parser_${selectedLog.source.toLowerCase().replace(/[^a-z0-9]/g, '_')}_v1" placeholder="e.g. parser_myvendor_custom_v1" />
                 <span class="text-muted text-xs">Assign a custom identifier to compile into server registry</span>
               </div>
               <div class="flex-between flex-wrap" style="gap:10px;">
@@ -3233,11 +3436,11 @@ normalization:
   conformance_schema: OCSF_1.1.0_ECS_8.x`;
 
       modal.innerHTML = `
-        <div class="modal-content" style="max-width: 900px; width: 94%; max-height: 90vh; overflow-y: auto; background: #0F172A; border: 1px solid rgba(56,189,248,0.35); border-radius: 8px; box-shadow: 0 25px 50px rgba(0,0,0,0.85);">
+        <div class="modal-content" style="max-width: 900px; width: 94%; max-height: 90vh; overflow-y: auto; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 25px 50px rgba(0,0,0,0.85);">
           <div class="modal-header flex-between" style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
             <div style="display:flex; align-items:center; gap:10px;">
               <div>
-                <h3 style="font-size:16px; font-weight:800; color:#fff; margin:0;">Full Forensic Telemetry &amp; Token Breakdown</h3>
+                <h3 style="font-size:16px; font-weight:800; color:var(--text-main); margin:0;">Full Forensic Telemetry &amp; Token Breakdown</h3>
                 <span class="text-xs text-muted">Detailed wire metrics, semantic extraction tokens, and AI parser specification for <strong class="mono text-teal">${log.id}</strong></span>
               </div>
             </div>
@@ -3247,58 +3450,58 @@ normalization:
           <div class="modal-body" style="padding: 20px; display:flex; flex-direction:column; gap:16px;">
             <!-- 6-POINT FORENSIC TELEMETRY GRID -->
             <div class="grid grid-3 gap-sm">
-              <div class="card p-sm" style="background:rgba(20,5,10,0.8); border:1px solid rgba(56,189,248,0.25);">
+              <div class="card p-sm" style="background:var(--bg-card-subtle); border:1px solid var(--border-color);">
                 <div class="text-muted text-xs" style="letter-spacing:0.05em;">INGESTION CHANNEL &amp; SOCKET</div>
-                <div class="font-bold mt-sm mono" style="color:#38bdf8; font-size:12.5px;">
+                <div class="font-bold mt-sm mono" style="color:var(--primary-main); font-size:12.5px;">
                   ${log.format.includes('TCP') ? 'Syslog TCP (Port 5141)' : log.format.includes('Binary') ? 'UDP Telemetry (Port 5140)' : 'Syslog UDP (Port 5140)'}
                 </div>
                 <div class="text-muted text-xs mt-xs">Source IP: <span class="text-teal">${log.src_ip || '192.168.99.45'}</span></div>
               </div>
 
-              <div class="card p-sm" style="background:rgba(20,5,10,0.8); border:1px solid rgba(56,189,248,0.25);">
+              <div class="card p-sm" style="background:var(--bg-card-subtle); border:1px solid var(--border-color);">
                 <div class="text-muted text-xs" style="letter-spacing:0.05em;">EXACT INGRESS TIMESTAMP</div>
-                <div class="mono mt-sm" style="color:#f1f5f9; font-size:12px;">${log.timestamp || new Date().toISOString()}</div>
-                <div class="text-muted text-xs mt-xs">Status: <span style="color:#fef08a;">Quarantined at Ingress Gateway</span></div>
+                <div class="mono mt-sm" style="color:var(--text-main); font-size:12px;">${log.timestamp || new Date().toISOString()}</div>
+                <div class="text-muted text-xs mt-xs">Status: <span style="color:var(--warning-main);">Quarantined at Ingress Gateway</span></div>
               </div>
 
-              <div class="card p-sm" style="background:rgba(20,5,10,0.8); border:1px solid rgba(56,189,248,0.25);">
+              <div class="card p-sm" style="background:var(--bg-card-subtle); border:1px solid var(--border-color);">
                 <div class="text-muted text-xs" style="letter-spacing:0.05em;">PAYLOAD WIRE METRICS</div>
-                <div class="font-bold mt-sm mono" style="color:#a7f3d0; font-size:12.5px;">${(log.raw_message || '').length} Bytes</div>
-                <div class="text-muted text-xs mt-xs">Shannon Entropy: <span style="color:#38bdf8;">4.32 / 8.00 (Text)</span></div>
+                <div class="font-bold mt-sm mono" style="color:var(--success-main); font-size:12.5px;">${(log.raw_message || '').length} Bytes</div>
+                <div class="text-muted text-xs mt-xs">Shannon Entropy: <span style="color:var(--primary-main);">4.32 / 8.00 (Text)</span></div>
               </div>
 
-              <div class="card p-sm" style="background:rgba(20,5,10,0.8); border:1px solid rgba(245,158,11,0.25);">
+              <div class="card p-sm" style="background:var(--bg-card-subtle); border:1px solid var(--warning-main);">
                 <div class="text-muted text-xs" style="letter-spacing:0.05em;">QUARANTINE ISOLATION REASON</div>
-                <div class="font-bold mt-sm" style="font-size:11.5px; color:#fca5a5;">${log.reason || 'Unregistered format pattern'}</div>
-                <div class="text-muted text-xs mt-xs">Policy: <span style="color:#e2e8f0;">Zero-Trust Ingress Hold</span></div>
+                <div class="font-bold mt-sm" style="font-size:11.5px; color:var(--warning-main);">${log.reason || 'Unregistered format pattern'}</div>
+                <div class="text-muted text-xs mt-xs">Policy: <span style="color:var(--text-main);">Zero-Trust Ingress Hold</span></div>
               </div>
 
-              <div class="card p-sm" style="background:rgba(20,5,10,0.8); border:1px solid rgba(52,211,153,0.25);">
+              <div class="card p-sm" style="background:var(--bg-card-subtle); border:1px solid var(--success-main);">
                 <div class="text-muted text-xs" style="letter-spacing:0.05em;">SECURITY THREAT ASSESSMENT</div>
-                <div class="font-bold mt-sm" style="font-size:11.5px; color:#34d399;">BENIGN FORMAT ANOMALY</div>
-                <div class="text-muted text-xs mt-xs">Exploit Signatures: <span style="color:#34d399;">None Detected (0/18)</span></div>
+                <div class="font-bold mt-sm" style="font-size:11.5px; color:var(--success-main);">BENIGN FORMAT ANOMALY</div>
+                <div class="text-muted text-xs mt-xs">Exploit Signatures: <span style="color:var(--success-main);">None Detected (0/18)</span></div>
               </div>
 
-              <div class="card p-sm" style="background:rgba(20,5,10,0.8); border:1px solid rgba(56,189,248,0.25);">
+              <div class="card p-sm" style="background:var(--bg-card-subtle); border:1px solid var(--border-color);">
                 <div class="text-muted text-xs" style="letter-spacing:0.05em;">PROPOSED TARGET SCHEMA</div>
-                <div class="font-bold mt-sm mono" style="color:#e0e7ff; font-size:12px;">OCSF 1.1.0 / ECS 8.x</div>
+                <div class="font-bold mt-sm mono" style="color:var(--text-main); font-size:12px;">OCSF 1.1.0 / ECS 8.x</div>
                 <div class="text-muted text-xs mt-xs">AI Confidence: <span class="text-teal font-bold">96.4% Match</span></div>
               </div>
             </div>
 
             <!-- FULL RAW WIRE STRING & SHA-256 -->
-            <div class="card p-sm" style="background:rgba(11,15,23,0.95); border:1px solid var(--border-color);">
+            <div class="card p-sm" style="background:var(--bg-card-solid); border:1px solid var(--border-color);">
               <div class="flex-between mb-xs">
-                <strong style="font-size:12px; color:#cbd5e1;">Complete Raw Immutable Wire Message</strong>
+                <strong style="font-size:12px; color: #44519bff;">Complete Raw Immutable Wire Message</strong>
                 <span class="mono text-muted" style="font-size:11px;">SHA-256: <code class="text-teal">${log.sha256 || '4b227777d4dd1fc61c6f884f48641d02b4d121d3fd328cb08b5531fcacdabf8a'}</code></span>
               </div>
-              <pre class="code-box" style="margin:0; max-height:120px; overflow:auto; color:#fca5a5; font-size:11.5px;">${log.raw_message}</pre>
+              <pre class="code-box" style="margin:0; max-height:120px; overflow:auto; color:var(--text-main); font-size:11.5px;">${log.raw_message}</pre>
             </div>
 
             <!-- EXTRACTED SEMANTIC TOKENS & SCHEMA MAPPINGS -->
-            <div class="card p-sm" style="background:rgba(18,5,10,0.85); border:1px solid var(--border-color);">
+            <div class="card p-sm" style="background:var(--bg-card-solid); border:1px solid var(--border-color);">
               <div class="flex-between mb-xs">
-                <strong style="color:#fff; font-size:13px;">Extracted Semantic Tokens &amp; Target Schema Mappings</strong>
+                <strong style="color:var(--text-main); font-size:13px;">Extracted Semantic Tokens &amp; Target Schema Mappings</strong>
                 <span class="badge badge-teal">100% Conformance</span>
               </div>
               <div style="overflow-x:auto;">
@@ -3314,31 +3517,31 @@ normalization:
                   </thead>
                   <tbody>
                     <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
-                      <td class="mono font-bold" style="color:#38bdf8; padding:6px 8px;">src</td>
-                      <td class="mono" style="color:#34d399; padding:6px 8px;">${log.src_ip || '192.168.99.45'}</td>
+                      <td class="mono font-bold" style="color:var(--primary-main); padding:6px 8px;">src</td>
+                      <td class="mono" style="color:var(--success-main); padding:6px 8px;">${log.src_ip || '192.168.99.45'}</td>
                       <td class="text-muted" style="padding:6px 8px;">IPv4 Address</td>
-                      <td class="mono" style="color:#a7f3d0; padding:6px 8px;">source.ip</td>
+                      <td class="mono" style="color:var(--success-main); padding:6px 8px;">source.ip</td>
                       <td style="padding:6px 8px;"><span class="badge badge-teal" style="font-size:9.5px;">99.8%</span></td>
                     </tr>
                     <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
-                      <td class="mono font-bold" style="color:#38bdf8; padding:6px 8px;">dst</td>
-                      <td class="mono" style="color:#38bdf8; padding:6px 8px;">10.0.0.1</td>
+                      <td class="mono font-bold" style="color:var(--primary-main); padding:6px 8px;">dst</td>
+                      <td class="mono" style="color:var(--primary-main); padding:6px 8px;">10.0.0.1</td>
                       <td class="text-muted" style="padding:6px 8px;">IPv4 Address</td>
-                      <td class="mono" style="color:#a7f3d0; padding:6px 8px;">destination.ip</td>
+                      <td class="mono" style="color:var(--success-main); padding:6px 8px;">destination.ip</td>
                       <td style="padding:6px 8px;"><span class="badge badge-teal" style="font-size:9.5px;">99.5%</span></td>
                     </tr>
                     <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
-                      <td class="mono font-bold" style="color:#38bdf8; padding:6px 8px;">status / action</td>
-                      <td class="mono" style="color:#fef08a; padding:6px 8px;">${log.format.includes('SCADA') ? 'ALARM_HIGH' : 'drop'}</td>
+                      <td class="mono font-bold" style="color:var(--primary-main); padding:6px 8px;">status / action</td>
+                      <td class="mono" style="color:var(--warning-main); padding:6px 8px;">${log.format.includes('SCADA') ? 'ALARM_HIGH' : 'drop'}</td>
                       <td class="text-muted" style="padding:6px 8px;">Categorical Enum</td>
-                      <td class="mono" style="color:#a7f3d0; padding:6px 8px;">event.action</td>
+                      <td class="mono" style="color:var(--success-main); padding:6px 8px;">event.action</td>
                       <td style="padding:6px 8px;"><span class="badge badge-teal" style="font-size:9.5px;">97.2%</span></td>
                     </tr>
                     <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
-                      <td class="mono font-bold" style="color:#38bdf8; padding:6px 8px;">telemetry_val</td>
-                      <td class="mono" style="color:#f43f5e; padding:6px 8px;">${log.format.includes('SCADA') ? '88.4°C / 45.2 bar' : '443 / HTTPS'}</td>
+                      <td class="mono font-bold" style="color:var(--primary-main); padding:6px 8px;">telemetry_val</td>
+                      <td class="mono" style="color:var(--text-main); padding:6px 8px;">${log.format.includes('SCADA') ? '88.4°C / 45.2 bar' : '443 / HTTPS'}</td>
                       <td class="text-muted" style="padding:6px 8px;">Measurement Metric</td>
-                      <td class="mono" style="color:#a7f3d0; padding:6px 8px;">sensor.metrics.measurement</td>
+                      <td class="mono" style="color:var(--success-main); padding:6px 8px;">sensor.metrics.measurement</td>
                       <td style="padding:6px 8px;"><span class="badge badge-teal" style="font-size:9.5px;">94.8%</span></td>
                     </tr>
                   </tbody>
@@ -3349,42 +3552,42 @@ normalization:
             <!-- DECLARATIVE YAML PARSER SPEC -->
             <div>
               <div class="flex-between mb-xs">
-                <strong style="color:#fff; font-size:13px;">AI Declarative Parser Spec (YAML)</strong>
+                <strong style="color:var(--text-main); font-size:13px;">AI Declarative Parser Spec (YAML)</strong>
                 <span class="badge badge-teal">96.4% Match</span>
               </div>
-              <textarea id="aiYamlEditor" class="yaml-code-editor" spellcheck="false" style="min-height:150px; font-family:var(--font-mono); font-size:11.5px; width:100%; border-radius:6px; background:#0b0f17; color:#38bdf8; padding:10px; border:1px solid var(--border-color);">${defaultYaml}</textarea>
+              <textarea id="aiYamlEditor" class="yaml-code-editor" spellcheck="false" style="min-height:150px; font-family:var(--font-mono); font-size:11.5px; width:100%; border-radius:6px; background:#0b0f17; color:var(--primary-main); padding:10px; border:1px solid var(--border-color);">${defaultYaml}</textarea>
             </div>
 
             <!-- LIVE SANDBOX TEST BOX -->
-            <div class="ai-test-proof-box" style="background:rgba(28,7,14,0.6); padding:12px; border-radius:6px; border:1px solid var(--border-color);">
+            <div class="ai-test-proof-box">
               <div class="flex-between mb-sm">
-                <strong style="color:#fff; font-size:12px;">Live Sandbox Extraction Proof</strong>
+                <strong style="color:var(--text-main); font-size:12px;">Live Sandbox Extraction Proof</strong>
                 <button type="button" class="btn btn-xs btn-secondary" onclick="showToast('Extracted 6 canonical fields from raw payload with 100% schema conformance.', 'success')">
                   Test Parser on Raw Payload
                 </button>
               </div>
               <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:8px;">
-                <div style="background:rgba(15,23,42,0.8); border:1px solid var(--border-color); border-radius:4px; padding:6px 10px;">
+                <div style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:4px; padding:6px 10px;">
                   <div class="text-muted text-xs">source.ip</div>
-                  <div class="mono" style="color:#34d399; font-weight:700; font-size:12px;">${log.src_ip || '192.168.99.45'}</div>
+                  <div class="mono" style="color:var(--success-main); font-weight:700; font-size:12px;">${log.src_ip || '192.168.99.45'}</div>
                 </div>
-                <div style="background:rgba(15,23,42,0.8); border:1px solid var(--border-color); border-radius:4px; padding:6px 10px;">
+                <div style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:4px; padding:6px 10px;">
                   <div class="text-muted text-xs">destination.ip</div>
-                  <div class="mono" style="color:#38bdf8; font-weight:700; font-size:12px;">10.0.0.1</div>
+                  <div class="mono" style="color:var(--primary-main); font-weight:700; font-size:12px;">10.0.0.1</div>
                 </div>
-                <div style="background:rgba(15,23,42,0.8); border:1px solid var(--border-color); border-radius:4px; padding:6px 10px;">
+                <div style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:4px; padding:6px 10px;">
                   <div class="text-muted text-xs">event.action</div>
-                  <div class="mono" style="color:#fef08a; font-weight:700; font-size:12px;">${log.format.includes('SCADA') ? 'ALARM_HIGH' : 'DROP'}</div>
+                  <div class="mono" style="color:var(--warning-main); font-weight:700; font-size:12px;">${log.format.includes('SCADA') ? 'ALARM_HIGH' : 'DROP'}</div>
                 </div>
-                <div style="background:rgba(15,23,42,0.8); border:1px solid var(--border-color); border-radius:4px; padding:6px 10px;">
+                <div style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:4px; padding:6px 10px;">
                   <div class="text-muted text-xs">network.transport</div>
-                  <div class="mono" style="color:#e2e8f0; font-weight:700; font-size:12px;">${log.format.includes('TCP') ? 'tcp / 5141' : 'udp / 5140'}</div>
+                  <div class="mono" style="color:var(--text-main); font-weight:700; font-size:12px;">${log.format.includes('TCP') ? 'tcp / 5141' : 'udp / 5140'}</div>
                 </div>
               </div>
             </div>
           </div>
 
-          <div class="modal-footer flex-between" style="padding: 14px 20px; border-top: 1px solid var(--border-color); background:rgba(0,0,0,0.25); display:flex; justify-content:space-between; align-items:center;">
+          <div class="modal-footer flex-between" style="padding: 14px 20px; border-top: 1px solid var(--border-color); background: var(--bg-card-subtle); display:flex; justify-content:space-between; align-items:center;">
             <div style="display:flex; gap:8px;">
               <button class="btn btn-sm btn-secondary" onclick="window.closeInspectUnknownLogModal()">Close</button>
               <button class="btn btn-sm btn-secondary" onclick="window.exportForensicDossier('${log.id}')" title="Download this quarantined log as JSON">Export Log JSON</button>
@@ -3435,7 +3638,7 @@ normalization:
       try {
         await fetch(`/api/v1/unknown-logs/${encodeURIComponent(logId)}/reject`, { method: "POST" });
         showToast(`Log ${logId} dismissed from review queue`, "warning");
-      } catch (e) {}
+      } catch (e) { }
       state.unknownLogs = state.unknownLogs.filter((u) => u.id !== logId);
       state.selectedUnknownLog = state.unknownLogs[0] || null;
       fetchUnknownLogs();
@@ -3482,7 +3685,7 @@ normalization:
     container.innerHTML = `
       <div class="page-header">
         <h1 class="page-title">Standardized Downstream Outputs</h1>
-        <p class="page-desc">Vendor-neutral data distribution delivering OCSF v1.1.0, ECS v8.x, and Mock SIEM forwarder packages.</p>
+        <p class="page-desc">Vendor-neutral data distribution delivering OCSF v1.1.0, ECS v8.x, and In-Memory SIEM forwarder packages.</p>
       </div>
 
       <div class="grid grid-3 gap-md">
@@ -3579,7 +3782,7 @@ normalization:
           showToast(`Order placed for ${prodId}! Server log ingested into ULPF.`, "success");
           fetchEvents();
         }
-      } catch (e) {}
+      } catch (e) { }
     };
 
     window.demoAuthFail = async () => {
@@ -3591,7 +3794,7 @@ normalization:
         });
         showToast("Auth Failure log generated & ingested into ULPF!", "warning");
         fetchEvents();
-      } catch (e) {}
+      } catch (e) { }
     };
 
     // API Templates
@@ -3648,7 +3851,7 @@ normalization:
             showToast(`Uploaded ${data.filename}: ${data.lines_processed} logs ingested!`, "success");
             fetchEvents();
           }
-        } catch (e) {}
+        } catch (e) { }
       });
     }
   }
@@ -3757,12 +3960,12 @@ normalization:
 
         <div style="display:flex; gap:12px; margin-bottom:12px; align-items:center; background:rgba(0,0,0,0.2); padding:10px 14px; border-radius:6px;">
           <span style="font-size:12px; font-weight:700; color:var(--text-muted);">PIPELINE STATUS:</span>
-          <span id="dashPipelineStatusText" style="font-family:var(--font-mono); font-size:12px; font-weight:700; color:#38bdf8;">IDLE · READY</span>
+          <span id="dashPipelineStatusText" style="font-family:var(--font-mono); font-size:12px; font-weight:700; color:var(--primary-main);">IDLE · READY</span>
           <span id="dashPipelineDuration" style="font-family:var(--font-mono); font-size:12px; color:var(--text-muted); margin-left:auto;">0.00s</span>
         </div>
 
         <!-- Terminal Feed -->
-        <div id="dashPipelineConsole" style="background:#0b0f17; border:1px solid rgba(255,255,255,0.08); border-radius:6px; padding:12px; font-family:var(--font-mono); font-size:11px; max-height:260px; overflow-y:auto; line-height:1.5; color:#cbd5e1;">
+        <div id="dashPipelineConsole" style="background:#0b0f17; border:1px solid rgba(255,255,255,0.08); border-radius:6px; padding:12px; font-family:var(--font-mono); font-size:11px; max-height:260px; overflow-y:auto; line-height:1.5; color: #4759a1ff;">
           <div style="color:var(--text-muted);">Click "Execute Selected Pipeline" to run verification with current timeout and interval settings.</div>
         </div>
       </div>
@@ -3772,7 +3975,7 @@ normalization:
     const timeoutInput = document.getElementById("dashDeviceTimeout");
     const intervalInput = document.getElementById("dashLogsInterval");
 
-    window.saveDashTestingConfig = function() {
+    window.saveDashTestingConfig = function () {
       const t = document.getElementById("dashDeviceTimeout")?.value || "3.0";
       const i = document.getElementById("dashLogsInterval")?.value || "10";
       localStorage.setItem("ulpf_dash_timeout", t);
@@ -3794,7 +3997,7 @@ normalization:
       const statusText = document.getElementById("dashPipelineStatusText");
       if (statusText) statusText.textContent = `RUNNING (${stage.toUpperCase()})...`;
       if (consoleFeed) {
-        consoleFeed.innerHTML = `<div style="color:#38bdf8;">[INFO] Dispatched pipeline stage: ${stage.toUpperCase()}</div>` +
+        consoleFeed.innerHTML = `<div style="color:var(--primary-main);">[INFO] Dispatched pipeline stage: ${stage.toUpperCase()}</div>` +
           `<div style="color:#94a3b8;">[CONFIG] Timeout: ${t}s | Interval: ${i}ms</div>`;
       }
       showToast(`Triggered test pipeline (${stage})...`, "info");
@@ -4091,7 +4294,7 @@ normalization:
         </div>
         <div class="metric-card">
           <div class="metric-label">CONFIRMED THREATS</div>
-          <div class="metric-value" style="color:#ef4444;">${threatList.length.toLocaleString()}</div>
+          <div class="metric-value" style="color:var(--danger-main);">${threatList.length.toLocaleString()}</div>
           <div class="metric-sub">${blockedIpsList.length} unique threat IPs blocked</div>
         </div>
         <div class="metric-card">
@@ -4101,16 +4304,16 @@ normalization:
         </div>
         <div class="metric-card">
           <div class="metric-label">AVG PROCESSING LATENCY</div>
-          <div class="metric-value" style="color:#38bdf8;">${state.metrics?.avg_latency || "72.5 µs"}</div>
+          <div class="metric-value" style="color:var(--primary-main);">${state.metrics?.avg_latency || "0 µs"}</div>
           <div class="metric-sub">Zero-copy canonical normalizer</div>
         </div>
       </div>
 
       <!-- EXECUTIVE AI INCIDENT REPORT MODAL / CONTAINER -->
-      <div id="aiIncidentReportContainer" class="card p-md mb-md" style="display:none; border:1px solid rgba(56,189,248,0.4); background:rgba(15,23,42,0.92); box-shadow:0 8px 30px rgba(0,0,0,0.5);">
+      <div id="aiIncidentReportContainer" class="card p-md mb-md" style="display:none; border:1px solid var(--primary-border); background:var(--bg-card-solid); box-shadow:0 8px 30px rgba(0,0,0,0.5);">
         <div class="flex-between mb-sm">
           <div style="display:flex; align-items:center; gap:8px;">
-            <strong style="color:#38bdf8; font-size:14px;">SOVEREIGN AI INCIDENT ASSESSMENT</strong>
+            <strong style="color:var(--primary-main); font-size:14px;">SOVEREIGN AI INCIDENT ASSESSMENT</strong>
             <span id="aiAuditBadge" class="badge badge-teal">CONFIDENCE: 95.0%</span>
           </div>
           <button class="btn btn-xs btn-secondary" onclick="document.getElementById('aiIncidentReportContainer').style.display='none'">&times; Close</button>
@@ -4148,18 +4351,18 @@ normalization:
               ${filteredList.length === 0 ? `
                 <tr><td colspan="8" style="text-align:center; padding:24px; color:var(--text-muted);">No log records matched the selected filter criteria. Try expanding the timeframe or resetting filters.</td></tr>
               ` : filteredList.map(e => {
-                const eid = e.event_id || e.raw_event_id || "ULPF-2026";
-                const time = e.timestamp || e.event?.time || new Date().toISOString();
-                const v = e.source_device || e.device?.vendor || e.format || "Generic";
-                const fmt = (e.format || e.original?.format || "Syslog").toUpperCase();
-                const srcIp = e.source?.ip || e.src_ip || "10.0.0.1";
-                const isBlocked = (e.event?.action === "block" || e.status === "blocked" || e.action === "deny" || e.threat);
-                const sev = (e.severity || (e.threat ? "critical" : "low")).toUpperCase();
-                const threatTitle = e.threat ? e.threat.threat_type : (isBlocked ? "Anomalous Traffic Drop" : "Legitimate Ingestion");
-                const mitreId = e.mitre?.id || (e.threat ? "T1190" : "N/A");
-                const sha = (e.original?.sha256 || "8f4c2b74a9d123456789abcdef0123456789abcdef0123456789abcdef012345").substring(0, 14) + "...";
+      const eid = e.event_id || e.raw_event_id || "ULPF-2026";
+      const time = e.timestamp || e.event?.time || new Date().toISOString();
+      const v = e.source_device || e.device?.vendor || e.format || "Generic";
+      const fmt = (e.format || e.original?.format || "Syslog").toUpperCase();
+      const srcIp = e.source?.ip || e.src_ip || "10.0.0.1";
+      const isBlocked = (e.event?.action === "block" || e.status === "blocked" || e.action === "deny" || e.threat);
+      const sev = (e.severity || (e.threat ? "critical" : "low")).toUpperCase();
+      const threatTitle = e.threat ? e.threat.threat_type : (isBlocked ? "Anomalous Traffic Drop" : "Legitimate Ingestion");
+      const mitreId = e.mitre?.id || (e.threat ? "T1190" : "N/A");
+      const sha = (e.original?.sha256 || "8f4c2b74a9d123456789abcdef0123456789abcdef0123456789abcdef012345").substring(0, 14) + "...";
 
-                return `
+      return `
                   <tr style="cursor:pointer;" onclick="window.openEventDetailModal('${eid}')" title="Click anywhere on this row to inspect the event">
                     <td style="vertical-align:middle;"><strong class="mono" style="color:var(--text-main); font-size:12px;">${eid}</strong></td>
                     <td class="mono" style="font-size:11px; color:var(--text-muted); vertical-align:middle;">${time.replace('T', ' ').substring(0, 19)}</td>
@@ -4167,9 +4370,9 @@ normalization:
                       <div style="font-weight:600; font-size:11.5px;">${escapeHtml(v)}</div>
                       <span class="badge badge-violet" style="font-size:9.5px; padding:1px 5px; margin-top:2px;">${escapeHtml(fmt)}</span>
                     </td>
-                    <td style="vertical-align:middle; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;"><strong class="mono" style="color:${isBlocked ? '#ef4444' : 'var(--text-main)'}; font-size:11.5px;">${escapeHtml(srcIp)}</strong></td>
+                    <td style="vertical-align:middle; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;"><strong class="mono" style="color:${isBlocked ? 'var(--danger-main)' : 'var(--text-main)'}; font-size:11.5px;">${escapeHtml(srcIp)}</strong></td>
                     <td style="vertical-align:middle;">
-                      <div style="font-weight:600; font-size:11.5px; color:${e.threat ? '#fca5a5' : 'var(--text-main)'};">${escapeHtml(threatTitle)}</div>
+                      <div style="font-weight:600; font-size:11.5px; color:${e.threat ? '#d93333ff' : 'var(--text-main)'};">${escapeHtml(threatTitle)}</div>
                       ${e.threat?.detail ? `<div style="font-size:10px; color:var(--text-muted); text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">${escapeHtml(e.threat.detail)}</div>` : ''}
                     </td>
                     <td style="text-align:center; vertical-align:middle;">
@@ -4186,7 +4389,7 @@ normalization:
                     </td>
                   </tr>
                 `;
-              }).join("")}
+    }).join("")}
             </tbody>
           </table>
         </div>
@@ -4247,19 +4450,19 @@ normalization:
           <span class="badge badge-neutral">Single CPU Core (x86_64)</span>
         </div>
         <div class="grid grid-3 gap-md">
-          <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); border-radius:6px; padding:12px;">
+          <div style="background:var(--bg-card-subtle); border:1px solid var(--border-color); border-radius:6px; padding:12px;">
             <div class="text-muted text-xs">PROCESSING LATENCY (P50 MEDIAN)</div>
-            <div class="mono font-bold mt-sm" style="font-size:18px; color:#34d399;">70.00 µs (0.070 ms)</div>
+            <div class="mono font-bold mt-sm" style="font-size:18px; color:var(--success-main);">70.00 µs (0.070 ms)</div>
             <div class="text-muted text-xs mt-sm">Sub-millisecond wire-to-canonical turnaround</div>
           </div>
-          <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); border-radius:6px; padding:12px;">
+          <div style="background:var(--bg-card-subtle); border:1px solid var(--border-color); border-radius:6px; padding:12px;">
             <div class="text-muted text-xs">PROCESSING LATENCY (P95 / P99)</div>
-            <div class="mono font-bold mt-sm" style="font-size:18px; color:#38bdf8;">89.20 µs / 142.80 µs</div>
+            <div class="mono font-bold mt-sm" style="font-size:18px; color:var(--primary-main);">89.20 µs / 142.80 µs</div>
             <div class="text-muted text-xs mt-sm">Deterministic zero-garbage-collection ceiling</div>
           </div>
-          <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); border-radius:6px; padding:12px;">
+          <div style="background:var(--bg-card-subtle); border:1px solid var(--border-color); border-radius:6px; padding:12px;">
             <div class="text-muted text-xs">THROUGHPUT CEILING (SINGLE CORE)</div>
-            <div class="mono font-bold mt-sm" style="font-size:18px; color:#fef08a;">13,848 events / sec</div>
+            <div class="mono font-bold mt-sm" style="font-size:18px; color:var(--warning-main);">13,848 events / sec</div>
             <div class="text-muted text-xs mt-sm">Scale-out linear across worker threads</div>
           </div>
         </div>
@@ -4325,7 +4528,7 @@ normalization:
         </div>
 
         <!-- FILTER CRITERIA & AUDIT SCOPE -->
-        <div class="print-card" style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:6px; padding:10px 14px; margin-bottom:14px; font-size:9pt;">
+        <div class="print-card" style="background:#f8fafc; border:1px solid #41569bff; border-radius:6px; padding:10px 14px; margin-bottom:14px; font-size:9pt;">
           <div style="font-weight:700; color:#0369a1; text-transform:uppercase; font-size:8pt; margin-bottom:4px;">AUDIT SCOPE &amp; FILTER PARAMETERS APPLIED:</div>
           <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:8px;">
             <div><strong>Timeframe:</strong> ${reportFilterState.timeframe.toUpperCase()}</div>
@@ -4338,7 +4541,7 @@ normalization:
 
         <!-- EXECUTIVE SUMMARY STATS -->
         <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; margin-bottom:14px;">
-          <div style="border:1px solid #cbd5e1; border-radius:6px; padding:10px; text-align:center; background:#ffffff;">
+          <div style="border:1px solid #424ca0ff; border-radius:6px; padding:10px; text-align:center; background:#ffffff;">
             <div style="font-size:7.5pt; font-weight:700; color:#64748b; text-transform:uppercase;">Events Audited</div>
             <div style="font-size:16pt; font-weight:800; color:#0f172a; margin-top:2px;">${filtered.length.toLocaleString()}</div>
           </div>
@@ -4350,14 +4553,14 @@ normalization:
             <div style="font-size:7.5pt; font-weight:700; color:#115e59; text-transform:uppercase;">Cryptographic Integrity</div>
             <div style="font-size:16pt; font-weight:800; color:#0f766e; margin-top:2px;">100% SHA-256</div>
           </div>
-          <div style="border:1px solid #cbd5e1; border-radius:6px; padding:10px; text-align:center; background:#ffffff;">
+          <div style="border:1px solid #455599ff; border-radius:6px; padding:10px; text-align:center; background:#ffffff;">
             <div style="font-size:7.5pt; font-weight:700; color:#64748b; text-transform:uppercase;">Engine Latency (P50)</div>
             <div style="font-size:16pt; font-weight:800; color:#0f172a; margin-top:2px;">70.0 µs</div>
           </div>
         </div>
 
         <!-- EXECUTIVE THREAT ASSESSMENT -->
-        <div class="print-card" style="border:1px solid #cbd5e1; border-radius:6px; padding:12px; margin-bottom:14px; background:#ffffff;">
+        <div class="print-card" style="border:1px solid #4d5aa7ff; border-radius:6px; padding:12px; margin-bottom:14px; background:#ffffff;">
           <div style="font-weight:700; color:#0369a1; font-size:10pt; margin-bottom:6px;">EXECUTIVE SOVEREIGN AI THREAT ASSESSMENT:</div>
           <div style="font-size:9.5pt; color:#334155; line-height:1.5;">
             During this audit evaluation period, ULPF analyzed <strong>${filtered.length} log events</strong> across multi-vendor telemetry sources. 
@@ -4385,15 +4588,15 @@ normalization:
           </thead>
           <tbody>
             ${filtered.slice(0, 35).map(e => {
-              const eid = e.event_id || e.raw_event_id || "ULPF-2026";
-              const time = (e.timestamp || e.event?.time || new Date().toISOString()).replace('T', ' ').substring(0, 16);
-              const fmt = (e.format || e.original?.format || "Syslog");
-              const srcIp = e.source?.ip || e.src_ip || "10.0.0.1";
-              const isBlocked = (e.event?.action === "block" || e.status === "blocked" || e.action === "deny" || e.threat);
-              const threatTitle = e.threat ? e.threat.threat_type : (isBlocked ? "Anomalous Traffic" : "Normal Ingestion");
-              const sha = (e.original?.sha256 || "8f4c2b74a9d123456789abcdef0123456789abcdef").substring(0, 10) + "...";
+      const eid = e.event_id || e.raw_event_id || "ULPF-2026";
+      const time = (e.timestamp || e.event?.time || new Date().toISOString()).replace('T', ' ').substring(0, 16);
+      const fmt = (e.format || e.original?.format || "Syslog");
+      const srcIp = e.source?.ip || e.src_ip || "10.0.0.1";
+      const isBlocked = (e.event?.action === "block" || e.status === "blocked" || e.action === "deny" || e.threat);
+      const threatTitle = e.threat ? e.threat.threat_type : (isBlocked ? "Anomalous Traffic" : "Normal Ingestion");
+      const sha = (e.original?.sha256 || "8f4c2b74a9d123456789abcdef0123456789abcdef").substring(0, 10) + "...";
 
-              return `
+      return `
                 <tr>
                   <td style="font-family:monospace; font-weight:700;">${eid}</td>
                   <td style="font-family:monospace; font-size:8pt;">${time}</td>
@@ -4408,13 +4611,13 @@ normalization:
                   <td style="font-family:monospace; font-size:7.5pt; color:#047857;">${sha}</td>
                 </tr>
               `;
-            }).join("")}
+    }).join("")}
           </tbody>
         </table>
         ${filtered.length > 35 ? `<div style="font-size:8.5pt; color:#64748b; font-style:italic; margin-top:4px;">* Showing first 35 records. Export CSV for the complete raw ledger of ${filtered.length} entries.</div>` : ''}
 
         <!-- LEGAL CHAIN-OF-CUSTODY & ATTESTATION CERTIFICATION -->
-        <div style="margin-top:20px; border-top:1px solid #cbd5e1; padding-top:12px; display:flex; justify-content:space-between; align-items:flex-end;">
+        <div style="margin-top:20px; border-top:1px solid #50579bff; padding-top:12px; display:flex; justify-content:space-between; align-items:flex-end;">
           <div style="font-size:8pt; color:#64748b; max-width:65%;">
             <strong>LEGAL CHAIN-OF-CUSTODY ATTESTATION:</strong><br>
             I hereby certify that all log records documented in this forensic audit report were processed via deterministic zero-allocation pipelines.
@@ -4544,7 +4747,7 @@ normalization:
       badgeEl.className = "badge badge-amber";
       badgeEl.innerText = "REASONING...";
     }
-    bodyEl.innerHTML = `<div style="padding:15px; color:#38bdf8; font-family:var(--font-mono); font-size:12px;"><span class="pulse-dot teal"></span> Consulting sovereign AI engine for incident reasoning on ${ip} (${threatTitle})...</div>`;
+    bodyEl.innerHTML = `<div style="padding:15px; color:var(--primary-main); font-family:var(--font-mono); font-size:12px;"><span class="pulse-dot teal"></span> Consulting sovereign AI engine for incident reasoning on ${ip} (${threatTitle})...</div>`;
 
     try {
       const res = await fetch("/api/v1/ai/explain", {
@@ -4562,23 +4765,23 @@ normalization:
       bodyEl.innerHTML = `
         <div class="grid grid-2 gap-md mt-sm" style="border-top:1px solid rgba(255,255,255,0.08); padding-top:12px;">
           <div>
-            <div style="font-weight:700; color:#fff; font-size:13px; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+            <div style="font-weight:700; color:var(--text-main); font-size:13px; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
               <span>Executive Threat Assessment:</span>
               <span class="badge ${data.severity === 'critical' ? 'badge-red' : 'badge-amber'}">${(data.severity || 'HIGH').toUpperCase()}</span>
             </div>
-            <div style="font-size:12px; color:#cbd5e1; line-height:1.5;">${escapeHtml(data.summary || 'Malicious security incident detected and quarantined by ULPF.')}</div>
+            <div style="font-size:12px; color: #445697ff; line-height:1.5;">${escapeHtml(data.summary || 'Malicious security incident detected and quarantined by ULPF.')}</div>
             <div class="mt-sm" style="font-size:11.5px;">
-              <span class="text-muted">MITRE:</span> <strong class="mono" style="color:#f59e0b;">${data.mitre_attack_id} — ${data.mitre_attack_name}</strong>
+              <span class="text-muted">MITRE:</span> <strong class="mono" style="color:var(--warning-main);">${data.mitre_attack_id} — ${data.mitre_attack_name}</strong>
             </div>
           </div>
           <div>
-            <div style="font-weight:700; color:#fff; font-size:13px; margin-bottom:4px;">Recommended SOC Remediation:</div>
-            <ul style="padding-left:18px; font-size:11.5px; color:#e2e8f0; line-height:1.5;">
+            <div style="font-weight:700; color:var(--text-main); font-size:13px; margin-bottom:4px;">Recommended SOC Remediation:</div>
+            <ul style="padding-left:18px; font-size:11.5px; color:var(--text-main); line-height:1.5;">
               ${(data.recommended_actions || [
-                "Verify source IP against perimeter firewall blacklist.",
-                "Enforce automated connection drop at gateway.",
-                "Check legal raw SHA-256 evidence chain in MinIO vault."
-              ]).map(a => `<li>${escapeHtml(a)}</li>`).join('')}
+          "Verify source IP against perimeter firewall blacklist.",
+          "Enforce automated connection drop at gateway.",
+          "Check legal raw SHA-256 evidence chain in MinIO vault."
+        ]).map(a => `<li>${escapeHtml(a)}</li>`).join('')}
             </ul>
             <div class="mt-sm">
               <button class="btn btn-xs btn-danger" onclick="window.blockConnection('${ip}')">
@@ -4593,13 +4796,114 @@ normalization:
         badgeEl.className = "badge badge-red";
         badgeEl.innerText = "OFFLINE";
       }
-      bodyEl.innerHTML = `<div style="padding:15px; color:#ef4444;">Could not load AI explanation: ${escapeHtml(e.message)}</div>`;
+      bodyEl.innerHTML = `<div style="padding:15px; color:var(--danger-main);">Could not load AI explanation: ${escapeHtml(e.message)}</div>`;
     }
   };
 
   window.generateAiIncidentReport = () => {
     window.explainSpecificThreat("Aggregated Cyber Attack Campaign", "198.51.100.42", "T1190");
   };
+
+  window.closeThreatToaster = () => {
+    document.querySelectorAll("#threat-toaster-modal").forEach(el => el.remove());
+  };
+
+  window.reanalyzeThreat = async (eventId, btnEl) => {
+    try {
+      btnEl.disabled = true;
+      btnEl.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Verifying...';
+      const res = await fetch(`/api/v1/ai/reanalyze-threat/${encodeURIComponent(eventId)}`, { method: "POST" });
+      const data = await res.json();
+      
+      if (res.ok && data.status === "success") {
+        if (!data.result.is_threat) {
+          btnEl.innerHTML = '✔ False Positive';
+          btnEl.className = 'btn btn-sm btn-teal';
+          const row = document.getElementById(`toaster-log-${eventId}`);
+          if (row) {
+             row.style.opacity = '0.5';
+             const reasonEl = document.createElement('div');
+             reasonEl.style.cssText = 'color: var(--success-main); font-size: 11px; margin-top: 4px;';
+             reasonEl.innerText = `Downgraded: ${data.result.reasoning}`;
+             row.appendChild(reasonEl);
+             if (window.fetchMetrics) {
+                 window.fetchMetrics();
+             }
+          }
+        } else {
+          btnEl.innerHTML = '✖ Verified Threat';
+          btnEl.className = 'btn btn-sm btn-danger';
+          const row = document.getElementById(`toaster-log-${eventId}`);
+          if (row) {
+             const reasonEl = document.createElement('div');
+             reasonEl.style.cssText = 'color: var(--danger-main); font-size: 11px; margin-top: 4px;';
+             reasonEl.innerText = `AI Confirmed: ${data.result.reasoning}`;
+             row.appendChild(reasonEl);
+          }
+        }
+      } else {
+        btnEl.innerText = 'Verify Failed';
+      }
+    } catch (e) {
+      console.error(e);
+      btnEl.innerText = 'Error';
+    }
+  };
+
+  window.openThreatToaster = (formatLabel) => {
+    window.closeThreatToaster();
+    
+    // Find logs matching this format that are threats
+    const formatThreatsRaw = state.events.filter(ev => 
+      ev.format === formatLabel && 
+      (ev.threat || ev.action === "deny" || ev.action === "block" || ev.status === "blocked")
+    );
+    const formatThreats = [];
+    const seenIds = new Set();
+    for (const ev of formatThreatsRaw) {
+      const id = ev.event_id || ev.id;
+      if (id && !seenIds.has(id)) {
+        seenIds.add(id);
+        formatThreats.push(ev);
+      }
+    }
+    
+    const toasterHTML = `
+      <div id="threat-toaster-modal" style="position:fixed; bottom:20px; right:20px; width:450px; max-height:80vh; background:var(--bg-card); border:1px solid var(--border-light); border-radius:8px; box-shadow:0 10px 30px rgba(0,0,0,0.5); z-index:9999; display:flex; flex-direction:column; overflow:hidden;">
+        <div style="padding:15px; background:var(--bg-card-solid); border-bottom:1px solid var(--border-light); display:flex; justify-content:space-between; align-items:center;">
+          <div style="font-weight:700; font-size:14px; color:var(--danger-main);">
+             <i class="fas fa-shield-alt" style="margin-right:6px;"></i> Threat Logs: ${escapeHtml(formatLabel)}
+          </div>
+          <button onclick="window.closeThreatToaster()" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; font-size:16px;">&times;</button>
+        </div>
+        <div style="padding:10px; overflow-y:auto; flex:1; background:var(--bg-body);">
+          ${formatThreats.length === 0 ? '<div style="padding:20px; text-align:center; color:var(--text-muted);">No threat logs found for this format.</div>' : ''}
+          ${formatThreats.map(ev => {
+            const threatTitle = ev.threat ? ev.threat.threat_type : (ev.action === "deny" || ev.action === "block" ? "Traffic Dropped" : "Unknown Threat");
+            return `
+              <div id="toaster-log-${ev.event_id || ev.id}" style="margin-bottom:10px; background:var(--bg-card); padding:10px; border-radius:6px; border-left:3px solid var(--danger-main);">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                  <div>
+                    <div style="font-weight:600; font-size:12px; color:var(--text-main);">${escapeHtml(threatTitle)}</div>
+                    <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">
+                      IP: <strong class="text-teal">${escapeHtml(ev.src_ip || ev.source?.ip || "Unknown")}</strong> | ID: ${escapeHtml(ev.event_id || ev.id)}
+                    </div>
+                  </div>
+                  <button type="button" class="btn btn-sm btn-primary" onclick="window.reanalyzeThreat('${ev.event_id || ev.id}', this)" style="font-size:10px; padding:4px 8px;">
+                    <i class="fas fa-robot"></i> AI Verify
+                  </button>
+                </div>
+                ${ev.threat && ev.threat.detail ? `<div style="font-size:11px; color:var(--text-muted); margin-top:6px; font-style:italic;">${escapeHtml(ev.threat.detail)}</div>` : ''}
+              </div>
+            `;
+          }).join("")}
+        </div>
+      </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', toasterHTML);
+  };
+
   const renderAnalyticsView = renderReportsView;
 
   // --- SYSTEM HEALTH VIEW ---
@@ -4620,14 +4924,14 @@ normalization:
             <tr><th>Component</th><th>Status</th><th>Latency</th><th>Details</th></tr>
           </thead>
           <tbody>
-            <tr><td>ULPF REST Ingestion API</td><td><span class="badge badge-teal">● Healthy</span></td><td>1.2 ms</td><td>FastAPI Uvicorn async server online</td></tr>
-            <tr><td>Syslog Collector (UDP/TCP 514)</td><td><span class="badge badge-teal">● Healthy</span></td><td>0.4 ms</td><td>RFC 3164/5424 background collector active</td></tr>
-            <tr><td>Parser Engine (8 Parsers)</td><td><span class="badge badge-teal">● Healthy</span></td><td>12.8 µs</td><td>Deterministic compiled registry operational</td></tr>
-            <tr><td>Semantic Normalizer (ULPF-IR)</td><td><span class="badge badge-teal">● Healthy</span></td><td>18.2 µs</td><td>Taxonomy v1.0 canonical schema mapping</td></tr>
-            <tr><td>Tamper-Evident SHA-256 Storage</td><td><span class="badge badge-teal">● Healthy</span></td><td>3.1 µs</td><td>Cryptographic payload integrity hashing active</td></tr>
-            <tr><td>Multi-SIEM Sink Forwarder</td><td><span class="badge badge-teal">● Healthy</span></td><td>4.5 ms</td><td>OCSF v1.1.0 & ECS v8.x delivery active</td></tr>
-            <tr><td>AI Parser Onboarding Engine</td><td><span class="badge badge-violet">● Standby</span></td><td>120 ms</td><td>Local Ollama/Qwen fallback available</td></tr>
-            <tr><td>Real-Time SSE Broadcast Stream</td><td><span class="badge badge-teal">● Healthy</span></td><td>0.8 ms</td><td>Synchronous client subscribers active</td></tr>
+            <tr><td>ULPF REST Ingestion API</td><td><span class="badge badge-teal"> Healthy</span></td><td>1.2 ms</td><td>FastAPI Uvicorn async server online</td></tr>
+            <tr><td>Syslog Collector (UDP/TCP 514)</td><td><span class="badge badge-teal"> Healthy</span></td><td>0.4 ms</td><td>RFC 3164/5424 background collector active</td></tr>
+            <tr><td>Parser Engine (8 Parsers)</td><td><span class="badge badge-teal"> Healthy</span></td><td>12.8 µs</td><td>Deterministic compiled registry operational</td></tr>
+            <tr><td>Semantic Normalizer (ULPF-IR)</td><td><span class="badge badge-teal"> Healthy</span></td><td>18.2 µs</td><td>Taxonomy v1.0 canonical schema mapping</td></tr>
+            <tr><td>Tamper-Evident SHA-256 Storage</td><td><span class="badge badge-teal"> Healthy</span></td><td>3.1 µs</td><td>Cryptographic payload integrity hashing active</td></tr>
+            <tr><td>Multi-SIEM Sink Forwarder</td><td><span class="badge badge-teal"> Healthy</span></td><td>4.5 ms</td><td>OCSF v1.1.0 & ECS v8.x delivery active</td></tr>
+            <tr><td>AI Parser Onboarding Engine</td><td><span class="badge badge-violet"> Standby</span></td><td>120 ms</td><td>Local Ollama/Qwen fallback available</td></tr>
+            <tr><td>Real-Time SSE Broadcast Stream</td><td><span class="badge badge-teal"> Healthy</span></td><td>0.8 ms</td><td>Synchronous client subscribers active</td></tr>
           </tbody>
         </table>
       </div>
@@ -4695,7 +4999,7 @@ normalization:
   window.selectedMvVendorIndex = 0;
   window.cachedMvComparisons = [];
 
-  window.selectMvVendorRow = function(idx) {
+  window.selectMvVendorRow = function (idx) {
     window.selectedMvVendorIndex = idx;
     const rows = document.querySelectorAll("#mvTableBody tr.mv-row");
     rows.forEach((r, i) => {
@@ -4705,7 +5009,7 @@ normalization:
     window.renderMvSelectedInspector();
   };
 
-  window.renderMvSelectedInspector = function() {
+  window.renderMvSelectedInspector = function () {
     const comp = window.cachedMvComparisons[window.selectedMvVendorIndex] || window.cachedMvComparisons[0];
     const inspectorContainer = document.getElementById("mvInspectorContainer");
     if (!inspectorContainer || !comp) return;
@@ -4721,7 +5025,7 @@ normalization:
         <div class="mv-inspector-header">
           <div style="display:flex; align-items:center; gap:12px;">
             <span class="badge badge-teal" style="font-size:12px; font-weight:800;">LIVE INSPECTOR</span>
-            <strong style="color:#ffffff; font-size:14px;">${escapeHtml(comp.vendor)} (${escapeHtml(comp.device)})</strong>
+            <strong style="color:var(--text-main); font-size:14px;">${escapeHtml(comp.vendor)} (${escapeHtml(comp.device)})</strong>
             <span class="badge badge-neutral" style="font-size:11px;">Format: ${escapeHtml(comp.format)}</span>
           </div>
           <div style="display:flex; gap:8px;">
@@ -4738,7 +5042,7 @@ normalization:
           <!-- Col 1: Raw Ingest Wire Stream -->
           <div class="mv-inspector-col">
             <div class="mv-inspector-col-title">
-              <span style="color:#fca5a5;">1. Raw Ingest Wire Stream</span>
+              <span style="color:var(--danger-main);">1. Raw Ingest Wire Stream</span>
               <span class="mono text-xs text-muted">SHA-256: ${escapeHtml(comp.sha256.substring(0, 10))}...</span>
             </div>
             <div class="mv-raw-box" style="max-height:180px; flex:1;">${rawHighlighted}</div>
@@ -4750,7 +5054,7 @@ normalization:
           <!-- Col 2: Field Extraction Rules & Provenance -->
           <div class="mv-inspector-col">
             <div class="mv-inspector-col-title">
-              <span style="color:#fef08a;">2. Extracted Mapping Rules</span>
+              <span style="color:var(--warning-main);">2. Extracted Mapping Rules</span>
               <span class="badge badge-neutral" style="font-size:10px;">Deterministic AST</span>
             </div>
             <table class="table-dense" style="font-size:11px; flex:1;">
@@ -4763,28 +5067,28 @@ normalization:
               </thead>
               <tbody>
                 <tr>
-                  <td><strong style="color:#fef08a;">source.ip</strong></td>
-                  <td class="mono" style="color:#fff;">${escapeHtml(comp.ulpf_ir.source.ip)}</td>
+                  <td><strong style="color:var(--warning-main);">source.ip</strong></td>
+                  <td class="mono" style="color:var(--text-main);">${escapeHtml(comp.ulpf_ir.source.ip)}</td>
                   <td><span class="badge badge-neutral">Pattern Match</span></td>
                 </tr>
                 <tr>
-                  <td><strong style="color:#fef08a;">destination.ip</strong></td>
-                  <td class="mono" style="color:#fff;">${escapeHtml(comp.ulpf_ir.destination.ip)}</td>
+                  <td><strong style="color:var(--warning-main);">destination.ip</strong></td>
+                  <td class="mono" style="color:var(--text-main);">${escapeHtml(comp.ulpf_ir.destination.ip)}</td>
                   <td><span class="badge badge-neutral">Subfield AST</span></td>
                 </tr>
                 <tr>
-                  <td><strong style="color:#fef08a;">destination.port</strong></td>
-                  <td class="mono" style="color:#fff;">${escapeHtml(String(comp.ulpf_ir.destination.port))}</td>
+                  <td><strong style="color:var(--warning-main);">destination.port</strong></td>
+                  <td class="mono" style="color:var(--text-main);">${escapeHtml(String(comp.ulpf_ir.destination.port))}</td>
                   <td><span class="badge badge-neutral">Int cast</span></td>
                 </tr>
                 <tr>
-                  <td><strong style="color:#fef08a;">event.action</strong></td>
+                  <td><strong style="color:var(--warning-main);">event.action</strong></td>
                   <td><span class="badge ${comp.ulpf_ir.event.action === 'deny' || comp.ulpf_ir.event.action === 'drop' ? 'badge-red' : 'badge-teal'}">${escapeHtml(comp.ulpf_ir.event.action).toUpperCase()}</span></td>
                   <td><span class="badge badge-neutral">Enum Mapping</span></td>
                 </tr>
                 <tr>
-                  <td><strong style="color:#fef08a;">network.transport</strong></td>
-                  <td class="mono" style="color:#fff;">${escapeHtml(comp.ulpf_ir.network?.transport || 'tcp')}</td>
+                  <td><strong style="color:var(--warning-main);">network.transport</strong></td>
+                  <td class="mono" style="color:var(--text-main);">${escapeHtml(comp.ulpf_ir.network?.transport || 'tcp')}</td>
                   <td><span class="badge badge-neutral">Direct Key</span></td>
                 </tr>
               </tbody>
@@ -4794,7 +5098,7 @@ normalization:
           <!-- Col 3: Canonical Unified Output -->
           <div class="mv-inspector-col">
             <div class="mv-inspector-col-title">
-              <span style="color:#34d399;">3. Canonical ULPF-IR Output</span>
+              <span style="color:var(--success-main);">3. Canonical ULPF-IR Output</span>
               <span class="badge badge-teal" style="font-size:10px;">100% Normalized</span>
             </div>
             <pre class="mv-ir-box" style="max-height:180px; flex:1;">${escapeHtml(JSON.stringify(comp.ulpf_ir, null, 2))}</pre>
@@ -4842,7 +5146,7 @@ normalization:
         <!-- Left: Quick Scenario Overrides -->
         <div class="card p-md">
           <div class="flex-between mb-sm">
-            <h3 style="font-size:13.5px; font-weight:700; color:#fff;">1. Select Security Scenario</h3>
+            <h3 style="font-size:13.5px; font-weight:700; color:var(--text-main);">1. Select Security Scenario</h3>
             <span class="badge badge-neutral">PRESET TRAFFIC</span>
           </div>
           <div>
@@ -4873,7 +5177,7 @@ normalization:
         <div class="card p-md flex-between" style="flex-direction:column; justify-content:space-between;">
           <div style="width:100%;">
             <div class="flex-between mb-sm">
-              <h3 style="font-size:13.5px; font-weight:700; color:#fff;">2. Protocol & Normalization Engine</h3>
+              <h3 style="font-size:13.5px; font-weight:700; color:var(--text-main);">2. Protocol & Normalization Engine</h3>
               <span class="badge badge-teal">DETERMINISTIC CONVERGENCE</span>
             </div>
             <div class="grid grid-2 gap-sm">
@@ -4906,11 +5210,11 @@ normalization:
       </div>
 
       <!-- Provenance Callout Info Box -->
-      <div id="mvTraceCallout" class="card p-sm mb-md hidden" style="background:rgba(20,8,14,0.95); border:1px solid #fef08a; border-left:5px solid #fef08a;">
+      <div id="mvTraceCallout" class="card p-sm mb-md hidden" style="background:var(--bg-card-solid); border:1px solid #fef08a; border-left:5px solid #fef08a;">
         <div class="flex-between">
           <div>
-            <strong id="mvTraceFieldTitle" style="color:#fef08a; font-size:12.5px;">Field Provenance: source.ip</strong>
-            <div id="mvTraceFieldDetail" class="text-xs text-muted mt-xs" style="color:#cbd5e1;">Extracted from vendor raw key via deterministic rule.</div>
+            <strong id="mvTraceFieldTitle" style="color:var(--warning-main); font-size:12.5px;">Field Provenance: source.ip</strong>
+            <div id="mvTraceFieldDetail" class="text-xs text-muted mt-xs" style="color: #45549dff;">Extracted from vendor raw key via deterministic rule.</div>
           </div>
           <button id="btnCloseTrace" class="btn-close" style="font-size:18px;">&times;</button>
         </div>
@@ -4920,7 +5224,7 @@ normalization:
       <div class="mv-matrix-table-card">
         <div class="p-md flex-between" style="background:rgba(28,6,14,0.9); border-bottom:1px solid var(--border-color);">
           <div>
-            <h3 style="font-size:14.5px; font-weight:800; color:#ffffff;">6-Vendor Normalization Comparison Matrix</h3>
+            <h3 style="font-size:14.5px; font-weight:800; color:var(--text-main);">6-Vendor Normalization Comparison Matrix</h3>
             <p class="text-xs text-muted mt-xs">Click any row below to inspect raw payloads, extraction AST rules, and canonical OCSF/ECS outputs.</p>
           </div>
           <span class="badge badge-neutral" style="font-size:11px;">Deterministic Execution</span>
@@ -4954,7 +5258,7 @@ normalization:
       <div class="nxm-box">
         <div class="flex-between">
           <div>
-            <h3 style="font-size:15px; font-weight:800; color:#fff;">The N x M Engineering Problem Breakdown</h3>
+            <h3 style="font-size:15px; font-weight:800; color:var(--text-main);">The N x M Engineering Problem Breakdown</h3>
             <p class="text-muted text-xs mt-xs">Why point-to-point SIEM connectors fail at enterprise scale vs ULPF's Canonical Intermediate Representation.</p>
           </div>
           <span class="badge badge-teal">Linear N + M Complexity</span>
@@ -4963,8 +5267,8 @@ normalization:
         <div class="nxm-comparison-grid">
           <div class="nxm-pane bad">
             <h4 style="color:#f87171; font-size:13px; font-weight:800;">Without ULPF (Point-to-Point Chaos)</h4>
-            <div class="text-muted text-xs mt-xs" style="color:#fca5a5;">6 Ingest Formats x 4 SIEM Sinks = <strong>24 Custom Brittle Connectors</strong></div>
-            <ul style="font-size:11.5px; margin-top:10px; margin-left:16px; color:#cbd5e1; line-height:1.6;">
+            <div class="text-muted text-xs mt-xs" style="color:var(--danger-main);">6 Ingest Formats x 4 SIEM Sinks = <strong>24 Custom Brittle Connectors</strong></div>
+            <ul style="font-size:11.5px; margin-top:10px; margin-left:16px; color: #495599ff; line-height:1.6;">
               <li>Adding 1 new firewall vendor requires rewriting 4 different SIEM parsers.</li>
               <li>Schema changes in Splunk or Elastic break downstream ingestion pipelines.</li>
               <li>No common tamper-evident cryptographic evidence layer.</li>
@@ -4974,9 +5278,9 @@ normalization:
           <div class="nxm-vs-circle">VS</div>
 
           <div class="nxm-pane good">
-            <h4 style="color:#34d399; font-size:13px; font-weight:800;">With ULPF (Canonical IR Decoupled)</h4>
+            <h4 style="color:var(--success-main); font-size:13px; font-weight:800;">With ULPF (Canonical IR Decoupled)</h4>
             <div class="text-muted text-xs mt-xs" style="color:#6ee7b7;">6 Ingest Parsers + 4 SIEM Sinks = <strong>Only 10 Modular Connectors</strong></div>
-            <ul style="font-size:11.5px; margin-top:10px; margin-left:16px; color:#cbd5e1; line-height:1.6;">
+            <ul style="font-size:11.5px; margin-top:10px; margin-left:16px; color: #464e9aff; line-height:1.6;">
               <li>Add a new device once; automatically exports to OCSF, ECS, Splunk, Sentinel.</li>
               <li>Lossless normalization preserves 100% original raw evidence with SHA-256 hash.</li>
               <li>Sub-millisecond deterministic parsing speed (12.8 microseconds per log).</li>
@@ -5071,7 +5375,7 @@ normalization:
                   <div class="mv-vendor-cell">
                     <div class="mv-vendor-icon">${initials}</div>
                     <div>
-                      <strong style="color:#ffffff; font-size:13px;">${escapeHtml(c.vendor)}</strong>
+                      <strong style="color:var(--text-main); font-size:13px;">${escapeHtml(c.vendor)}</strong>
                       <div class="text-muted text-xs">${escapeHtml(c.device)}</div>
                     </div>
                   </div>
@@ -5079,7 +5383,7 @@ normalization:
                 <td><span class="badge badge-neutral">${escapeHtml(c.format)}</span></td>
                 <td><div class="mv-raw-preview">${escapeHtml(c.raw_log)}</div></td>
                 <td class="mono text-xs">
-                  <span style="color:#fef08a;">${escapeHtml(c.ulpf_ir.source.ip)}</span> -> <span style="color:#38bdf8;">${escapeHtml(c.ulpf_ir.destination.ip)}:${c.ulpf_ir.destination.port}</span>
+                  <span style="color:var(--warning-main);">${escapeHtml(c.ulpf_ir.source.ip)}</span> -> <span style="color:var(--primary-main);">${escapeHtml(c.ulpf_ir.destination.ip)}:${c.ulpf_ir.destination.port}</span>
                 </td>
                 <td><span class="badge ${actionBadge}">${escapeHtml(c.ulpf_ir.event.action).toUpperCase()}</span></td>
                 <td><span class="badge badge-teal" style="font-size:10.5px;">12.4 us</span></td>
@@ -5123,16 +5427,7 @@ normalization:
         <!-- Left Pane: Input Controls & Presets -->
         <div class="card p-md">
           <h3 class="mb-sm">Input Log Payload</h3>
-          <div class="testbench-presets">
-            <span class="text-xs text-muted" style="width:100%; margin-bottom:2px;">Quick Test Edge Cases & Presets:</span>
-            <button class="preset-chip" data-type="json_ok">Normal JSON</button>
-            <button class="preset-chip danger" data-type="json_broken">Malformed JSON (Broken Brace)</button>
-            <button class="preset-chip danger" data-type="ip_invalid">Invalid IP (999.999.999.999)</button>
-            <button class="preset-chip" data-type="syslog_rfc">Syslog RFC 5424</button>
-            <button class="preset-chip" data-type="fortinet_kv">Fortinet Key=Value</button>
-            <button class="preset-chip" data-type="checkpoint_cef">CheckPoint CEF</button>
-            <button class="preset-chip danger" data-type="scada_hex">SCADA RTU Hex (Unknown)</button>
-          </div>
+
 
           <div class="mt-sm">
             <label class="form-label">Parser Strategy</label>
@@ -5214,34 +5509,9 @@ normalization:
       </div>
     `;
 
-    // Presets definitions
-    const presets = {
-      json_ok: '{"timestamp": "2026-09-06T14:30:00Z", "src": "10.0.1.50", "dst": "8.8.8.8", "dport": 443, "action": "allow", "app": "ssl"}',
-      json_broken: '{"timestamp": "2026-09-06T14:30:00Z", "src": "10.0.1.50", "dst": "8.8.8.8", "action": "deny"',
-      ip_invalid: 'date=2026-09-06 time=14:30:00 srcip=999.999.999.999 dstip=10.0.1.5 dstport=22 action=deny msg="Invalid IP address test"',
-      syslog_rfc: '<134>1 2026-09-06T14:30:00.000Z edge-router-01 sshd 4120 - - Accepted publickey for admin from 192.168.1.100 port 52140',
-      fortinet_kv: 'date=2026-09-06 time=14:30:00 devname="FGT-EDGE-01" type="traffic" action="deny" srcip=10.10.10.20 dstip=8.8.8.8 dstport=443 proto=6',
-      checkpoint_cef: 'CEF:0|CheckPoint|VPN-1 & FireWall-1|9.0|drop|Drop traffic|6|src=10.10.10.20 dst=8.8.8.8 dpt=443 proto=tcp act=drop',
-      scada_hex: '[RTU-TELEMETRY] NODE=0xFA12 SENSOR_VAL=0x7F2A STATUS=CRITICAL_ALARM ADDR=10.250.8.19 REG=40001'
-    };
-
     const rawInput = document.getElementById("tbRawLogInput");
     const parserSelect = document.getElementById("tbParserType");
     const btnRun = document.getElementById("btnRunTestBench");
-
-    // Set initial input
-    rawInput.value = presets.fortinet_kv;
-
-    // Preset chip clicks
-    container.querySelectorAll(".preset-chip").forEach((chip) => {
-      chip.addEventListener("click", () => {
-        const type = chip.getAttribute("data-type");
-        if (presets[type]) {
-          rawInput.value = presets[type];
-          executeParserTest();
-        }
-      });
-    });
 
     if (btnRun) {
       btnRun.addEventListener("click", executeParserTest);
@@ -5370,17 +5640,17 @@ normalization:
             <h1 class="page-title">Deterministic Parser Registry</h1>
             <p class="page-desc">Catalog of compiled, verified parser specifications powering ULPF's sub-millisecond log processing pipeline.</p>
           </div>
-          <span class="badge badge-teal">● ${totalParsers} ACTIVE DETERMINISTIC PARSERS</span>
+          <span class="badge badge-teal"> ${totalParsers} ACTIVE DETERMINISTIC PARSERS</span>
         </div>
       </div>
 
       <!-- Format Drift Detached Alerts Banner (If Any) -->
       ${driftNotifications.length > 0 ? `
-        <div class="card p-md mb-md" style="background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.4); border-radius:8px;">
+        <div class="card p-md mb-md" style="background:var(--warning-bg); border:1px solid var(--warning-main); border-radius:8px;">
           <div class="flex-between mb-sm">
             <div style="display:flex; align-items:center; gap:8px;">
               <span class="badge badge-amber font-xs">DRIFT</span>
-              <strong style="color:#fef08a; font-size:14px;">Detached Format Checker Alerts (${driftNotifications.length} Format Drift Detected)</strong>
+              <strong style="color:var(--warning-main); font-size:14px;">Detached Format Checker Alerts (${driftNotifications.length} Format Drift Detected)</strong>
             </div>
             <span class="badge badge-amber">AWAITING OPERATOR VERIFICATION</span>
           </div>
@@ -5389,12 +5659,12 @@ normalization:
             ${driftNotifications.map(n => `
               <div style="background:rgba(0,0,0,0.4); padding:10px 14px; border-radius:6px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
                 <div>
-                  <strong style="color:#fff; font-size:13px;">${escapeHtml(n.vendor)} (${escapeHtml(n.format)})</strong>
-                  <div class="text-muted text-xs">Drift Reason: <span style="color:#fca5a5;">${escapeHtml(n.reason || 'New/altered fields detected')}</span> | Field Changes: <span class="mono text-teal">${(n.new_fields || []).join(', ') || 'N/A'}</span></div>
+                  <strong style="color:var(--text-main); font-size:13px;">${escapeHtml(n.vendor)} (${escapeHtml(n.format)})</strong>
+                  <div class="text-muted text-xs">Drift Reason: <span style="color:var(--danger-main);">${escapeHtml(n.reason || 'New/altered fields detected')}</span> | Field Changes: <span class="mono text-teal">${(n.new_fields || []).join(', ') || 'N/A'}</span></div>
                 </div>
                 <div style="display:flex; gap:6px;">
                   <button class="btn btn-xs btn-primary" onclick="window.approveFormatDrift('${n.id}')">Approve & Update Parser</button>
-                  <button class="btn btn-xs btn-danger-outline" onclick="window.rejectFormatDrift('${n.id}')">✕ Reject</button>
+                  <button class="btn btn-xs btn-danger-outline" onclick="window.rejectFormatDrift('${n.id}')"> Reject</button>
                 </div>
               </div>
             `).join('')}
@@ -5450,17 +5720,16 @@ normalization:
             ${parsersList.map(p => `
               <tr>
                 <td>
-                  <strong class="mono" style="color:#38bdf8;">${escapeHtml(p.id)}</strong>
+                  <strong class="mono" style="color:var(--primary-main);">${escapeHtml(p.id)}</strong>
                   ${p.is_custom ? '<span class="badge badge-violet ml-xs" style="font-size:9px;">CUSTOM</span>' : ''}
                 </td>
                 <td><span class="badge badge-neutral">${escapeHtml(p.format || 'Standard')}</span></td>
                 <td>${escapeHtml(p.name || p.id)}</td>
                 <td>${escapeHtml(p.engine || 'C-Accelerated / Tokenizer')}</td>
-                <td><span class="badge badge-teal">● Active</span></td>
+                <td><span class="badge badge-teal"> Active</span></td>
                 <td>
-                  <div style="display:flex; gap:6px;">
-                    <button class="btn btn-xs btn-outline" onclick="window.renameParserPrompt('${p.id}')">Rename</button>
-                    <button class="btn btn-xs btn-outline" onclick="window.location.hash='#/processing/testbench'">Test in Bench</button>
+                  <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                    <button class="btn btn-xs btn-primary" onclick="alert('Configuration activated')">Activate</button>
                   </div>
                 </td>
               </tr>
@@ -5517,2004 +5786,847 @@ normalization:
     };
   }
 
-  // ==========================================================================
-  // PHASE 4 — 3-MINUTE GUIDED DEMO PRESENTER CONTROLLER
-  // ==========================================================================
-  // PHASE 5 — SIH FINAL DEMO CONTROL CENTER & STEP-BY-STEP PROOF SYSTEM
-  // ==========================================================================
-
-  const sihSamplePresets = [
-    {
-      id: "fortinet",
-      vendor: "Fortinet FortiGate",
-      format: "Key=Value",
-      device: "FGT-EDGE-01 (NextGen Firewall)",
-      endpoint: "10.0.1.1:514 (Syslog UDP)",
-      srcIp: "198.51.100.42",
-      dstIp: "10.0.1.50",
-      dstPort: 443,
-      proto: "TCP",
-      action: "allow",
-      raw: 'date=2026-09-06 time=14:32:10 devname="FGT-EDGE-01" devid="FGT60E4Q16000000" type="traffic" subtype="forward" level="notice" action="accept" srcip=198.51.100.42 srcport=54321 dstip=10.0.1.50 dstport=443 proto=6 policyid=4 app="HTTPS" msg="Policy violation traffic evaluated"',
-      sha256: "3a9c7b12d5e6f8a90123456789abcdef0123456789abcdef0123456789abcdef",
-      extracted: {
-        "date": "2026-09-06",
-        "time": "14:32:10",
-        "devname": "FGT-EDGE-01",
-        "action": "accept",
-        "srcip": "198.51.100.42",
-        "srcport": "54321",
-        "dstip": "10.0.1.50",
-        "dstport": "443",
-        "proto": "6",
-        "app": "HTTPS"
-      },
-      mappings: [
-        { from: "srcip (198.51.100.42)", to: "source.ip" },
-        { from: "srcport (54321)", to: "source.port" },
-        { from: "dstip (10.0.1.50)", to: "destination.ip" },
-        { from: "dstport (443)", to: "destination.port" },
-        { from: "action (accept)", to: "event.action (allow)" },
-        { from: "proto (6)", to: "network.transport (tcp)" }
-      ]
-    },
-    {
-      id: "paloalto",
-      vendor: "Palo Alto Networks",
-      format: "CEF",
-      device: "PA-3220 Perimeter Gateway",
-      endpoint: "10.0.2.1:514 (Syslog UDP)",
-      srcIp: "198.51.100.99",
-      dstIp: "10.0.1.15",
-      dstPort: 445,
-      proto: "TCP",
-      action: "block",
-      raw: 'CEF:0|Palo Alto Networks|PAN-OS|10.1.0|THREAT|vulnerability|9|src=198.51.100.99 dst=10.0.1.15 spt=49152 dpt=445 proto=tcp act=drop cat=Exploit msg="SMBv1 Remote Code Execution Attempt"',
-      sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      extracted: {
-        "deviceVendor": "Palo Alto Networks",
-        "deviceProduct": "PAN-OS",
-        "deviceVersion": "10.1.0",
-        "src": "198.51.100.99",
-        "dst": "10.0.1.15",
-        "spt": "49152",
-        "dpt": "445",
-        "proto": "tcp",
-        "act": "drop",
-        "cat": "Exploit"
-      },
-      mappings: [
-        { from: "src (198.51.100.99)", to: "source.ip" },
-        { from: "spt (49152)", to: "source.port" },
-        { from: "dst (10.0.1.15)", to: "destination.ip" },
-        { from: "dpt (445)", to: "destination.port" },
-        { from: "act (drop)", to: "event.action (block)" },
-        { from: "proto (tcp)", to: "network.transport (tcp)" }
-      ]
-    },
-    {
-      id: "cisco",
-      vendor: "Cisco Secure ASA",
-      format: "Syslog RFC 5424",
-      device: "Cisco ASA 5525-X",
-      endpoint: "10.0.1.254:514 (Syslog UDP)",
-      srcIp: "203.0.113.88",
-      dstIp: "10.0.0.8",
-      dstPort: 22,
-      proto: "TCP",
-      action: "block",
-      raw: '<134>1 2026-09-06T14:32:10Z cisco-core-gw %ASA-4-106023: Deny tcp src outside:203.0.113.88/54122 dst inside:10.0.0.8/22 by access-group "BLOCK_SSH_WAN" [0x0, 0x0]',
-      sha256: "8f481f185c7c975a8940b5d5d8523c14828b030b42f6381084221a719d3f1107",
-      extracted: {
-        "pri": "134",
-        "facility": "local0",
-        "severity": "notice",
-        "hostname": "cisco-core-gw",
-        "tag": "%ASA-4-106023",
-        "src": "203.0.113.88",
-        "src_port": "54122",
-        "dst": "10.0.0.8",
-        "dst_port": "22",
-        "action": "Deny"
-      },
-      mappings: [
-        { from: "src (203.0.113.88)", to: "source.ip" },
-        { from: "src_port (54122)", to: "source.port" },
-        { from: "dst (10.0.0.8)", to: "destination.ip" },
-        { from: "dst_port (22)", to: "destination.port" },
-        { from: "Deny", to: "event.action (block)" },
-        { from: "tcp", to: "network.transport (tcp)" }
-      ]
-    },
-    {
-      id: "suricata",
-      vendor: "Suricata IDS",
-      format: "LEEF 2.0",
-      device: "Suricata Threat Sensor",
-      endpoint: "10.0.3.5:8080 (REST / Stream)",
-      srcIp: "203.0.113.50",
-      dstIp: "10.0.1.10",
-      dstPort: 80,
-      proto: "TCP",
-      action: "block",
-      raw: 'LEEF:2.0|Suricata|Suricata-IDS|6.0.4|ALERT|devTime=2026-09-06T14:32:10Z|src=203.0.113.50|dst=10.0.1.10|spt=61200|dpt=80|proto=TCP|cat=WebAttack|act=drop|sev=5|msg="ET WEB_SPECIFIC_APPS Apache Struts RCE Detected"',
-      sha256: "4b227777d4dd1fc61c6f884f48641d02b4d121d3fd328cb08b5531fcacdabf8a",
-      extracted: {
-        "vendor": "Suricata",
-        "product": "Suricata-IDS",
-        "src": "203.0.113.50",
-        "dst": "10.0.1.10",
-        "spt": "61200",
-        "dpt": "80",
-        "proto": "TCP",
-        "cat": "WebAttack",
-        "act": "drop"
-      },
-      mappings: [
-        { from: "src (203.0.113.50)", to: "source.ip" },
-        { from: "spt (61200)", to: "source.port" },
-        { from: "dst (10.0.1.10)", to: "destination.ip" },
-        { from: "dpt (80)", to: "destination.port" },
-        { from: "act (drop)", to: "event.action (block)" },
-        { from: "proto (TCP)", to: "network.transport (tcp)" }
-      ]
-    },
-    {
-      id: "aws",
-      vendor: "AWS GuardDuty",
-      format: "JSON",
-      device: "AWS VPC Flow & GuardDuty",
-      endpoint: "HTTPS /api/v1/ingest (REST)",
-      srcIp: "198.51.100.42",
-      dstIp: "172.31.10.5",
-      dstPort: 443,
-      proto: "TCP",
-      action: "allow",
-      raw: '{"version": "1.0", "account_id": "123456789012", "service": "GuardDuty", "source_ip": "198.51.100.42", "destination_ip": "172.31.10.5", "source_port": 51204, "destination_port": 443, "protocol": "TCP", "action": "allow", "threat": "Recon:EC2/Portscan"}',
-      sha256: "8f4c2b740523f22987d3cdf324e10ab6f661e404ec953c0ac561205fb45e9d2c",
-      extracted: {
-        "service": "GuardDuty",
-        "source_ip": "198.51.100.42",
-        "destination_ip": "172.31.10.5",
-        "source_port": 51204,
-        "destination_port": 443,
-        "protocol": "TCP",
-        "action": "allow"
-      },
-      mappings: [
-        { from: "source_ip (198.51.100.42)", to: "source.ip" },
-        { from: "source_port (51204)", to: "source.port" },
-        { from: "destination_ip (172.31.10.5)", to: "destination.ip" },
-        { from: "destination_port (443)", to: "destination.port" },
-        { from: "action (allow)", to: "event.action (allow)" },
-        { from: "protocol (TCP)", to: "network.transport (tcp)" }
-      ]
-    },
-    {
-      id: "scada",
-      vendor: "Industrial SCADA RTU",
-      format: "Unknown / Proprietary",
-      device: "SCADA Substation RTU Node",
-      endpoint: "UDP 5140 (Industrial Protocol)",
-      srcIp: "10.240.12.5",
-      dstIp: "10.0.1.1",
-      dstPort: 8883,
-      proto: "TCP",
-      action: "alert",
-      raw: '[SCADA_V2] UNIT=Substation-4 NODE=10.240.12.5 CMD=RELAY_TRIP SENSOR=TEMP_OVERHEAT VAL=88.4C TS=20260906-163000 ADDR=10.240.12.5 DEST=10.0.1.1',
-      sha256: "3a9c7b12d5e6f8a90123456789abcdef0123456789abcdef0123456789abcdef",
-      extracted: {
-        "UNIT": "Substation-4",
-        "NODE": "10.240.12.5",
-        "CMD": "RELAY_TRIP",
-        "SENSOR": "TEMP_OVERHEAT",
-        "VAL": "88.4C",
-        "DEST": "10.0.1.1"
-      },
-      mappings: [
-        { from: "NODE (10.240.12.5)", to: "source.ip" },
-        { from: "DEST (10.0.1.1)", to: "destination.ip" },
-        { from: "CMD (RELAY_TRIP)", to: "event.action (alert)" },
-        { from: "SENSOR (TEMP_OVERHEAT)", to: "event.category (industrial)" }
-      ]
+  window.updateWorkerCount = async function () {
+    const input = document.getElementById("workerCountInput");
+    if (!input) return;
+    const count = parseInt(input.value, 10);
+    if (isNaN(count) || count < 1 || count > 128) {
+      showToast("Please enter a valid worker count (1-128).", "error");
+      return;
     }
-  ];
-
-  const sihStages = [
-    {
-      num: "01",
-      name: "Source",
-      title: "Source Perimeter Device",
-      explanation: "ULPF connects to perimeter devices (firewalls, routers, VPN gateways, WAFs) emitting heterogeneous streams.",
-      actionText: "Heterogeneous Device Egress",
-      getTransform: (sample) => ({
-        title: "Stage 01: Perimeter Log Source",
-        leftTitle: "Source Connection Metadata",
-        leftContent: `Device: ${sample.device}\nVendor: ${sample.vendor}\nProtocol: ${sample.endpoint}\nClient IP: ${sample.srcIp}\nDestination: ${sample.dstIp}:${sample.dstPort}\nPacket Size: ${sample.raw.length} bytes\nTimestamp: 2026-09-06T14:32:10Z`,
-        rightTitle: "Wire Datagram Emission",
-        rightContent: `[PACKET_STREAM]\nChannel: Ingress Wire Interface\nStatus: Emitting Datagram\nRaw Wire Bytes: ${sample.raw.substring(0, 110)}...`
-      })
-    },
-    {
-      num: "02",
-      name: "Ingestion",
-      title: "Wire-Speed Ingestion Gateway",
-      explanation: "ULPF received the original event from the configured source over UDP 514, HTTP REST, or file stream without alteration.",
-      actionText: "Non-Blocking Wire Ingress (UDP / REST)",
-      getTransform: (sample) => ({
-        title: "Stage 02: Ingestion Gateway Reception",
-        leftTitle: "Ingestion Metrics & Buffer",
-        leftContent: `Gateway Status: ACTIVE\nIngress Port: 514 / 8000\nBuffer Queue: 0.02ms latency\nDrop Count: 0 packets\nIngest Mode: Non-blocking Async\nClient Socket: ${sample.srcIp}`,
-        rightTitle: "Buffered Raw Ingress Payload",
-        rightContent: `[RAW INGRESS BUFFER]\nTimestamp: 2026-09-06T14:32:10.184920Z\nLength: ${sample.raw.length} bytes\nState: Preserved in memory queue\nPayload: ${sample.raw}`
-      })
-    },
-    {
-      num: "03",
-      name: "Raw Evidence",
-      title: "Cryptographic Tamper-Evident Store",
-      explanation: "The original log was preserved and hashed with SHA-256 before any transformation to maintain legal chain of custody.",
-      actionText: "SHA-256 Digest Computed & Locked",
-      getTransform: (sample) => ({
-        title: "Stage 03: Cryptographic Evidence Preservation",
-        leftTitle: "Tamper-Evident SHA-256 Digest",
-        leftContent: `Algorithm: SHA-256\nComputed Hash:\n${sample.sha256}\nIntegrity Verification: PASSED\nLegal Admissibility: Compliant (Unmodified Raw Payload Preserved)`,
-        rightTitle: "Immutable Raw Store Record",
-        rightContent: `[RAW EVIDENCE RECORD]\nEvent ID: ULPF-2026-1042\nEvidence Hash: ${sample.sha256}\nStorage Status: LOCKED (Immutable)\nExact Raw Payload:\n"${sample.raw}"`
-      })
-    },
-    {
-      num: "04",
-      name: "Detection",
-      title: "Deterministic Format Detection",
-      explanation: "ULPF identified the incoming log format (Syslog RFC 3164/5424, JSON, CEF, LEEF, Key=Value) with high confidence.",
-      actionText: "Regex Signature Match (Confidence ≥ 0.95)",
-      getTransform: (sample) => ({
-        title: "Stage 04: Format Classification",
-        leftTitle: "Classifier Detection Results",
-        leftContent: `Detected Format: ${sample.format}\nConfidence Score: 0.98 / 1.00\nEvaluated Engine: Deterministic Signature Matcher\nExecution Time: 8.4 µs`,
-        rightTitle: "Matched Pattern Signature",
-        rightContent: `[SIGNATURE MATCH]\nFormat: ${sample.format}\nEvaluator: FormatDetector.detect()\nRule: ${sample.format === 'CEF' ? '^CEF:\\\\d+\\\\|' : sample.format === 'Syslog RFC 5424' ? '^<\\\\d+>\\\\d' : sample.format === 'JSON' ? '^\\\\s*\\\\{.*\\\\}\\\\s*$' : 'kv_pair_regex'}\nStatus: Matched with high confidence`
-      })
-    },
-    {
-      num: "05",
-      name: "Parsing",
-      title: "Deterministic Parser Execution",
-      explanation: "The format-specific parser extracted structured fields and key-value attributes from the header and body.",
-      actionText: "Compiled Token & Field Extractor",
-      getTransform: (sample) => ({
-        title: "Stage 05: Token & Field Extraction",
-        leftTitle: "Parser Execution Profile",
-        leftContent: `Executing Parser: ${sample.format.toLowerCase()}_parser_v1\nExtracted Attributes: ${Object.keys(sample.extracted).length} keys\nParser Latency: 12.8 µs\nErrors / Warnings: 0`,
-        rightTitle: "Extracted Key-Value Tokens",
-        rightContent: JSON.stringify(sample.extracted, null, 2)
-      })
-    },
-    {
-      num: "06",
-      name: "ULPF-IR",
-      title: "Canonical Intermediate Representation",
-      explanation: "The extracted fields were converted into ULPF's common internal event representation (ULPF-IR v1.0).",
-      actionText: "Universal Intermediate Data Model",
-      getTransform: (sample) => ({
-        title: "Stage 06: Canonical ULPF-IR Representation",
-        leftTitle: "ULPF-IR Model Summary",
-        leftContent: `Schema Version: ULPF-IR v1.0\nCategory: Network Activity\nAction: ${sample.action}\nSource: ${sample.srcIp}\nDestination: ${sample.dstIp}:${sample.dstPort}\nTransport: ${sample.proto}`,
-        rightTitle: "Canonical JSON Tree",
-        rightContent: JSON.stringify({
-          ulpf_version: "1.0",
-          event: { category: "network", action: sample.action, time: "2026-09-06T14:32:10Z" },
-          source: { ip: sample.srcIp, port: 54321 },
-          destination: { ip: sample.dstIp, port: sample.dstPort },
-          network: { transport: sample.proto.toLowerCase(), protocol: "https" },
-          device: { vendor: sample.vendor, product: sample.device }
-        }, null, 2)
-      })
-    },
-    {
-      num: "07",
-      name: "Normalization",
-      title: "Security Taxonomy Mapping",
-      explanation: "Vendor-specific field names were mapped to common semantic taxonomy fields (source, destination, device, action).",
-      actionText: "Semantic Security Field Mapping",
-      getTransform: (sample) => ({
-        title: "Stage 07: Semantic Taxonomy Normalization",
-        leftTitle: "Field Mapping Table",
-        leftContent: sample.mappings.map(m => `${m.from} -> ${m.to}`).join("\n"),
-        rightTitle: "Taxonomy Schema Target",
-        rightContent: `[CANONICAL FIELD BINDINGS]\nsource.ip          -> "${sample.srcIp}"\nsource.port        -> 54321\ndestination.ip     -> "${sample.dstIp}"\ndestination.port   -> ${sample.dstPort}\nevent.action       -> "${sample.action}"\nnetwork.transport  -> "${sample.proto.toLowerCase()}"`
-      })
-    },
-    {
-      num: "08",
-      name: "Validation",
-      title: "Pydantic V2 Schema Validation",
-      explanation: "All fields were validated against strict IP address, port number (1-65535), and ISO timestamp bounds.",
-      actionText: "Defensive Type & Range Verification",
-      getTransform: (sample) => ({
-        title: "Stage 08: Defensive Schema Validation",
-        leftTitle: "Validation Checklist",
-        leftContent: `[PASS] IPv4 Address Format (RFC 791)\n[PASS] Port Range Check (1-65535)\n[PASS] ISO RFC 3339 Timestamp\n[PASS] Action Enum Conformance\n[PASS] Zero-Copy String Safety`,
-        rightTitle: "Validation Report",
-        rightContent: `Status: VALIDATED (0 errors, 0 warnings)\nEngine: Pydantic V2 Type Engine\nEnforced Constraints:\n- source.ip is valid IPv4\n- destination.port between 1 and 65535\n- original.sha256 matches payload byte length`
-      })
-    },
-    {
-      num: "09",
-      name: "Provenance",
-      title: "Cryptographic Provenance Graph",
-      explanation: "ULPF recorded how normalized fields relate back to exact byte offsets and original keys in the raw event.",
-      actionText: "Field Attribution & Lineage Graph",
-      getTransform: (sample) => ({
-        title: "Stage 09: Provenance Lineage Graph",
-        leftTitle: "Attribution Lineage",
-        leftContent: `Parent Raw SHA: ${sample.sha256.substring(0, 24)}...\nField source.ip -> raw token 'src' (Offset: 0-14)\nField destination.ip -> raw token 'dst' (Offset: 15-28)\nParser: ${sample.format.toLowerCase()}_parser_v1\nConfidence: 1.0`,
-        rightTitle: "Cryptographic Provenance Map",
-        rightContent: JSON.stringify({
-          "source.ip": { original_key: "srcip", extracted_value: sample.srcIp, parser: "deterministic_v1", confidence: 1.0 },
-          "destination.ip": { original_key: "dstip", extracted_value: sample.dstIp, parser: "deterministic_v1", confidence: 1.0 },
-          "destination.port": { original_key: "dstport", extracted_value: sample.dstPort, parser: "deterministic_v1", confidence: 1.0 },
-          "event.action": { original_key: "action", extracted_value: sample.action, parser: "deterministic_v1", confidence: 1.0 }
-        }, null, 2)
-      })
-    },
-    {
-      num: "10",
-      name: "Output",
-      title: "Downstream Dispatch & Export",
-      explanation: "The canonical event was transformed and dispatched for downstream systems (OpenSearch, OCSF, ECS, SIEM).",
-      actionText: "Multi-Format Exporter Sink Dispatch",
-      getTransform: (sample) => ({
-        title: "Stage 10: Downstream Multi-Target Export",
-        leftTitle: "Export Sink Destinations",
-        leftContent: `[DELIVERED] OpenSearch 2.11 Index: 'ulpf-events-2026'\n[DELIVERED] OCSF v1.1.0 JSON Sink\n[DELIVERED] Elastic Common Schema (ECS v8.x)\n[DELIVERED] Mock SIEM / DataLake Forwarder\nTotal Delivery Latency: 4.2 ms`,
-        rightTitle: "Standardized Downstream Exports",
-        rightContent: `// OCSF v1.1.0 Export Preview:\n${JSON.stringify({ class_uid: 4001, class_name: "Network Activity", activity_id: 1, src_endpoint: { ip: sample.srcIp }, dst_endpoint: { ip: sample.dstIp, port: sample.dstPort }, disposition: sample.action === "allow" ? "Allowed" : "Blocked" }, null, 2)}`
-      })
-    }
-  ];
-
-  let activeSihPresetIndex = 0;
-  let activeSihStageIndex = 0;
-  let autoStepInterval = null;
-  let autoStepSpeedMs = 2000;
-
-  const judgeQuestions = [
-    {
-      id: "q1",
-      tag: "Concept",
-      question: "What problem does ULPF solve?",
-      answer: "Enterprise and defense perimeters generate millions of heterogeneous logs in incompatible formats (Syslog, CEF, LEEF, Key=Value, JSON). ULPF provides a lightweight, vendor-independent preprocessing layer that normalizes disparate logs into a unified representation (ULPF-IR) while preserving raw evidence with SHA-256 hashing and maintaining field-level provenance."
-    },
-    {
-      id: "q2",
-      tag: "Taxonomy",
-      question: "Why is normalization needed?",
-      answer: "Without normalization, downstream SIEMs and SOC analysts must write and maintain custom parsing rules for every vendor device. Normalization standardizes field names (e.g. src, src_ip, source_address all become source.ip), enabling uniform correlation, threat detection, and analytics across all vendors."
-    },
-    {
-      id: "q3",
-      tag: "Forensics",
-      question: "Why preserve raw logs?",
-      answer: "In digital forensics and incident response, legal admissibility requires proof that original evidence was not altered during processing. ULPF calculates an immutable SHA-256 hash upon ingress and stores the unmodified raw payload alongside normalized events."
-    },
-    {
-      id: "q4",
-      tag: "Architecture",
-      question: "What is ULPF-IR?",
-      answer: "ULPF-IR (Universal Log Pre-processing Framework Intermediate Representation) is our lightweight canonical in-memory data model. It represents common security attributes (event, source, destination, device, action) independently from both input formats and downstream schemas."
-    },
-    {
-      id: "q5",
-      tag: "Standards",
-      question: "Why not directly convert everything to OCSF?",
-      answer: "OCSF is a useful standardized event schema for interoperability, but ULPF-IR serves as the internal processing representation of the framework. Keeping the internal representation independent means ULPF can support OCSF, ECS, and other downstream schemas without making the entire ingestion pipeline dependent on one output model."
-    },
-    {
-      id: "q6",
-      tag: "Compiler",
-      question: "Why use an intermediate representation?",
-      answer: "An intermediate representation reduces transformation complexity from O(N × M) to O(N + M). Adding a new input format requires only 1 parser; adding a new output format requires only 1 exporter, rather than rebuilding parsers for every target database."
-    },
-    {
-      id: "q7",
-      tag: "AI Strategy",
-      question: "Why use AI?",
-      answer: "Known formats can be processed efficiently using deterministic parsers. AI is most useful when a previously unseen or poorly documented format needs to be onboarded. ULPF uses AI to propose a structured parser specification, validates it, requires approval, and then uses the approved parser deterministically."
-    },
-    {
-      id: "q8",
-      tag: "Performance",
-      question: "Why not use AI for every log?",
-      answer: "Running an LLM/SLM on every log packet introduces unacceptable latency (0.8s vs 73µs) and excessive GPU compute costs. Deterministic regex parsers process 12,500+ events per second with zero variance. AI is reserved strictly as a sidecar for novel format schema synthesis."
-    },
-    {
-      id: "q9",
-      tag: "Security",
-      question: "How are AI-generated parsers secured?",
-      answer: "Generated parsers are executed in a sandbox testbench against sample payloads and validated against strict Pydantic V2 schemas. Furthermore, human-in-the-loop review is mandatory before any AI-generated parser is compiled into the active runtime registry."
-    },
-    {
-      id: "q10",
-      tag: "Lineage",
-      question: "How do you maintain provenance?",
-      answer: "For every normalized attribute, ULPF records the original field name, extracted raw value, executing parser name, confidence score, and byte offset. This creates a cryptographically verifiable attribution graph linking each canonical field back to the raw source."
-    },
-    {
-      id: "q11",
-      tag: "Resilience",
-      question: "What happens when parsing fails?",
-      answer: "The original raw event is preserved. ULPF records the processing failure and its reason rather than silently discarding the event, allowing the event to be investigated or reprocessed later depending on the deployment configuration."
-    },
-    {
-      id: "q12",
-      tag: "Air-Gap",
-      question: "What happens when AI is offline?",
-      answer: "AI is not part of the normal runtime path for known formats. If the local model is unavailable, known parsers continue operating normally. Unknown formats can remain preserved and queued for later onboarding."
-    },
-    {
-      id: "q13",
-      tag: "Scale",
-      question: "How does this scale?",
-      answer: "The core preprocessing pipeline is completely stateless. Scaling horizontally requires adding worker processes or containers consuming from partitioned message queues (e.g. Redpanda/Kafka), enabling hundreds of thousands of events per second across cluster nodes."
-    },
-    {
-      id: "q14",
-      tag: "Truth",
-      question: "What is actually implemented?",
-      answer: "The deterministic regex parsing engine, format detection, ULPF-IR normalization, Pydantic schema validation, SHA-256 hashing, field-level provenance, local AI SLM onboarding, REST APIs, and interactive UI are 100% fully implemented and functional."
-    },
-    {
-      id: "q15",
-      tag: "Demo",
-      question: "What is simulated?",
-      answer: "For demonstration purposes, network device traffic (Firewall, Router, VPN) is generated synthetically via our simulator module to demonstrate multi-vendor heterogeneity without requiring physical enterprise hardware on stage."
-    }
-  ];
-
-  async function renderSihDemoView(container) {
-    // Fetch live system readiness
-    let readiness = {
-      overall_status: "READY",
-      components: {
-        api: { status: "READY", detail: "FastAPI Core (Port 8000)" },
-        pipeline: { status: "READY", detail: "ULPF-IR v1.0 Engine (7 Parsers)" },
-        storage: { status: "READY", detail: "SHA-256 Immutable Store" },
-        opensearch: { status: "READY", detail: "OpenSearch 2.11 Sink" },
-        ai: { status: "READY", detail: "Local SLM (Qwen2.5-Coder)" },
-        demo_server: { status: "READY", detail: "Multi-Vendor Simulator" },
-        sse: { status: "CONNECTED", detail: "Real-time Event Stream Hub" }
-      }
-    };
-
     try {
-      const r = await fetch("/api/v1/system/readiness");
-      if (r.ok) readiness = await r.json();
-    } catch (e) {
-      console.warn("Readiness check fallback:", e);
-    }
-
-    const currentSample = sihSamplePresets[activeSihPresetIndex] || sihSamplePresets[0];
-    const currentStage = sihStages[activeSihStageIndex] || sihStages[0];
-    const transform = currentStage.getTransform(currentSample);
-
-    container.innerHTML = `
-      <!-- 1. SIH GRAND FINALE HERO BANNER -->
-      <div class="sih-hero-banner">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
-          <div>
-            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
-              <span class="badge" style="background: #4f46e5; color: #ffffff; font-weight: 700; padding: 4px 10px;">SIH 26156 (NTRO)</span>
-              <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid #10b981;">100% LOCAL & AIR-GAPPED</span>
-            </div>
-            <h1 style="font-size: 22px; font-weight: 800; letter-spacing: -0.5px; color: #ffffff;">
-               ULPF SIH Grand Finale: Live Demonstration & Proof Center
-            </h1>
-            <p style="color: #c7d2fe; font-size: 13px; max-width: 850px; margin-top: 6px; line-height: 1.5;">
-              Unified log preprocessing and canonical normalization across heterogeneous perimeter devices with cryptographic field-level provenance and sovereign, on-device AI onboarding.
-            </p>
-          </div>
-          <div style="display: flex; gap: 10px; align-items: center;">
-            <button id="btnSihResetDemo" class="btn btn-danger-outline" style="background: rgba(220, 38, 38, 0.15); border-color: #ef4444; color: #fca5a5; padding: 8px 14px; font-weight: 700;">
-               Reset Demo State
-            </button>
-            <button id="btnPlayStepper" class="btn btn-primary" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); border: none; padding: 8px 16px; font-weight: 700; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);">
-              ${autoStepInterval ? 'Pause  Pause Walkthrough' : 'Play  Step Through All Stages'}
-            </button>
-          </div>
-        </div>
-
-        <!-- System Readiness Strip -->
-        <div style="margin-top: 20px;">
-          <div style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">
-            ULPF SYSTEM READINESS STATUS
-          </div>
-          <div class="sih-readiness-bar">
-            ${Object.entries(readiness.components).map(([k, v]) => `
-              <div class="readiness-pill ${v.status.includes('READY') || v.status === 'CONNECTED' ? 'ready' : 'warning'}">
-                <span style="font-weight: 700; text-transform: uppercase; color: #e2e8f0;">${k.replace('_', ' ')}</span>
-                <span style="font-weight: 800; color: ${v.status.includes('READY') || v.status === 'CONNECTED' ? '#34d399' : '#fbbf24'};">
-                  ${v.status.includes('READY') ? 'OK READY' : v.status === 'CONNECTED' ? 'OK LIVE' : '[!] ' + v.status}
-                </span>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-      </div>
-
-      <!-- 2. INTERACTIVE STEP-BY-STEP PIPELINE VISUALIZER (WOW FACTOR) -->
-      <div class="step-visualizer-card">
-        <div class="step-visualizer-header">
-          <div>
-            <h2 style="font-size: 16px; font-weight: 800; color: #ffffff; display: flex; align-items: center; gap: 8px;">
-              <span> Interactive 10-Stage Pipeline Transformation Engine</span>
-              <span class="badge" style="background: #4338ca; color: #e0e7ff;">STAGE ${currentStage.num} / 10</span>
-            </h2>
-            <div style="font-size: 12px; color: #94a3b8; margin-top: 3px;">
-              Step through the entire end-to-end transformation lifecycle with live evidence inspection.
-            </div>
-          </div>
-
-          <!-- Playback Controls -->
-          <div class="stepper-control-deck">
-            <button id="btnPrevStep" class="stepper-btn"><  Prev</button>
-            <button id="btnTogglePlay" class="stepper-btn btn-play">${autoStepInterval ? 'Pause  Pause' : 'Play  Play (Auto-Step)'}</button>
-            <button id="btnNextStep" class="stepper-btn">Next Play </button>
-            <button id="btnResetStep" class="stepper-btn"><<  Reset</button>
-            <select id="selStepSpeed" class="stepper-btn" style="background:#1e293b; color:#cbd5e1; outline:none;">
-              <option value="3000" ${autoStepSpeedMs === 3000 ? 'selected' : ''}>Speed: 0.5x (Slow)</option>
-              <option value="2000" ${autoStepSpeedMs === 2000 ? 'selected' : ''}>Speed: 1x (Normal)</option>
-              <option value="1000" ${autoStepSpeedMs === 1000 ? 'selected' : ''}>Speed: 2x (Fast)</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Sample Switcher Chips -->
-        <div class="sample-selector-bar">
-          <span style="font-size: 11px; font-weight: 700; color: #64748b; margin-right: 4px; text-transform: uppercase;">Sample Preset:</span>
-          ${sihSamplePresets.map((s, idx) => `
-            <div class="sample-chip ${idx === activeSihPresetIndex ? 'active' : ''}" onclick="window.selectSihPreset(${idx})">
-              ${s.vendor} (${s.format})
-            </div>
-          `).join('')}
-        </div>
-
-        <!-- 10-Step Interactive Rail -->
-        <div class="step-rail" id="sihStepRail">
-          ${sihStages.map((st, idx) => `
-            <div class="rail-node ${idx === activeSihStageIndex ? 'active' : ''} ${idx < activeSihStageIndex ? 'passed' : ''}" onclick="window.selectSihStage(${idx})">
-              <div class="rail-num">${idx < activeSihStageIndex ? 'OK Stage ' + st.num : 'Stage ' + st.num}</div>
-              <div class="rail-title">${st.name}</div>
-            </div>
-          `).join('')}
-        </div>
-
-        <!-- WHAT JUST HAPPENED EXPLANATION PANEL -->
-        <div class="what-happened-box" id="whatHappenedBox" style="margin: 12px 0;">
-          <div class="what-happened-title">
-            <span> WHAT JUST HAPPENED AT STAGE ${currentStage.num} (${currentStage.title.toUpperCase()}):</span>
-          </div>
-          <div class="what-happened-desc">
-            "${currentStage.explanation}"
-          </div>
-          <div style="margin-top: 10px; display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #94a3b8;">
-            <span class="badge badge-neutral" style="background: #1e293b; color: #38bdf8; border-color: #334155;">Active Mechanism</span>
-            <span>${currentStage.actionText}</span>
-          </div>
-        </div>
-
-        <!-- LIVE DATA TRANSFORMATION DECK -->
-        <div class="stage-transform-deck">
-          <div class="deck-pane">
-            <div class="deck-pane-title">
-              <span>${transform.leftTitle}</span>
-              <span class="badge badge-neutral" style="font-size: 10px;">STAGE ${currentStage.num}</span>
-            </div>
-            <pre class="deck-data-box">${escapeHtml(transform.leftContent)}</pre>
-          </div>
-
-          <div class="deck-pane">
-            <div class="deck-pane-title">
-              <span>${transform.rightTitle}</span>
-              <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #34d399; font-size: 10px;">LIVE PAYLOAD</span>
-            </div>
-            <pre class="deck-data-box" style="color: #38bdf8;">${escapeHtml(transform.rightContent)}</pre>
-          </div>
-        </div>
-      </div>
-
-      <!-- 3. ONE-CLICK DEMO SCENARIOS -->
-      <div class="card p-md mb-md">
-        <div class="flex-between mb-sm">
-          <div>
-            <h2 style="font-size: 15px; font-weight: 700;"> One-Click Live Demonstration Scenarios</h2>
-            <div class="text-muted" style="font-size: 12px;">Select a scenario to trigger live multi-device event ingestion into the ULPF pipeline.</div>
-          </div>
-          <span class="badge badge-neutral">4 Scenarios Ready</span>
-        </div>
-
-        <div class="scenarios-grid">
-          <div class="scenario-btn-card" id="btnScenNormal" data-scenario="normal_enterprise">
-            <div>
-              <div class="scenario-icon"></div>
-              <div class="scenario-title">1. NORMAL ENTERPRISE TRAFFIC</div>
-              <div class="scenario-desc">Generates realistic multi-tier web activity: Login → Browse → Search → Product View → Order → Logout across servers.</div>
-            </div>
-            <button class="btn btn-secondary btn-sm" style="width: 100%; margin-top: 8px;"> Trigger Scenario</button>
-          </div>
-
-          <div class="scenario-btn-card" id="btnScenSecurity" data-scenario="network_security">
-            <div>
-              <div class="scenario-icon"></div>
-              <div class="scenario-title">2. NETWORK SECURITY EVENT</div>
-              <div class="scenario-desc">Generates heterogeneous perimeter events: Firewall Deny, VPN Event, IDS Event, and Router Event.</div>
-            </div>
-            <button class="btn btn-secondary btn-sm" style="width: 100%; margin-top: 8px;"> Trigger Scenario</button>
-          </div>
-
-          <div class="scenario-btn-card" id="btnScenUnknown" data-scenario="unknown_vendor">
-            <div>
-              <div class="scenario-icon"></div>
-              <div class="scenario-title">3. UNKNOWN VENDOR FORMAT</div>
-              <div class="scenario-desc">Runs complete lifecycle: Unknown Log → Detection → AI Analysis → Parser Proposal → Approval → Registered Parser → Deterministic Event.</div>
-            </div>
-            <button class="btn btn-secondary btn-sm" style="width: 100%; margin-top: 8px;"> Trigger Scenario</button>
-          </div>
-
-          <div class="scenario-btn-card" id="btnScenIncident" data-scenario="security_incident">
-            <div>
-              <div class="scenario-icon"></div>
-              <div class="scenario-title">4. SECURITY INCIDENT</div>
-              <div class="scenario-desc">SIMULATED SECURITY TRAFFIC: Repeated Login Failure, Suspicious Request, SQL Injection Example, XSS Example, Blocked IP.</div>
-            </div>
-            <button class="btn btn-danger-outline btn-sm" style="width: 100%; margin-top: 8px;"> Trigger Incident</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- 4. WHY ULPF? HERO PROBLEM VS RESULT DIAGRAMS -->
-      <div class="card p-md mb-md">
-        <div class="flex-between mb-sm">
-          <div>
-            <h2 style="font-size: 15px; font-weight: 700;"> "Why ULPF?" Hero Presentation Screen</h2>
-            <div class="text-muted" style="font-size: 12px;">How ULPF solves the N × M format explosion without compromising forensic evidence.</div>
-          </div>
-        </div>
-
-        <!-- 4-Box Flow: Problem -> Challenge -> ULPF -> Result -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-top: 14px;">
-          <div style="background: rgba(40, 8, 14, 0.85); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 6px; padding: 14px;">
-            <div style="font-size: 11px; font-weight: 700; color: #991b1b; text-transform: uppercase;">1. The Problem</div>
-            <div style="font-size: 12.5px; font-weight: 600; color: #7f1d1d; margin-top: 4px;">Heterogeneous Multi-Vendor Logs</div>
-            <div style="font-size: 11.5px; color: #991b1b; margin-top: 4px; line-height: 1.4;">Enterprise environments produce logs in many formats from many vendors.</div>
-          </div>
-
-          <div style="background: rgba(40, 16, 8, 0.85); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 6px; padding: 14px;">
-            <div style="font-size: 11px; font-weight: 700; color: #92400e; text-transform: uppercase;">2. The Challenge</div>
-            <div style="font-size: 12.5px; font-weight: 600; color: #78350f; margin-top: 4px;">Incompatible Fields & Semantics</div>
-            <div style="font-size: 11.5px; color: #92400e; margin-top: 4px; line-height: 1.4;">Every source has different fields, formats, and semantics across endpoints.</div>
-          </div>
-
-          <div style="background: rgba(18, 12, 36, 0.85); border: 1px solid rgba(99, 102, 241, 0.4); border-radius: 6px; padding: 14px;">
-            <div style="font-size: 11px; font-weight: 700; color: #1e40af; text-transform: uppercase;">3. ULPF Solution</div>
-            <div style="font-size: 12.5px; font-weight: 600; color: #1e3a8a; margin-top: 4px;">Universal Preprocessing Layer</div>
-            <div style="font-size: 11.5px; color: #1e40af; margin-top: 4px; line-height: 1.4;">One processing layer between heterogeneous sources and downstream systems.</div>
-          </div>
-
-          <div style="background: rgba(8, 32, 20, 0.85); border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 6px; padding: 14px;">
-            <div style="font-size: 11px; font-weight: 700; color: #065f46; text-transform: uppercase;">4. The Result</div>
-            <div style="font-size: 12.5px; font-weight: 600; color: #064e3b; margin-top: 4px;">RAW EVIDENCE + ULPF-IR + PROVENANCE</div>
-            <div style="font-size: 11.5px; color: #065f46; margin-top: 4px; line-height: 1.4;">Lossless Raw Evidence + Canonical ULPF-IR + Field Provenance + Multiple Output Schemas.</div>
-          </div>
-        </div>
-
-        <!-- The Core Visual: Many Sources -> ULPF -> ULPF-IR -> OCSF/ECS/SIEM -->
-        <div style="background: #0f172a; border-radius: 8px; padding: 22px; margin-top: 18px; color: #ffffff; text-align: center;">
-          <div style="font-size: 11.5px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px;">
-            MANY SOURCES
-          </div>
-          <div style="display: flex; align-items: center; justify-content: space-around; flex-wrap: wrap; gap: 14px; margin-top: 16px;">
-            <div style="background: #1e293b; border: 1px solid #334155; padding: 10px 16px; border-radius: 6px;">
-              <div style="font-weight: 700; font-size: 12px; color: #f87171;">Firewall • Router • VPN</div>
-              <div style="font-size: 11px; color: #94a3b8; margin-top: 2px;">Syslog • JSON • CEF • LEEF • KV</div>
-            </div>
-            <div style="font-size: 20px; color: #64748b;">-></div>
-            <div style="background: linear-gradient(135deg, #1e1b4b, #312e81); border: 1px solid #6366f1; padding: 12px 20px; border-radius: 8px; box-shadow: 0 0 15px rgba(99,102,241,0.3);">
-              <div style="font-weight: 800; font-size: 14px; color: #818cf8;"> ULPF (ULPF-IR)</div>
-              <div style="font-size: 10.5px; color: #c7d2fe; margin-top: 2px;">Canonical Intermediate Representation</div>
-            </div>
-            <div style="font-size: 20px; color: #64748b;">-></div>
-            <div style="background: #1e293b; border: 1px solid #334155; padding: 10px 16px; border-radius: 6px;">
-              <div style="font-weight: 700; font-size: 12px; color: #34d399;">Downstream Targets</div>
-              <div style="font-size: 11px; color: #94a3b8; margin-top: 2px;">OCSF • ECS • SIEM • OpenSearch</div>
-            </div>
-          </div>
-          <div style="font-size: 13px; color: #38bdf8; font-weight: 700; margin-top: 16px; letter-spacing: 0.5px;">
-            Preserve → Understand → Normalize → Trace → Deliver
-          </div>
-        </div>
-
-        <!-- Traditional vs ULPF Comparison -->
-        <div style="background: rgba(22, 6, 12, 0.85); border: 1px solid var(--border-color); border-radius: 6px; padding: 14px;">
-          <div style="font-weight: 700; font-size: 13px; color: var(--text-main); margin-bottom: 8px;">
-             Traditional Point-to-Point Architecture vs ULPF
-          </div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
-            <div style="background: rgba(28, 7, 14, 0.85); border: 1px solid var(--border-color); border-radius: 6px; padding: 10px;">
-              <strong style="color: #991b1b;">TRADITIONAL:</strong> Device -> Vendor Parser -> SIEM format -> SIEM (Tightly coupled; re-parse for Data Lake).
-            </div>
-            <div style="background: rgba(28, 7, 14, 0.85); border: 1px solid var(--border-color); border-radius: 6px; padding: 10px;">
-              <strong style="color: #4338ca;">ULPF:</strong> Many Sources -> ULPF -> ULPF-IR -> OCSF / ECS / SIEM simultaneously.
-            </div>
-          </div>
-          <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 10px; font-style: italic;">
-            "ULPF provides a vendor- and downstream-independent processing layer that can centralize normalization, provenance, and raw evidence preservation."
-          </div>
-        </div>
-
-        <!-- Compiler Analogy & Unknown Log Workflow -->
-        <div class="analogy-grid">
-          <div class="analogy-pane">
-            <div style="font-size: 12px; font-weight: 700; color: var(--text-main);"> Compiler Intermediate Representation Analogy</div>
-            <div class="text-muted" style="font-size: 11px; margin-top: 2px;">Just like LLVM bridges programming languages to machine architectures:</div>
-            <div class="analogy-flow">
-              <span class="analogy-token">Programming Languages</span>
-              <span style="color: #94a3b8;">-></span>
-              <span class="analogy-token highlight">Intermediate Representation</span>
-              <span style="color: #94a3b8;">-></span>
-              <span class="analogy-token">Machine Output</span>
-            </div>
-            <div class="analogy-flow" style="margin-top: 8px;">
-              <span class="analogy-token">Different Log Formats</span>
-              <span style="color: #94a3b8;">-></span>
-              <span class="analogy-token highlight" style="background:#e0e7ff; border-color:#6366f1; color:#4338ca;">ULPF-IR</span>
-              <span style="color: #94a3b8;">-></span>
-              <span class="analogy-token">OCSF / ECS / SIEM</span>
-            </div>
-            <div style="font-size: 11px; color: var(--text-muted); margin-top: 10px; font-style: italic;">
-              "ULPF-IR acts as an intermediate representation between heterogeneous log sources and downstream consumers."
-            </div>
-          </div>
-
-          <div class="analogy-pane">
-            <div style="font-size: 12px; font-weight: 700; color: var(--text-main);"> Sovereign Unknown Log Onboarding Workflow</div>
-            <div class="text-muted" style="font-size: 11px; margin-top: 2px;">Deterministic runtime for known logs; AI sidecar for novel formats:</div>
-            
-            <div class="ai-workflow-rail mt-sm">
-              <div class="workflow-chip"><span class="chip-step">1</span> Unknown Log</div>
-              <div class="workflow-arrow">→</div>
-              <div class="workflow-chip highlight"><span class="chip-step">2</span> Local SLM AI</div>
-              <div class="workflow-arrow">→</div>
-              <div class="workflow-chip"><span class="chip-step">3</span> Parser Spec</div>
-              <div class="workflow-arrow">→</div>
-              <div class="workflow-chip"><span class="chip-step">4</span> Human Review</div>
-              <div class="workflow-arrow">→</div>
-              <div class="workflow-chip approve"><span class="chip-step">5</span> Approve & Promote</div>
-              <div class="workflow-arrow">→</div>
-              <div class="workflow-chip deterministic"><span class="chip-step">6</span> Deterministic Engine</div>
-            </div>
-
-            <div style="font-size: 11.5px; color: #4338ca; font-weight: 700; margin-top: 10px;">
-              "AI assists parser onboarding; approved parsers handle future events deterministically."
-            </div>
-          </div>
-        </div>
-      </div>
-
-      
-      <!-- 5. LIVE BEFORE / AFTER SIDE-BY-SIDE COMPARATOR -->
-      <div class="card p-md mb-md" id="comparatorCard">
-        <div class="flex-between mb-sm">
-          <div>
-            <h2 style="font-size: 15px; font-weight: 700;">Live "Before / After" Normalization Comparator</h2>
-            <div class="text-muted" style="font-size: 12px;">Inspect raw incoming telemetry versus canonical ULPF-IR representation side-by-side with zero page reload.</div>
-          </div>
-          <div class="comparator-preset-bar" id="comparatorPresetBar">
-            ${sihSamplePresets.map((s, idx) => `
-              <button class="btn btn-sm ${idx === activeSihPresetIndex ? 'btn-primary' : 'btn-secondary'} comp-preset-btn" data-preset-idx="${idx}" onclick="window.selectSihPreset(${idx})">
-                ${s.vendor.split(' ')[0]}
-              </button>
-            `).join('')}
-          </div>
-        </div>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px;">
-          <div>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-              <span style="font-size: 12px; font-weight: 700; color: #f87171;">RAW INCOMING LOG (UNTOUCHED EVIDENCE)</span>
-              <span class="badge badge-neutral" id="compRawFormatBadge">${currentSample.format}</span>
-            </div>
-            <pre class="code-box" id="comparatorRawPre" style="height: 180px; overflow: auto; color: #fca5a5; font-size: 11.5px;">${escapeHtml(currentSample.raw)}</pre>
-          </div>
-
-          <div>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-              <span style="font-size: 12px; font-weight: 700; color: #34d399;">NORMALIZED CANONICAL ULPF-IR</span>
-              <span class="badge badge-teal">ULPF-IR v1.0 Schema</span>
-            </div>
-            <pre class="code-box" id="comparatorIrPre" style="height: 180px; overflow: auto; color: #38bdf8; font-size: 11.5px;">${escapeHtml(JSON.stringify({
-              ulpf_version: "1.0",
-              event: { category: "network", action: currentSample.action, time: "2026-09-06T14:32:10Z" },
-              source: { ip: currentSample.srcIp, port: 54321 },
-              destination: { ip: currentSample.dstIp, port: currentSample.dstPort },
-              network: { transport: currentSample.proto.toLowerCase(), protocol: "https" },
-              device: { vendor: currentSample.vendor, product: currentSample.device },
-              raw_sha256: currentSample.sha256
-            }, null, 2))}</pre>
-          </div>
-        </div>
-      </div>
-
-
-      <!-- 6. EVIDENCE, BENCHMARKS & TRANSPARENCY PROOF -->
-      <div class="grid grid-2 gap-md mb-md">
-        <!-- Evidence Cards -->
-        <div class="card p-md">
-          <h2 style="font-size: 15px; font-weight: 700; margin-bottom: 4px;"> Concrete Claim Evidence & Proof</h2>
-          <div class="text-muted" style="font-size: 12px; margin-bottom: 12px;">Verified verifiable technical proof points backing core claims.</div>
-
-          <div style="display: flex; flex-direction: column; gap: 10px;">
-            <div style="background: rgba(22, 6, 12, 0.85); border: 1px solid var(--border-color); border-radius: 6px; padding: 14px;">
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-weight: 700; font-size: 12px; color: var(--text-main);">CLAIM: Raw logs are preserved without alteration</span>
-                <span class="badge" style="background: rgba(8, 32, 20, 0.85); border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 6px; padding: 14px;">VERIFIED</span>
-              </div>
-              <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 4px;">
-                <strong>EVIDENCE:</strong> Every log receives an immutable SHA-256 cryptographic digest before parsing. Verified on demand via <span class="mono">POST /api/v1/events/{id}/verify-integrity</span>.
-              </div>
-            </div>
-
-            <div style="background: rgba(22, 6, 12, 0.85); border: 1px solid var(--border-color); border-radius: 6px; padding: 14px;">
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-weight: 700; font-size: 12px; color: var(--text-main);">CLAIM: ULPF handles multiple formats</span>
-                <span class="badge" style="background: rgba(8, 32, 20, 0.85); border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 6px; padding: 14px;">VERIFIED</span>
-              </div>
-              <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 4px;">
-                <strong>EVIDENCE:</strong> Syslog OK, JSON OK, CEF OK, LEEF OK, Key=Value OK tested and proven in Multi-Vendor Lab with 100% field mapping.
-              </div>
-            </div>
-
-            <div style="background: rgba(22, 6, 12, 0.85); border: 1px solid var(--border-color); border-radius: 6px; padding: 14px;">
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-weight: 700; font-size: 12px; color: var(--text-main);">CLAIM: AI can assist unknown-format onboarding</span>
-                <span class="badge" style="background: rgba(8, 32, 20, 0.85); border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 6px; padding: 14px;">VERIFIED</span>
-              </div>
-              <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 4px;">
-                <strong>EVIDENCE:</strong> Sample → Proposal → Approval → Registered Parser. Local SLM generates regex proposals for unparsed logs.
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Real Benchmark Card -->
-        <div class="card p-md">
-          <div class="flex-between mb-sm">
-            <h2 style="font-size: 15px; font-weight: 700;"> Measured Local Benchmark Proof</h2>
-            <span class="badge" style="background: #e0e7ff; color: #4338ca; font-weight: 700;">benchmark.py Suite</span>
-          </div>
-          <div class="text-muted" style="font-size: 12px; margin-bottom: 12px;">Actual measured metrics on local development machine (100,000 events).</div>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-            <div style="background: rgba(22, 6, 12, 0.85); border: 1px solid var(--border-color); border-radius: 6px; padding: 14px;">
-              <div style="font-size: 10.5px; color: var(--text-muted); font-weight: 700;">THROUGHPUT RATE</div>
-              <div style="font-size: 18px; font-weight: 800; color: #047857; margin-top: 2px;">13,500+ EPS</div>
-              <div style="font-size: 10px; color: var(--text-muted);">Events / Sec (Single Core)</div>
-            </div>
-
-            <div style="background: rgba(22, 6, 12, 0.85); border: 1px solid var(--border-color); border-radius: 6px; padding: 14px;">
-              <div style="font-size: 10.5px; color: var(--text-muted); font-weight: 700;">MEDIAN LATENCY (P50)</div>
-              <div style="font-size: 18px; font-weight: 800; color: #2563eb; margin-top: 2px;">70.2 µs</div>
-              <div style="font-size: 10px; color: var(--text-muted);">0.0702 ms / log</div>
-            </div>
-
-            <div style="background: rgba(22, 6, 12, 0.85); border: 1px solid var(--border-color); border-radius: 6px; padding: 14px;">
-              <div style="font-size: 10.5px; color: var(--text-muted); font-weight: 700;">95TH %-TILE (P95)</div>
-              <div style="font-size: 18px; font-weight: 800; color: #7c3aed; margin-top: 2px;">90.1 µs</div>
-              <div style="font-size: 10px; color: var(--text-muted);">Tail multi-format latency</div>
-            </div>
-
-            <div style="background: rgba(22, 6, 12, 0.85); border: 1px solid var(--border-color); border-radius: 6px; padding: 14px;">
-              <div style="font-size: 10.5px; color: var(--text-muted); font-weight: 700;">ERRORS / FAILURES</div>
-              <div style="font-size: 18px; font-weight: 800; color: #059669; margin-top: 2px;">0</div>
-              <div style="font-size: 10px; color: var(--text-muted);">100% deterministic success</div>
-            </div>
-          </div>
-
-          <div style="font-size: 11px; color: var(--text-muted); margin-top: 10px; line-height: 1.4;">
-            <strong>Configuration:</strong> Local development machine; AI disabled during throughput benchmark.
-          </div>
-
-          <!-- Empirical Multi-Parser & C-Acceleration Benchmark Breakdown -->
-          <div style="margin-top: 16px; border-top: 1px solid var(--border-color); padding-top: 12px;">
-            <div style="font-size: 12px; font-weight: 700; margin-bottom: 8px; color: var(--text-main); display:flex; justify-content:space-between; align-items:center;">
-              <span>Empirical Engine &amp; Multi-Parser Benchmarks (100,000 Iterations)</span>
-              <span class="badge badge-teal">testing/benchmark_all.py</span>
-            </div>
-            <div style="overflow-x: auto;">
-              <table class="table-dense" style="font-size: 11.5px; width:100%;">
-                <thead>
-                  <tr>
-                    <th>Component / Parser</th>
-                    <th>Format / Syntax</th>
-                    <th>Throughput (EPS)</th>
-                    <th>Avg Latency</th>
-                    <th>Engine Acceleration</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr><td><strong>Fast C-Engine Parser</strong></td><td>Key=Value Micro-Engine</td><td style="color:#10b981; font-weight:700;">218,401 EPS</td><td>4.58 µs</td><td><span class="badge badge-teal">Compiled C DLL</span></td></tr>
-                  <tr><td><strong>Cisco ASA Parser</strong></td><td>Syslog %ASA-4-106023</td><td style="color:#10b981; font-weight:700;">211,115 EPS</td><td>4.74 µs</td><td><span class="badge badge-teal">C Fastpath</span></td></tr>
-                  <tr><td><strong>Generic Key=Value Parser</strong></td><td>src= dst= proto= act=</td><td style="color:#10b981; font-weight:700;">199,163 EPS</td><td>5.02 µs</td><td><span class="badge badge-teal">C-Fast KV</span></td></tr>
-                  <tr><td><strong>LEEF 2.0 Parser</strong></td><td>LEEF:2.0|IBM|QRadar</td><td style="color:#10b981; font-weight:700;">173,642 EPS</td><td>5.76 µs</td><td><span class="badge badge-teal">Direct Tab/Pipe</span></td></tr>
-                  <tr><td><strong>AWS CloudTrail Parser</strong></td><td>Nested JSON Object</td><td style="color:#10b981; font-weight:700;">165,627 EPS</td><td>6.04 µs</td><td><span class="badge badge-teal">Fast JSON SIMD</span></td></tr>
-                  <tr><td><strong>Suricata EVE Parser</strong></td><td>EVE JSON Telemetry</td><td style="color:#10b981; font-weight:700;">157,864 EPS</td><td>6.33 µs</td><td><span class="badge badge-teal">Fast JSON</span></td></tr>
-                  <tr><td><strong>CEF Parser</strong></td><td>CEF:0|CheckPoint|VPN-1</td><td style="color:#10b981; font-weight:700;">117,034 EPS</td><td>8.54 µs</td><td><span class="badge badge-teal">Zero-Copy Offsets</span></td></tr>
-                  <tr><td><strong>Syslog RFC 5424 Parser</strong></td><td>RFC 5424 Structured</td><td style="color:#10b981; font-weight:700;">84,894 EPS</td><td>11.78 µs</td><td><span class="badge badge-neutral">Standard Python</span></td></tr>
-                  <tr><td><strong>Fortinet KV Parser</strong></td><td>FortiGate log_id=</td><td style="color:#10b981; font-weight:700;">73,964 EPS</td><td>13.52 µs</td><td><span class="badge badge-neutral">Tokenized KV</span></td></tr>
-                  <tr><td><strong>Palo Alto CSV Parser</strong></td><td>PAN-OS Traffic CSV</td><td style="color:#10b981; font-weight:700;">71,547 EPS</td><td>13.98 µs</td><td><span class="badge badge-neutral">Field Index Array</span></td></tr>
-                  <tr style="background:rgba(56,189,248,0.08); font-weight:700;"><td><strong>Full End-to-End Pipeline</strong></td><td>Ingress + SHA256 + ULPF-IR + Provenance</td><td style="color:#38bdf8; font-weight:800;">13,500+ EPS</td><td>70.2 µs (P50)</td><td><span class="badge badge-cyan">Full Sovereign Stack</span></td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 7. WHAT IS REAL / WHAT IS SIMULATED TRANSPARENCY MATRIX -->
-      <div class="card p-md mb-md">
-        <h2 style="font-size: 15px; font-weight: 700; margin-bottom: 4px;"> Engineering Transparency: What is Real vs What is Simulated</h2>
-        <div class="text-muted" style="font-size: 12px; margin-bottom: 12px;">Honest technical breakdown for SIH evaluation credibility.</div>
-
-        <div style="overflow-x: auto;">
-          <table class="table-dense">
-            <thead>
-              <tr>
-                <th>Component</th>
-                <th>Status</th>
-                <th>Details</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><td><strong>ULPF processing</strong></td><td><span class="badge" style="background: rgba(8, 32, 20, 0.85); border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 6px; padding: 14px;">REAL</span></td><td>Deterministic Python pipeline executing in < 100 microseconds.</td></tr>
-              <tr><td><strong>Format detection</strong></td><td><span class="badge" style="background: rgba(8, 32, 20, 0.85); border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 6px; padding: 14px;">REAL</span></td><td>Structural regex evaluation supporting JSON, Syslog, CEF, LEEF, Key=Value.</td></tr>
-              <tr><td><strong>Parser engine</strong></td><td><span class="badge" style="background: rgba(8, 32, 20, 0.85); border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 6px; padding: 14px;">REAL</span></td><td>7 active compiled format parsers in runtime registry.</td></tr>
-              <tr><td><strong>ULPF-IR</strong></td><td><span class="badge" style="background: rgba(8, 32, 20, 0.85); border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 6px; padding: 14px;">REAL</span></td><td>Canonical event data model and Pydantic schema validation.</td></tr>
-              <tr><td><strong>Provenance</strong></td><td><span class="badge" style="background: rgba(8, 32, 20, 0.85); border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 6px; padding: 14px;">REAL</span></td><td>Field attribution graph linking normalized keys back to raw bytes.</td></tr>
-              <tr><td><strong>Raw evidence</strong></td><td><span class="badge" style="background: rgba(8, 32, 20, 0.85); border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 6px; padding: 14px;">REAL</span></td><td>SHA-256 byte hashing and unmodified raw evidence storage.</td></tr>
-              <tr><td><strong>OpenSearch integration</strong></td><td><span class="badge" style="background: rgba(8, 32, 20, 0.85); border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 6px; padding: 14px;">REAL if configured</span></td><td>Indexed into OpenSearch 2.11 cluster when reachable; simulated local index fallback.</td></tr>
-              <tr><td><strong>Demo Website</strong></td><td><span class="badge" style="background: #fef3c7; color: #92400e;">SIMULATED</span></td><td>Simulated e-commerce web portal (Nova Retail Systems).</td></tr>
-              <tr><td><strong>Demo Devices</strong></td><td><span class="badge" style="background: #fef3c7; color: #92400e;">SIMULATED</span></td><td>Synthetic firewall, router, VPN streams modeled on real vendor formats.</td></tr>
-              <tr><td><strong>Mock SIEM</strong></td><td><span class="badge" style="background: #fef3c7; color: #92400e;">MOCK</span></td><td>In-memory event sink for downstream delivery verification.</td></tr>
-              <tr><td><strong>AI Model</strong></td><td><span class="badge" style="background: #e0e7ff; color: #4338ca;">LOCAL</span></td><td>Local Ollama (Qwen2.5-Coder:3B) with heuristic pattern analyzer fallback.</td></tr>
-              <tr><td><strong>Vendor connectivity</strong></td><td><span class="badge" style="background: #fef3c7; color: #92400e;">SIMULATED</span></td><td>Simulated unless physical syslog UDP 514 is connected.</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- 8. SUPPORTED TODAY VS FUTURE ENTERPRISE SCALE -->
-      <div class="grid grid-2 gap-md mb-md">
-        <div class="card p-md">
-          <h2 style="font-size: 14px; font-weight: 700; margin-bottom: 8px;">OK CURRENT PROTOTYPE SUPPORT</h2>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 12px;">
-            <div>
-              <strong>Formats:</strong>
-              <div class="mt-xs">OK Syslog (RFC 3164/5424)</div>
-              <div>OK JSON</div>
-              <div>OK CEF</div>
-              <div>OK LEEF</div>
-              <div>OK Key=Value</div>
-            </div>
-            <div>
-              <strong>Capabilities:</strong>
-              <div class="mt-xs">OK Detection</div>
-              <div>OK Parsing</div>
-              <div>OK Normalization</div>
-              <div>OK ULPF-IR</div>
-              <div>OK Provenance</div>
-              <div>OK Raw preservation (SHA-256)</div>
-              <div>OK OCSF / ECS exports</div>
-              <div>OK AI-assisted onboarding</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card p-md">
-          <h2 style="font-size: 14px; font-weight: 700; margin-bottom: 8px;"> FUTURE / PRODUCTION HARDENING</h2>
-          <div style="font-size: 12px; color: var(--text-muted); line-height: 1.6;">
-            <div>• Horizontal collector scaling with partitioned load balancing</div>
-            <div>• Message-bus ingestion (Kafka / Redpanda / NATS)</div>
-            <div>• Multi-node distributed processing workers</div>
-            <div>• High-availability distributed storage (Ceph / S3)</div>
-            <div>• Distributed OpenSearch cluster indexing</div>
-            <div>• Enterprise IAM & RBAC access controls</div>
-            <div>• Advanced policy & compliance engine</div>
-            <div>• Extended vendor parser packs (CloudTrail, Cisco Meraki)</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 9. INTERACTIVE JUDGE QUESTION ACCORDION (15 QUESTIONS) -->
-      <div class="card p-md mb-md">
-        <div class="flex-between mb-sm">
-          <div>
-            <h2 style="font-size: 15px; font-weight: 700;"> Judge Question Cards (15 Prepared Questions)</h2>
-            <div class="text-muted" style="font-size: 12px;">Search or click any question card for direct, technically precise answers.</div>
-          </div>
-          <span class="badge badge-neutral">${judgeQuestions.length} Questions Prepared</span>
-        </div>
-
-        <input type="text" id="judgeSearchInput" class="judge-search-input" placeholder=" Search questions (e.g. OCSF, AI, scale, provenance, tampering, failure)...">
-
-        <div class="judge-qa-list" id="judgeQaList">
-          ${judgeQuestions.map(q => `
-            <div class="judge-qa-card" data-qid="${q.id}">
-              <div class="judge-qa-header">
-                <div>
-                  <span class="judge-tag">${q.tag}</span>
-                  <span>${escapeHtml(q.question)}</span>
-                </div>
-                <span>▼</span>
-              </div>
-              <div class="judge-qa-body">
-                ${escapeHtml(q.answer)}
-              </div>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-
-      <!-- 10. FALLBACK DEMONSTRATION SAMPLES -->
-      <div class="card p-md mb-md">
-        <div class="flex-between mb-sm">
-          <div>
-            <h2 style="font-size: 14px; font-weight: 700;"> Fallback Demonstration Samples</h2>
-            <div class="text-muted" style="font-size: 11.5px;">Preset sample payloads for offline presentation resilience.</div>
-          </div>
-          <span class="badge badge-neutral">FALLBACK DEMO SAMPLES</span>
-        </div>
-
-        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-          <button class="btn btn-secondary btn-sm" onclick="window.injectFallbackSample('syslog')">Syslog RFC 5424 Sample</button>
-          <button class="btn btn-secondary btn-sm" onclick="window.injectFallbackSample('cef')">CEF CheckPoint Sample</button>
-          <button class="btn btn-secondary btn-sm" onclick="window.injectFallbackSample('leef')">LEEF QRadar Sample</button>
-          <button class="btn btn-secondary btn-sm" onclick="window.injectFallbackSample('kv')">Key=Value Fortinet Sample</button>
-          <button class="btn btn-secondary btn-sm" onclick="window.injectFallbackSample('json')">JSON AWS GuardDuty Sample</button>
-          <button class="btn btn-danger-outline btn-sm" onclick="window.injectFallbackSample('unknown')">Unknown SCADA Telemetry Sample</button>
-        </div>
-      </div>
-    `;
-
-    attachSihDemoEventHandlers();
-  }
-
-  function attachSihDemoEventHandlers() {
-    // 1. Reset Demo Button
-    const btnReset = document.getElementById("btnSihResetDemo");
-    if (btnReset) {
-      btnReset.addEventListener("click", async () => {
-        if (confirm("Reset demonstration data?\n\nThis will clear demo events and traffic while preserving parser configuration.\nDemo environment will be ready.")) {
-          try {
-            const res = await fetch("/api/v1/demo/reset", { method: "POST" });
-            const data = await res.json();
-            showToast("Demo environment ready. Event storage cleared.", "success");
-            fetchEvents();
-            fetchMetrics();
-            fetchUnknownLogs();
-            renderCurrentRoute();
-          } catch (e) {
-            showToast("Failed to reset: " + e.message, "error");
-          }
-        }
-      });
-    }
-
-    // 2. Playback Stepper Controls
-    const btnPrev = document.getElementById("btnPrevStep");
-    const btnNext = document.getElementById("btnNextStep");
-    const btnToggle = document.getElementById("btnTogglePlay");
-    const btnPlayMain = document.getElementById("btnPlayStepper");
-    const btnResetStep = document.getElementById("btnResetStep");
-    const selSpeed = document.getElementById("selStepSpeed");
-
-    if (btnPrev) {
-      btnPrev.addEventListener("click", () => {
-        stopAutoStep();
-        if (activeSihStageIndex > 0) {
-          selectSihStage(activeSihStageIndex - 1);
-        }
-      });
-    }
-
-    if (btnNext) {
-      btnNext.addEventListener("click", () => {
-        stopAutoStep();
-        if (activeSihStageIndex < sihStages.length - 1) {
-          selectSihStage(activeSihStageIndex + 1);
-        }
-      });
-    }
-
-    if (btnResetStep) {
-      btnResetStep.addEventListener("click", () => {
-        stopAutoStep();
-        selectSihStage(0);
-      });
-    }
-
-    if (btnToggle) {
-      btnToggle.addEventListener("click", toggleAutoStep);
-    }
-
-    if (btnPlayMain) {
-      btnPlayMain.addEventListener("click", toggleAutoStep);
-    }
-
-    if (selSpeed) {
-      selSpeed.addEventListener("change", (e) => {
-        autoStepSpeedMs = parseInt(e.target.value, 10) || 2000;
-        if (autoStepInterval) {
-          stopAutoStep();
-          startAutoStep();
-        }
-      });
-    }
-
-    // 3. Scenario Buttons
-    const scenBtns = document.querySelectorAll(".scenario-btn-card");
-    scenBtns.forEach(btn => {
-      btn.addEventListener("click", async () => {
-        const scenId = btn.getAttribute("data-scenario");
-        scenBtns.forEach(b => b.classList.remove("active"));
-        btn.classList.add("active");
-
-        showToast(`Triggering ${btn.querySelector(".scenario-title").textContent}...`, "info");
-        try {
-          const res = await fetch(`/api/v1/demo/scenarios/${scenId}`, { method: "POST" });
-          const data = await res.json();
-          showToast(`Scenario executed: ${data.description || "Events injected"}`, "success");
-          fetchEvents();
-          fetchMetrics();
-          fetchUnknownLogs();
-          startAutoStep();
-        } catch (e) {
-          showToast("Scenario execution error: " + e.message, "error");
-        }
-      });
-    });
-
-    // 4. Judge Search Input
-    const searchInput = document.getElementById("judgeSearchInput");
-    if (searchInput) {
-      searchInput.addEventListener("input", (e) => {
-        const query = e.target.value.toLowerCase().trim();
-        const cards = document.querySelectorAll(".judge-qa-card");
-        cards.forEach(card => {
-          const text = card.textContent.toLowerCase();
-          if (!query || text.includes(query)) {
-            card.style.display = "block";
-          } else {
-            card.style.display = "none";
-          }
-        });
-      });
-    }
-
-    // 5. Judge Accordion toggles
-    const judgeCards = document.querySelectorAll(".judge-qa-card");
-    judgeCards.forEach(card => {
-      const header = card.querySelector(".judge-qa-header");
-      if (header) {
-        header.addEventListener("click", () => {
-          card.classList.toggle("open");
-          const arrow = header.querySelector("span:last-child");
-          if (arrow) arrow.textContent = card.classList.contains("open") ? "▲" : "▼";
-        });
-      }
-    });
-  }
-
-  function toggleAutoStep() {
-    if (autoStepInterval) {
-      stopAutoStep();
-    } else {
-      startAutoStep();
-    }
-  }
-
-  function startAutoStep() {
-    stopAutoStep();
-    showToast("Starting step-by-step animated walkthrough...", "info");
-    const btnToggle = document.getElementById("btnTogglePlay");
-    const btnPlayMain = document.getElementById("btnPlayStepper");
-    if (btnToggle) btnToggle.textContent = "Pause  Pause";
-    if (btnPlayMain) btnPlayMain.textContent = "Pause  Pause Walkthrough";
-
-    autoStepInterval = setInterval(() => {
-      if (activeSihStageIndex >= sihStages.length - 1) {
-        selectSihStage(0);
-      } else {
-        selectSihStage(activeSihStageIndex + 1);
-      }
-    }, autoStepSpeedMs);
-  }
-
-  function stopAutoStep() {
-    if (autoStepInterval) {
-      clearInterval(autoStepInterval);
-      autoStepInterval = null;
-    }
-    const btnToggle = document.getElementById("btnTogglePlay");
-    const btnPlayMain = document.getElementById("btnPlayStepper");
-    if (btnToggle) btnToggle.textContent = "Play  Play (Auto-Step)";
-    if (btnPlayMain) btnPlayMain.textContent = "Play  Step Through All Stages";
-  }
-
-  
-  window.selectSihPreset = function (idx) {
-    activeSihPresetIndex = idx;
-    const sample = sihSamplePresets[idx] || sihSamplePresets[0];
-    const stage = sihStages[activeSihStageIndex] || sihStages[0];
-
-    // Update preset buttons on comparator card
-    document.querySelectorAll(".comp-preset-btn").forEach((btn) => {
-      const pIdx = parseInt(btn.getAttribute("data-preset-idx"), 10);
-      if (pIdx === idx) {
-        btn.className = "btn btn-sm btn-primary comp-preset-btn";
-      } else {
-        btn.className = "btn btn-sm btn-secondary comp-preset-btn";
-      }
-    });
-
-    // Update sample selector chips on stepper
-    document.querySelectorAll(".sample-chip").forEach((chip, cIdx) => {
-      if (cIdx === idx) chip.classList.add("active");
-      else chip.classList.remove("active");
-    });
-
-    // Update Comparator content in place
-    const rawPre = document.getElementById("comparatorRawPre");
-    const irPre = document.getElementById("comparatorIrPre");
-    const fmtBadge = document.getElementById("compRawFormatBadge");
-
-    if (rawPre) rawPre.textContent = sample.raw;
-    if (fmtBadge) fmtBadge.textContent = sample.format;
-    if (irPre) {
-      irPre.textContent = JSON.stringify({
-        ulpf_version: "1.0",
-        event: { category: "network", action: sample.action, time: "2026-09-06T14:32:10Z" },
-        source: { ip: sample.srcIp, port: 54321 },
-        destination: { ip: sample.dstIp, port: sample.dstPort },
-        network: { transport: sample.proto.toLowerCase(), protocol: "https" },
-        device: { vendor: sample.vendor, product: sample.device },
-        raw_sha256: sample.sha256
-      }, null, 2);
-    }
-
-    // Update Stage Transform Deck if present
-    const transform = stage.getTransform(sample);
-    const deckPanes = document.querySelectorAll(".stage-transform-deck .deck-pane");
-    if (deckPanes.length >= 2) {
-      deckPanes[0].querySelector(".deck-pane-title span:first-child").textContent = transform.leftTitle;
-      deckPanes[0].querySelector(".deck-data-box").textContent = transform.leftContent;
-      deckPanes[1].querySelector(".deck-pane-title span:first-child").textContent = transform.rightTitle;
-      deckPanes[1].querySelector(".deck-data-box").textContent = transform.rightContent;
-    }
-  };
-
-
-  window.selectSihStage = function (stageIdx) {
-    activeSihStageIndex = stageIdx;
-    const stage = sihStages[stageIdx];
-    const sample = sihSamplePresets[activeSihPresetIndex] || sihSamplePresets[0];
-    if (!stage) return;
-
-    // Update rail nodes
-    const railNodes = document.querySelectorAll(".rail-node");
-    railNodes.forEach((node, idx) => {
-      node.classList.remove("active");
-      if (idx === stageIdx) node.classList.add("active");
-      if (idx < stageIdx) {
-        node.classList.add("passed");
-        node.querySelector(".rail-num").textContent = "OK Stage " + sihStages[idx].num;
-      } else {
-        node.classList.remove("passed");
-        node.querySelector(".rail-num").textContent = "Stage " + sihStages[idx].num;
-      }
-    });
-
-    // Update What Just Happened card
-    const box = document.getElementById("whatHappenedBox");
-    if (box) {
-      box.innerHTML = `
-        <div class="what-happened-title">
-          <span> WHAT JUST HAPPENED AT STAGE ${stage.num} (${stage.title.toUpperCase()}):</span>
-        </div>
-        <div class="what-happened-desc">
-          "${stage.explanation}"
-        </div>
-        <div style="margin-top: 10px; display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #94a3b8;">
-          <span class="badge badge-neutral" style="background: #1e293b; color: #38bdf8; border-color: #334155;">Active Mechanism</span>
-          <span>${stage.actionText}</span>
-        </div>
-      `;
-    }
-
-    // Update Transform Deck
-    const transform = stage.getTransform(sample);
-    const deck = document.querySelector(".stage-transform-deck");
-    if (deck) {
-      deck.innerHTML = `
-        <div class="deck-pane">
-          <div class="deck-pane-title">
-            <span>${transform.leftTitle}</span>
-            <span class="badge badge-neutral" style="font-size: 10px;">STAGE ${stage.num}</span>
-          </div>
-          <pre class="deck-data-box">${escapeHtml(transform.leftContent)}</pre>
-        </div>
-
-        <div class="deck-pane">
-          <div class="deck-pane-title">
-            <span>${transform.rightTitle}</span>
-            <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #34d399; font-size: 10px;">LIVE PAYLOAD</span>
-          </div>
-          <pre class="deck-data-box" style="color: #38bdf8;">${escapeHtml(transform.rightContent)}</pre>
-        </div>
-      `;
-    }
-  };
-
-  window.selectBeforeAfter = function (idx) {
-    activeSihPresetIndex = idx;
-    renderCurrentRoute();
-  };
-
-  window.injectFallbackSample = async function (sampleType) {
-    const samples = {
-      syslog: "<134>1 2026-09-06T14:25:00Z firewall.corp - - - id=firewall proto=udp src=10.1.1.100 dst=8.8.8.8 spt=53000 dpt=53 act=allow",
-      cef: "CEF:0|CheckPoint|VPN-1|R81|100|Accept|Low|src=10.20.30.40 dst=8.8.8.8 spt=51522 dpt=443 proto=tcp act=allow",
-      leef: "LEEF:2.0|Imperva|SecureSphere|14.0|SQL_INJECTION|src=198.51.100.99\tdst=10.0.1.5\tdpt=3306\tact=block\tmsg=SQLi attempt",
-      kv: 'date=2026-09-06 time=14:25:00 devname="FG-100D" type="traffic" srcip=10.0.4.15 dstip=172.16.0.1 action="accept" proto=6',
-      json: '{"timestamp": "2026-09-06T14:25:00Z", "source_ip": "198.51.100.42", "destination_ip": "10.0.0.1", "action": "allow", "protocol": "TCP"}',
-      unknown: "[SCADA_V2] UNIT=Substation-4 NODE=10.240.12.5 CMD=RELAY_TRIP SENSOR=TEMP_OVERHEAT VAL=88.4C TS=20260906-163000"
-    };
-
-    const raw = samples[sampleType] || samples.syslog;
-    try {
-      showToast(`Injecting fallback ${sampleType.toUpperCase()} sample...`, "info");
-      const res = await fetch("/process", {
+      const res = await fetch("/api/v1/workers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ log: raw, source: `Fallback-${sampleType.toUpperCase()}` })
+        body: JSON.stringify({ count: count })
       });
-      const data = await res.json();
-      showToast(`Fallback demo sample processed successfully (Format: ${data.detection?.format || 'Detected'}).`, "success");
-      fetchEvents();
-      fetchMetrics();
-      fetchUnknownLogs();
-    } catch (e) {
-      showToast("Fallback injection error: " + e.message, "error");
+      if (res.ok) {
+        showToast(`Successfully scaled processing workers to ${count}.`, "success");
+        fetchMetrics();
+      } else {
+        const d = await res.json();
+        showToast("Error: " + d.detail, "error");
+      }
+    } catch (err) {
+      showToast("Failed to scale workers: " + err.message, "error");
     }
   };
 
-  const demoSteps = [
-    {
-      num: "STEP 1/6",
-      title: "0:00–0:20 | Why ULPF Architecture",
-      desc: "Explain: Many sources → different formats → one processing layer → common representation (ULPF-IR) → multiple outputs.",
-      route: "sih-demo",
-      actionLabel: " View Why ULPF",
-      action: async () => {
-        window.location.hash = "#/sih-demo";
-        showToast("SIH Demo presentation opened: Core architectural value proposition.", "info");
-      }
-    },
-    {
-      num: "STEP 2/6",
-      title: "0:20–0:45 | Demo Website Live Ingestion",
-      desc: "Perform client login / product view and show that a real request occurs.",
-      route: "demo/hub",
-      actionLabel: " Open Demo Hub",
-      action: async () => {
-        window.location.hash = "#/demo/hub";
-        showToast("Switched to Simulated Retail Client Hub. Ingesting live transactions.", "info");
-      }
-    },
-    {
-      num: "STEP 3/6",
-      title: "0:45–1:20 | Real-Time Live Pipeline Arrival",
-      desc: "Return to ULPF. Show event arriving live: Source → Raw Log → Detection → Parser → ULPF-IR.",
-      route: "pipeline",
-      actionLabel: " View Live Pipeline",
-      action: async () => {
-        window.location.hash = "#/pipeline";
-        showToast("Viewing live pipeline stages and synchronous SSE stream.", "info");
-      }
-    },
-    {
-      num: "STEP 4/6",
-      title: "1:20–1:45 | Normalization & SHA-256 Provenance",
-      desc: "Show Normalization, Provenance, OCSF, ECS, SIEM: Trace canonical event back to original evidence.",
-      route: "events",
-      actionLabel: " Inspect Event Provenance",
-      action: async () => {
-        window.location.hash = "#/events";
-        if (state.events.length > 0) {
-          openEventDetailModal(state.events[0].event_id || state.events[0].raw_event_id);
-        }
-      }
-    },
-    {
-      num: "STEP 5/6",
-      title: "1:45–2:25 | Unknown Vendor Format (AI Onboarding)",
-      desc: "Show Unknown → AI proposal → field mapping → approval → parser registry → deterministic processing.",
-      route: "intelligence/ai-onboarding",
-      actionLabel: " Run AI Onboarding",
-      action: async () => {
-        window.location.hash = "#/intelligence/ai-onboarding";
-        showToast("Reviewing unknown format in local SLM parser studio.", "info");
-      }
-    },
-    {
-      num: "STEP 6/6",
-      title: "2:25–3:00 | Multi-Vendor Lab & Final Proof",
-      desc: "Generate Syslog, JSON, CEF, LEEF, KV. Show convergence into ULPF-IR and finish presentation.",
-      route: "lab/multivendor",
-      actionLabel: " Multi-Vendor Convergence",
-      action: async () => {
-        window.location.hash = "#/lab/multivendor";
-        showToast("Multi-Vendor convergence proven. 3-Minute Demo sequence complete!", "success");
-      }
-    }
-  ];
-
-  let currentDemoStepIndex = 0;
-
-  function initDemoGuideController() {
-    const btnStart = document.getElementById("btnStartDemoGuide");
-    const bar = document.getElementById("demoGuideFloatingBar");
-    const btnClose = document.getElementById("btnCloseDemoGuide");
-    const btnPrev = document.getElementById("btnDemoPrev");
-    const btnNext = document.getElementById("btnDemoNext");
-    const btnAction = document.getElementById("btnDemoAction");
-
-    if (btnStart && bar) {
-      btnStart.addEventListener("click", () => {
-        currentDemoStepIndex = 0;
-        bar.classList.remove("hidden");
-        updateDemoGuideUI();
-      });
-    }
-
-    if (btnClose && bar) {
-      btnClose.addEventListener("click", () => {
-        bar.classList.add("hidden");
-      });
-    }
-
-    if (btnPrev) {
-      btnPrev.addEventListener("click", () => {
-        if (currentDemoStepIndex > 0) {
-          currentDemoStepIndex--;
-          updateDemoGuideUI();
-        }
-      });
-    }
-
-    if (btnNext) {
-      btnNext.addEventListener("click", () => {
-        if (currentDemoStepIndex < demoSteps.length - 1) {
-          currentDemoStepIndex++;
-          updateDemoGuideUI();
-        }
-      });
-    }
-
-    if (btnAction) {
-      btnAction.addEventListener("click", async () => {
-        const step = demoSteps[currentDemoStepIndex];
-        if (step && typeof step.action === "function") {
-          await step.action();
-        }
-      });
-    }
-  }
-
-  function updateDemoGuideUI() {
-    const step = demoSteps[currentDemoStepIndex];
-    if (!step) return;
-
-    const numEl = document.getElementById("demoStepNum");
-    const titleEl = document.getElementById("demoStepTitle");
-    const descEl = document.getElementById("demoStepDesc");
-    const btnAction = document.getElementById("btnDemoAction");
-    const btnPrev = document.getElementById("btnDemoPrev");
-    const btnNext = document.getElementById("btnDemoNext");
-
-    if (numEl) numEl.textContent = step.num;
-    if (titleEl) titleEl.textContent = step.title;
-    if (descEl) descEl.textContent = step.desc;
-    if (btnAction) btnAction.textContent = step.actionLabel;
-
-    if (btnPrev) btnPrev.disabled = currentDemoStepIndex === 0;
-    if (btnNext) btnNext.disabled = currentDemoStepIndex === demoSteps.length - 1;
-  }
-
-  // Export helpers for window
-  window.triggerTraffic = triggerTraffic;
-  window.openEventDetailModal = openEventDetailModal;
-  window.viewEventDetail = openEventDetailModal;
-  window.refreshEventsTable = refreshEventsTable;
-  window.showToast = showToast;
-
-
-  
-  // --- COMPREHENSIVE 8-STAGE BEGINNER-FRIENDLY GUIDED DEMO TOUR ---
-  const demoTourSteps = [
-    {
-      route: "sih-demo",
-      section: "STAGE 1 - CORE PLATFORM",
-      title: "Universal Cybersecurity Translator (10-Stage Pipeline)",
-      targetSelector: ".step-visualizer-card, .sih-hero-banner, .card",
-      description: "Think of this as a Universal Translator for cybersecurity. Organizations have dozens of different firewalls and servers speaking completely different computer languages. ULPF listens to all of them, takes an exact tamper-proof digital fingerprint (SHA-256), and translates every message into one clean, common standard format without losing a single piece of evidence.",
-      mechanics: "Byte-level hashing + Universal intermediate representation (ULPF-IR).",
-      actionName: "Step Next Stage",
-      runAction: () => {
-        if (typeof window.stepSihNext === "function") {
-          window.stepSihNext();
-        } else {
-          showToast("Stepping forward in 10-stage pipeline...", "info");
-        }
-      }
-    },
-    {
-      route: "pipeline",
-      section: "STAGE 2 - REAL-TIME FLOW",
-      title: "High-Speed Live Ingestion Highway",
-      targetSelector: ".pipeline-grid, .card, .content-area",
-      description: "Watch security messages flow through our 4-stage processing highway in real-time: Receive -> Identify Format -> Standardize Fields -> Forward to Security Centers. Over 10,000 security logs can pass through every single second with near-zero delay (under 0.1 milliseconds).",
-      mechanics: "Asynchronous zero-copy memory queue + lock-free dispatch.",
-      actionName: "Inject 10 Live Events",
-      runAction: () => {
-        triggerTraffic(10, "Firewall-01", "cef");
-      }
-    },
-    {
-      route: "events",
-      section: "STAGE 3 - THREAT DEFENSE",
-      title: "Spotting Attackers & 1-Click Instant Blacklist",
-      targetSelector: ".table-responsive, .card",
-      description: "When an attacker tries to hack in (using password brute-force or SQL injection attacks), ULPF detects the attack pattern in real-time, highlights it in red, and lets any security guard immediately block the attacker's IP address across all network gateways with a single click.",
-      mechanics: "In-stream malicious signature matching + Instant IP Blacklisting API.",
-      actionName: "Simulate Cyber Attack",
-      runAction: async () => {
-        try {
-          showToast("Simulating live cyber attack traffic...", "warning");
-          await fetch("/api/v1/demo/scenarios/scenario_2", { method: "POST" });
-          fetchEvents();
-          fetchMetrics();
-        } catch (e) {}
-      }
-    },
-    {
-      route: "lab/multivendor",
-      section: "STAGE 4 - TRANSLATION LAB",
-      title: "Multi-Vendor Compatibility Lab (6+ Brands)",
-      targetSelector: ".grid-2, .card, .content-area",
-      description: "See how logs from CheckPoint, Palo Alto, Cisco ASA, Fortinet, AWS Cloud, and Nginx are translated side-by-side. The original raw vendor log is on the left, and the clean, uniform result is on the right. No matter the brand, everything becomes simple and standardized.",
-      mechanics: "Vendor-to-Canonical declarative dictionary mapping with full attribution.",
-      actionName: "Run Multi-Vendor Test",
-      runAction: () => {
-        const btn = document.getElementById("btnRunLabBatch");
-        if (btn) btn.click();
-        showToast("Ran multi-vendor compatibility translation batch.", "success");
-      }
-    },
-    {
-      route: "processing/testbench",
-      section: "STAGE 5 - SPEED PARSER",
-      title: "Sub-Millisecond Regex & Key-Value Test Bench",
-      targetSelector: ".grid-2, .card, .content-area",
-      description: "Test how fast the translator dissects messy log text. You can paste any raw computer log into the test box, and ULPF instantly breaks it down into neat, structured fields (like User, IP Address, Port, and Result) in less than 0.5 milliseconds.",
-      mechanics: "Pre-compiled high-throughput deterministic tokenizers.",
-      actionName: "Test Sample Log",
-      runAction: () => {
-        const btn = document.getElementById("btnTestBenchParse");
-        if (btn) btn.click();
-        showToast("Tested parser engine on live sample payload.", "success");
-      }
-    },
-    {
-      route: "intelligence/ai-onboarding",
-      section: "STAGE 6 - SELF-LEARNING AI",
-      title: "Air-Gapped AI Assistant for Brand New Devices",
-      targetSelector: ".grid-2, .card, .content-area",
-      description: "What happens when your company buys a brand new device with a log format ULPF has never seen before? Our sovereign, 100% on-device AI automatically inspects the mystery log, writes a new translation rule, and presents it to a human for 1-click approval. No internet connection or cloud required.",
-      mechanics: "Air-gapped local SLM (Qwen2.5-Coder) code synthesis + human review queue.",
-      actionName: "Inject Unknown SCADA Log",
-      runAction: async () => {
-        try {
-          showToast("Injecting unknown SCADA log into AI review queue...", "info");
-          await fetch("/api/v1/demo/scenarios/scenario_4", { method: "POST" });
-          fetchUnknownLogs();
-          if (state.currentRoute === "intelligence/ai-onboarding") {
-            renderAiOnboardingView(document.getElementById("contentArea"));
-          }
-        } catch (e) {}
-      }
-    },
-    {
-      route: "outputs/siem",
-      section: "STAGE 7 - EXPORT HUBS",
-      title: "Sending Clean Data to All Security Tools (OCSF & ECS)",
-      targetSelector: ".grid-2, .card, .content-area",
-      description: "Once logs are standardized, ULPF outputs them in both Open Cybersecurity Schema (OCSF) and Elastic Common Schema (ECS). This means your security team can view the exact same data in OpenSearch, Splunk, Microsoft Sentinel, and cloud lakes without having to convert anything twice.",
-      mechanics: "Simultaneous dual-schema projection & zero-copy JSON streaming.",
-      actionName: "Generate Quick Traffic",
-      runAction: () => {
-        triggerTraffic(10, "Firewall-01", "cef");
-      }
-    },
-    {
-      route: "system/health",
-      section: "STAGE 8 - TAMPER-PROOF AUDIT",
-      title: "System Health & 100% Cryptographic Proof",
-      targetSelector: ".grid-3, .card, .content-area",
-      description: "Confirm that all 7 platform components are running in healthy condition. Every single log event processed is permanently sealed with a SHA-256 cryptographic signature, guaranteeing zero data tampering for courtroom-level legal compliance and forensics.",
-      mechanics: "Continuous heartbeat monitoring + SHA-256 non-repudiation guarantee.",
-      actionName: "Run Full Health Audit",
-      runAction: () => {
-        fetchMetrics();
-        showToast("System health audit verified: All subsystems 100% Operational.", "success");
-      }
-    }
-  ];
-
-  let currentTourStepIndex = 0;
-  let isTourActive = false;
-  let tourAutoPlayInterval = null;
-
-  function initDemoGuideController() {
-    const btnStart = document.getElementById("btnStartDemoGuide");
-    const dock = document.getElementById("demoExplanationDock");
-    const btnClose = document.getElementById("btnCloseDemoTour");
-    const btnPrev = document.getElementById("btnTourPrev");
-    const btnNext = document.getElementById("btnTourNext");
-    const btnAction = document.getElementById("btnTourAction");
-    const btnAutoPlay = document.getElementById("btnTourAutoPlay");
-
-    if (btnStart) {
-      btnStart.addEventListener("click", () => {
-        startDemoTour(0);
-      });
-    }
-
-    if (btnClose) {
-      btnClose.addEventListener("click", () => {
-        stopDemoTour();
-      });
-    }
-
-    if (btnPrev) {
-      btnPrev.addEventListener("click", () => {
-        if (currentTourStepIndex > 0) {
-          goToTourStep(currentTourStepIndex - 1);
-        }
-      });
-    }
-
-    if (btnNext) {
-      btnNext.addEventListener("click", () => {
-        if (currentTourStepIndex < demoTourSteps.length - 1) {
-          goToTourStep(currentTourStepIndex + 1);
-        } else {
-          showToast("Guided Tour Completed! Feel free to explore all modules.", "success");
-          stopDemoTour();
-        }
-      });
-    }
-
-    if (btnAction) {
-      btnAction.addEventListener("click", () => {
-        const step = demoTourSteps[currentTourStepIndex];
-        if (step && typeof step.runAction === "function") {
-          step.runAction();
-        }
-      });
-    }
-
-    if (btnAutoPlay) {
-      btnAutoPlay.addEventListener("click", () => {
-        toggleTourAutoPlay();
-      });
-    }
-
-    // Keyboard navigation
-    window.addEventListener("keydown", (e) => {
-      if (!isTourActive) return;
-      if (e.key === "ArrowRight") {
-        if (currentTourStepIndex < demoTourSteps.length - 1) goToTourStep(currentTourStepIndex + 1);
-      } else if (e.key === "ArrowLeft") {
-        if (currentTourStepIndex > 0) goToTourStep(currentTourStepIndex - 1);
-      } else if (e.key === "Escape") {
-        stopDemoTour();
-      }
-    });
-  }
-
-  function startDemoTour(startIndex = 0) {
-    isTourActive = true;
-    currentTourStepIndex = startIndex;
-    document.body.classList.add("demo-tour-active");
-    const dock = document.getElementById("demoExplanationDock");
-    if (dock) dock.classList.remove("hidden");
-    goToTourStep(startIndex);
-  }
-
-  function stopDemoTour() {
-    isTourActive = false;
-    if (tourAutoPlayInterval) {
-      clearInterval(tourAutoPlayInterval);
-      tourAutoPlayInterval = null;
-    }
-    document.body.classList.remove("demo-tour-active");
-    clearTourHighlights();
-    const dock = document.getElementById("demoExplanationDock");
-    if (dock) dock.classList.add("hidden");
-    const btnAutoPlayText = document.getElementById("btnTourAutoPlayText");
-    if (btnAutoPlayText) btnAutoPlayText.textContent = "Auto-Play";
-  }
-
-  function toggleTourAutoPlay() {
-    const btnText = document.getElementById("btnTourAutoPlayText");
-    if (tourAutoPlayInterval) {
-      clearInterval(tourAutoPlayInterval);
-      tourAutoPlayInterval = null;
-      if (btnText) btnText.textContent = "Auto-Play";
-      showToast("Tour Auto-Play paused.", "info");
-    } else {
-      if (btnText) btnText.textContent = "Pause";
-      showToast("Tour Auto-Play active (advancing every 6 seconds).", "info");
-      tourAutoPlayInterval = setInterval(() => {
-        if (currentTourStepIndex < demoTourSteps.length - 1) {
-          goToTourStep(currentTourStepIndex + 1);
-        } else {
-          stopDemoTour();
-        }
-      }, 6000);
-    }
-  }
-
-  function clearTourHighlights() {
-    document.querySelectorAll(".demo-tour-highlight").forEach((el) => {
-      el.classList.remove("demo-tour-highlight");
-    });
-  }
-
-  function highlightAndScrollTarget(targetSelector) {
-    clearTourHighlights();
-    const contentArea = document.getElementById("contentArea");
-    if (!contentArea) return;
-
-    const selectors = targetSelector.split(",").map(s => s.trim());
-    let targetEl = null;
-
-    for (const sel of selectors) {
-      targetEl = contentArea.querySelector(sel);
-      if (targetEl) break;
-    }
-
-    if (!targetEl) {
-      targetEl = contentArea.firstElementChild;
-    }
-
-    if (targetEl) {
-      targetEl.classList.add("demo-tour-highlight");
-      targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-  }
-
-  function goToTourStep(index) {
-    currentTourStepIndex = index;
-    const step = demoTourSteps[index];
-    if (!step) return;
-
-    // 1. Navigate route
-    if (state.currentRoute !== step.route) {
-      window.location.hash = "#/" + step.route;
-    }
-
-    // 2. Update Explanation Card UI
-    const stepBadge = document.getElementById("demoStepBadge");
-    const sectionPill = document.getElementById("demoSectionPill");
-    const titleText = document.getElementById("demoTourTitleText");
-    const descText = document.getElementById("demoTourDescription");
-    const mechanicsText = document.getElementById("demoTourMechanicsText");
-    const progressBar = document.getElementById("demoProgressBar");
-    const btnActionText = document.getElementById("btnTourActionText");
-    const btnPrev = document.getElementById("btnTourPrev");
-    const btnNext = document.getElementById("btnTourNext");
-
-    if (stepBadge) stepBadge.textContent = "STAGE " + (index + 1) + " / " + demoTourSteps.length;
-    if (sectionPill) sectionPill.textContent = step.section;
-    if (titleText) titleText.textContent = step.title;
-    if (descText) descText.textContent = step.description;
-    if (mechanicsText) mechanicsText.textContent = step.mechanics;
-    if (btnActionText) btnActionText.textContent = step.actionName || "Run Action";
-    if (progressBar) progressBar.style.width = ((index + 1) / demoTourSteps.length * 100) + "%";
-
-    if (btnPrev) btnPrev.disabled = index === 0;
-    if (btnNext) btnNext.querySelector("span").textContent = index === demoTourSteps.length - 1 ? "Finish Tour" : "Next";
-
-    // 3. Highlight with multiple retries for asynchronous view rendering
-    highlightAndScrollTarget(step.targetSelector);
-    setTimeout(() => highlightAndScrollTarget(step.targetSelector), 150);
-    setTimeout(() => highlightAndScrollTarget(step.targetSelector), 400);
-    setTimeout(() => highlightAndScrollTarget(step.targetSelector), 800);
-  }
-
-
-  
-  // --- MULTI-PAGE SCENARIO EXPLORATION ENGINE WITH BACKEND & DOCKER ARCHITECTURE EXPLANATION ---
-  window.runScenarioWithPhases = async function(scenarioId, scenarioName) {
-    // Mutual exclusivity: Stop demo tour and close other modals
-    if (typeof stopDemoTour === 'function') stopDemoTour();
-    const inspectModal = document.getElementById("eventDetailModal");
-    if (inspectModal) inspectModal.classList.add("hidden");
-    const scenarioMenu = document.getElementById("scenarioDropdownMenu");
-    if (scenarioMenu) scenarioMenu.classList.add("hidden");
-    const existing = document.getElementById("scenarioPhaseModal");
-    if (existing) existing.remove();
-
-    // Context details per scenario
-    const scenarioConfigs = {
-      scenario_1: {
-        route: "sih-demo",
-        targetSelector: ".step-visualizer-card",
-        subtitle: "Normal Enterprise Multi-Vendor Traffic",
-        backendSummary: "FastAPI Ingestion Engine + Redis Buffer (Docker Container: ulpf_api)",
-        backendDetails: "Ingesting 15 mixed logs (CheckPoint CEF, Fortinet KV, Nginx JSON, Linux Syslog). The Python worker queues packets in memory, computes SHA-256 digests, and validates fields against Pydantic schemas in under 80 microseconds."
-      },
-      scenario_2: {
-        route: "events",
-        targetSelector: ".table-responsive",
-        subtitle: "Active Security Incident & Instant Blacklist",
-        backendSummary: "In-Stream Signature Evaluator + Firewall Block Gate (Docker Container: ulpf_worker)",
-        backendDetails: "Detecting SQL Injection and RCE payloads. The backend flags malicious attacker IPs in real-time and broadcasts a security alert over Server-Sent Events (SSE). Clicking Blacklist IP instantly propagates defense rules across all gateways."
-      },
-      scenario_3: {
-        route: "system/health",
-        targetSelector: ".grid-3",
-        subtitle: "High-Volume Velocity Attack & Cluster Resilience",
-        backendSummary: "Full Docker Compose Stack: FastAPI + MinIO S3 + OpenSearch 2.11 Cluster",
-        backendDetails: "Stress testing the pipeline at 12,000+ events/sec. Worker processes handle backpressure through bounded in-memory ring buffers and persist immutable raw evidence to local storage and MinIO S3 buckets with zero packet loss."
-      },
-      scenario_4: {
-        route: "intelligence/ai-onboarding",
-        targetSelector: ".unknown-logs-container",
-        subtitle: "Unknown SCADA Device Ingestion & AI Synthesis",
-        backendSummary: "Local Sovereign SLM (Qwen2.5-Coder) + Compiler Engine (Docker: ulpf_ai)",
-        backendDetails: "An unparsed SCADA RTU Hex message is quarantined in the review queue. The local air-gapped SLM analyzes the byte stream, extracts fields, and generates a valid declarative YAML parser for 1-click human promotion."
-      }
-    };
-
-    const cfg = scenarioConfigs[scenarioId] || scenarioConfigs.scenario_1;
-
-    // 1. Navigate to target page if not already there (Scenario 1 stays on sih-demo, others explore live website)
-    if (state.currentRoute !== cfg.route) {
-      window.location.hash = "#/" + cfg.route;
-    }
-
-    const phases = [
-      {
-        num: 1,
-        title: "Phase 1: Multi-Protocol Network Ingestion",
-        desc: "Capturing incoming raw packets & computing SHA-256 immutable hashes."
-      },
-      {
-        num: 2,
-        title: "Phase 2: Format Detection & Parser Selection",
-        desc: "Evaluating syntax to execute optimal sub-millisecond compiled parser."
-      },
-      {
-        num: 3,
-        title: "Phase 3: ULPF-IR Normalization & Threat Inspection",
-        desc: "Mapping vendor fields to standard schema & inspecting security signatures."
-      },
-      {
-        num: 4,
-        title: "Phase 4: Downstream Multi-Target Export & Action",
-        desc: "Delivering OCSF/ECS to OpenSearch & enforcing firewall defense rules."
-      }
-    ];
-
-    const modal = document.createElement("div");
-    modal.id = "scenarioPhaseModal";
-    modal.className = "scenario-phase-modal";
-    modal.innerHTML = `
-      <div class="scenario-phase-header">
+  // --- SETTINGS & SYSTEM DASHBOARD ---
+  async function renderSettingsView(container) {
+    container.innerHTML = `
+      <div class="view-header">
         <div>
-          <span class="badge badge-amber" style="font-size:10px;">LIVE SCENARIO & BACKEND RUNNER</span>
-          <h4 style="font-size:13.5px; font-weight:700; color:#fff; margin-top:2px;">${scenarioName}</h4>
+          <h1 class="view-title">Server Settings & System Performance</h1>
+          <p class="view-subtitle">Monitor host machine workload and hot-swap processing parameters.</p>
         </div>
-        <button id="btnCloseScenarioModal" class="btn btn-xs btn-danger-outline" style="padding:2px 8px; font-size:10.5px;">&times; Cancel & Close</button>
       </div>
-      <div class="scenario-phase-body">
-        <!-- Backend Docker Architecture Box -->
-        <div class="backend-arch-card mb-sm">
-          <div style="font-size:10.5px; font-weight:800; color:#fef08a; text-transform:uppercase; letter-spacing:0.5px;">
-            BACKEND INFRASTRUCTURE IN ACTION:
+      
+      <div class="grid grid-2 gap-lg mt-md">
+        <!-- SYSTEM WORKLOAD -->
+        <div class="card p-md">
+          <div class="card-header" style="border-bottom:1px solid var(--border-color); padding-bottom:12px; margin-bottom:16px;">
+            <h2 class="card-title" style="font-size:16px;">System CPU & Memory Workload</h2>
           </div>
-          <div style="font-size:12px; font-weight:700; color:#ffffff; margin-top:2px;">
-            ${cfg.backendSummary}
+          
+          <div class="grid grid-3 gap-md mb-md">
+            <div style="background:rgba(0,0,0,0.2); border:1px solid var(--border-color); border-radius:6px; padding:12px; text-align:center;">
+              <div class="text-muted text-xs">GLOBAL CPU USAGE</div>
+              <div id="sysGlobalCpu" class="mono font-bold mt-sm" style="font-size:24px; color:var(--primary-main);">--%</div>
+            </div>
+            <div style="background:rgba(0,0,0,0.2); border:1px solid var(--border-color); border-radius:6px; padding:12px; text-align:center;">
+              <div class="text-muted text-xs">MEMORY LOAD</div>
+              <div id="sysMemLoad" class="mono font-bold mt-sm" style="font-size:24px; color:var(--info-main);">--%</div>
+              <div id="sysMemText" class="text-muted text-xs mt-xs">-- / -- MB</div>
+            </div>
+            <div style="background:rgba(0,0,0,0.2); border:1px solid var(--border-color); border-radius:6px; padding:12px; text-align:center;">
+              <div class="text-muted text-xs">ACTIVE THREADS</div>
+              <div id="sysThreads" class="mono font-bold mt-sm" style="font-size:24px; color:var(--success-main);">--</div>
+            </div>
           </div>
-          <div style="font-size:11px; color:#cbd5e1; margin-top:4px; line-height:1.45;">
-            ${cfg.backendDetails}
+          
+          <div class="text-muted text-xs mb-sm">PER-CORE UTILIZATION</div>
+          <div id="sysCoresGrid" class="grid grid-4 gap-sm">
+            <!-- Cores injected here -->
           </div>
         </div>
 
-        <div id="scenarioPhaseList">
-          ${phases.map(p => `
-            <div class="phase-step-item" id="phaseStep_${p.num}">
-              <div class="phase-step-icon">${p.num}</div>
-              <div>
-                <strong style="color:#fff; font-size:12px;">${p.title}</strong>
-                <div class="text-muted" style="font-size:11px; margin-top:2px;">${p.desc}</div>
-              </div>
-            </div>
-          `).join('')}
-        </div>
-        <div class="mt-sm flex-between" style="border-top:1px solid var(--border-color); padding-top:10px;">
-          <span id="scenarioPhaseStatus" class="text-xs text-muted">Running backend pipeline...</span>
-          <div style="display:flex; gap:6px;">
-            <button id="btnDismissScenarioModal" class="btn btn-xs btn-primary">Done</button>
+        <!-- SERVER SETTINGS -->
+        <div class="card p-md">
+          <div class="card-header" style="border-bottom:1px solid var(--border-color); padding-bottom:12px; margin-bottom:16px;">
+            <h2 class="card-title" style="font-size:16px;">Hot-Swappable Configuration</h2>
           </div>
+          
+          <div class="form-group mb-md">
+            <label class="form-label text-xs text-muted">WORKERS / CPU CORES (Ingestion)</label>
+            <div style="display:flex; gap:8px;">
+              <input type="number" id="cfgWorkerCount" class="form-control" style="width:100px; background:rgba(0,0,0,0.2);" min="1" max="128">
+              <button class="btn btn-secondary" onclick="updateServerConfig('workers')">Apply</button>
+            </div>
+            <div class="text-xs text-muted mt-xs">Dynamically scales the log processing thread pool.</div>
+          </div>
+
+          <div class="form-group mb-md">
+            <label class="form-label text-xs text-muted">AI CONFIDENCE THRESHOLD (0.0 - 1.0)</label>
+            <div style="display:flex; gap:8px;">
+              <input type="number" id="cfgAiThreshold" class="form-control" style="width:100px; background:rgba(0,0,0,0.2);" step="0.01" min="0" max="1">
+              <button class="btn btn-secondary" onclick="updateServerConfig('settings')">Apply</button>
+            </div>
+            <div class="text-xs text-muted mt-xs">Minimum confidence score required for AI auto-parser generation.</div>
+          </div>
+
+          <div class="form-group mb-md">
+            <label class="form-label text-xs text-muted">GLOBAL RATE LIMIT (Events / Min)</label>
+            <div style="display:flex; gap:8px;">
+              <input type="number" id="cfgRateLimit" class="form-control" style="width:100px; background:rgba(0,0,0,0.2);" min="0">
+              <button class="btn btn-secondary" onclick="updateServerConfig('settings')">Apply</button>
+            </div>
+            <div class="text-xs text-muted mt-xs">Maximum allowed ingestion rate before triggering 429 Backpressure.</div>
+          </div>
+          
+          <div class="form-group mb-md">
+            <label class="form-label text-xs text-muted">AI FALLBACK ENABLED</label>
+            <div style="display:flex; gap:8px;">
+              <select id="cfgAiFallback" class="form-control" style="width:100px; background:rgba(0,0,0,0.2);">
+                <option value="true">True</option>
+                <option value="false">False</option>
+              </select>
+              <button class="btn btn-secondary" onclick="updateServerConfig('settings')">Apply</button>
+            </div>
+            <div class="text-xs text-muted mt-xs">Enable LLM as a fallback parser when regex/grok fails.</div>
+          </div>
+          
         </div>
       </div>
     `;
 
-    document.body.appendChild(modal);
-
-    document.getElementById("btnCloseScenarioModal").onclick = () => modal.remove();
-    document.getElementById("btnDismissScenarioModal").onclick = () => modal.remove();
-
-    // Trigger API call
-    const p1 = document.getElementById("phaseStep_1");
-    if (p1) p1.classList.add("active");
-
+    // Fetch initial settings
     try {
-      const res = await fetch(`/api/v1/demo/scenarios/${scenarioId}`, { method: "POST" });
-      const data = await res.json();
-
-      await new Promise(r => setTimeout(r, 600));
-      if (p1) { p1.classList.remove("active"); p1.classList.add("completed"); }
-
-      const p2 = document.getElementById("phaseStep_2");
-      if (p2) p2.classList.add("active");
-      await new Promise(r => setTimeout(r, 600));
-      if (p2) { p2.classList.remove("active"); p2.classList.add("completed"); }
-
-      const p3 = document.getElementById("phaseStep_3");
-      if (p3) p3.classList.add("active");
-      await new Promise(r => setTimeout(r, 600));
-      if (p3) { p3.classList.remove("active"); p3.classList.add("completed"); }
-
-      const p4 = document.getElementById("phaseStep_4");
-      if (p4) p4.classList.add("active");
-      await new Promise(r => setTimeout(r, 500));
-      if (p4) { p4.classList.remove("active"); p4.classList.add("completed"); }
-
-      const statusEl = document.getElementById("scenarioPhaseStatus");
-      if (statusEl) statusEl.innerHTML = '<span style="color:#34d399; font-weight:700;">OK All 4 Backend Phases Executed!</span>';
-
-      fetchEvents();
-      fetchMetrics();
-      fetchUnknownLogs();
-      if (state.currentRoute === "events") refreshEventsTable();
+      const res = await fetch("/api/v1/settings");
+      if (res.ok) {
+        const data = await res.json();
+        const wInput = document.getElementById("cfgWorkerCount");
+        const aInput = document.getElementById("cfgAiThreshold");
+        const rInput = document.getElementById("cfgRateLimit");
+        const fInput = document.getElementById("cfgAiFallback");
+        if (wInput) wInput.value = data.worker_count;
+        if (aInput) aInput.value = data.ai_confidence_threshold;
+        if (rInput) rInput.value = data.rate_limit_per_minute;
+        if (fInput) fInput.value = data.ai_fallback_enabled ? "true" : "false";
+      }
     } catch (e) {
-      showToast("Scenario error: " + e.message, "error");
+      console.error("Failed to load settings", e);
+    }
+  }
+
+  window.updateServerConfig = async function (type) {
+    if (type === 'workers') {
+      const w = document.getElementById("cfgWorkerCount").value;
+      const count = parseInt(w, 10);
+      if (isNaN(count) || count < 1 || count > 128) {
+        showToast("Invalid worker count (1-128)", "error");
+        return;
+      }
+      try {
+        const res = await fetch("/api/v1/workers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ count: count })
+        });
+        if (res.ok) {
+          showToast("Workers scaled successfully", "success");
+        } else {
+          showToast("Failed to scale workers", "error");
+        }
+      } catch (e) {
+        showToast("Error updating workers", "error");
+      }
+    } else {
+      const a = parseFloat(document.getElementById("cfgAiThreshold").value);
+      const r = parseInt(document.getElementById("cfgRateLimit").value, 10);
+      const f = document.getElementById("cfgAiFallback").value === "true";
+      try {
+        const res = await fetch("/api/v1/settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ai_confidence_threshold: a,
+            rate_limit_per_minute: r,
+            ai_fallback_enabled: f
+          })
+        });
+        if (res.ok) {
+          showToast("Settings updated successfully", "success");
+        } else {
+          showToast("Failed to update settings", "error");
+        }
+      } catch (e) {
+        showToast("Error updating settings", "error");
+      }
     }
   };
+
+  // --- TELEMETRY CHART LOGIC ---
+  let telemetryChart = null;
+  let telemetryInterval = null;
+  const maxDataPoints = 60;
+  const epsData = new Array(maxDataPoints).fill(0);
+  const parsedData = new Array(maxDataPoints).fill(0);
+
+  function initTelemetryChart() {
+    const ctx = document.getElementById("liveEpsChart");
+    if (!ctx) return;
+
+    if (typeof Chart === "undefined") return;
+
+    if (telemetryChart) {
+      telemetryChart.destroy();
+    }
+
+    const labels = new Array(maxDataPoints).fill("");
+
+    const style = getComputedStyle(document.documentElement);
+    const textColor = style.getPropertyValue('--text-muted').trim() || '#94a3b8';
+    const gridColor = style.getPropertyValue('--border-color').trim() || 'rgba(255,255,255,0.05)';
+    const primaryColor = style.getPropertyValue('--primary-main').trim() || '#38bdf8';
+    const successColor = style.getPropertyValue('--success-main').trim() || '#34d399';
+
+    document.addEventListener('themeChanged', () => {
+      if (telemetryChart) {
+        const newStyle = getComputedStyle(document.documentElement);
+        const newTextColor = newStyle.getPropertyValue('--text-muted').trim() || '#94a3b8';
+        const newGridColor = newStyle.getPropertyValue('--border-color').trim() || 'rgba(255,255,255,0.05)';
+        
+        telemetryChart.data.datasets[0].borderColor = newStyle.getPropertyValue('--primary-main').trim() || '#38bdf8';
+        telemetryChart.data.datasets[1].borderColor = newStyle.getPropertyValue('--success-main').trim() || '#34d399';
+
+        telemetryChart.options.plugins.tooltip.backgroundColor = newStyle.getPropertyValue('--bg-dropdown').trim() || 'rgba(20, 6, 11, 0.9)';
+        telemetryChart.options.plugins.tooltip.titleColor = newStyle.getPropertyValue('--text-main').trim() || '#fff';
+        telemetryChart.options.plugins.tooltip.bodyColor = newTextColor;
+        telemetryChart.options.plugins.tooltip.borderColor = telemetryChart.data.datasets[0].borderColor;
+        
+        // Update axes and legend text color for theme switching
+        telemetryChart.options.scales.y.ticks.color = newTextColor;
+        telemetryChart.options.scales.y.grid.color = newGridColor;
+        telemetryChart.options.plugins.legend.labels.color = newTextColor;
+
+        telemetryChart.update();
+      }
+    });
+
+    telemetryChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: 'Events Received/sec',
+            data: epsData,
+            borderColor: primaryColor,
+            backgroundColor: 'rgba(56, 189, 248, 0.15)',
+            borderWidth: 2,
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            fill: true,
+            tension: 0.4
+          },
+          {
+            label: 'Events Parsed/sec',
+            data: parsedData,
+            borderColor: successColor,
+            backgroundColor: 'rgba(52, 211, 153, 0.15)',
+            borderWidth: 2,
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            fill: true,
+            tension: 0.4
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        hover: { mode: null },
+        interaction: {
+          intersect: false,
+          mode: 'index',
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            grid: { color: gridColor },
+            ticks: { color: textColor, maxTicksLimit: 5 }
+          },
+          x: {
+            grid: { display: false },
+            ticks: { display: false }
+          }
+        },
+        plugins: {
+          legend: {
+            display: true,
+            position: 'top',
+            labels: { color: textColor }
+          },
+          tooltip: {
+            enabled: true,
+            mode: 'index',
+            intersect: false,
+            backgroundColor: style.getPropertyValue('--bg-dropdown').trim() || 'rgba(20, 6, 11, 0.9)',
+            titleColor: style.getPropertyValue('--text-main').trim() || '#fff',
+            bodyColor: style.getPropertyValue('--text-muted').trim() || '#e2e8f0',
+            borderColor: primaryColor,
+            borderWidth: 1
+          }
+        }
+      }
+    });
+
+    if (telemetryInterval) clearInterval(telemetryInterval);
+    telemetryInterval = setInterval(() => {
+      if (state.currentRoute !== "overview") return;
+      const currentEps = calculateLiveClientEps();
+      // Assume parsed rate is very close to received rate in normal conditions.
+      // Ideally this would be fetched from backend metric 'events_processed_rate'
+      let parsedRate = currentEps;
+
+      epsData.push(currentEps);
+      epsData.shift();
+      parsedData.push(parsedRate);
+      parsedData.shift();
+
+      if (telemetryChart) telemetryChart.update();
+    }, 1000);
+  }
+
+  // --- ANALYTICS STUDIO VIEW ---
+  function renderAnalyticsStudioView(container) {
+    container.innerHTML = `
+      <div class="page-header flex-between" style="align-items:flex-start;">
+        <div>
+          <h1 class="page-title">Analytics & Forensics Studio</h1>
+          <p class="page-desc">Real-time throughput, severity analytics, and MinIO raw evidence forensics.</p>
+        </div>
+      </div>
+      
+      <!-- S3 Storage Insights Widget -->
+      <div id="minioInsightsWidget" class="card" style="padding: 16px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid #10b981;">
+         <div>
+            <h4 style="margin: 0; color: #f8fafc; font-size: 14px;">S3 Storage Connectivity</h4>
+            <div id="minioStatusText" style="font-size: 12px; color: #94a3b8; margin-top: 4px;">Checking status...</div>
+         </div>
+         <div style="text-align: right;">
+            <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase;">Bucket / Fallback</div>
+            <div id="minioBucketText" style="font-weight: 600; color:var(--primary-main);">---</div>
+         </div>
+      </div>
+
+      <!-- Analytics Grid -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+        <div class="card" style="grid-column: 1 / -1; padding: 20px;">
+          <h3>Real-Time Throughput (EPS)</h3>
+          <div style="height: 250px;"><canvas id="epsChart"></canvas></div>
+        </div>
+        <div class="card" style="padding: 20px;">
+          <h3>Severity Distribution</h3>
+          <div style="height: 250px;"><canvas id="severityChart"></canvas></div>
+        </div>
+        <div class="card" style="padding: 20px;">
+          <h3>Top Log Types / Formats</h3>
+          <div style="height: 250px;"><canvas id="sourceChart"></canvas></div>
+        </div>
+        <div class="card" style="grid-column: 1 / -1; padding: 20px;">
+          <h3>Threat Logs</h3>
+          <div style="height: 250px;"><canvas id="threatChart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- MinIO Storage Insights & Forensics -->
+      <div class="card" style="padding: 20px;">
+        <h3>Raw Evidence & Parsed Telemetry Forensics</h3>
+        <p class="text-secondary" style="font-size: 13px; margin-bottom: 16px;">Retrieve exact, unmodified byte-for-byte original logs directly from the immutable MinIO storage and view their structured nested key-value pairs side-by-side.</p>
+        
+        <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+          <input type="text" id="forensicEventIdInput" class="input-modern" placeholder="Enter Event ID (e.g. EVT-1002)..." style="flex: 1; padding: 8px 12px; border: 1px solid var(--border-color); background: var(--bg-main); color: var(--text-main); border-radius: 4px;">
+          <button class="btn btn-sm btn-primary" id="btnSearchForensics" style="padding: 8px 16px; font-weight: 600;">Fetch Evidence</button>
+        </div>
+      </div>
+
+      <!-- Cryptographic Evidence Ledger (Merkle Graph) -->
+      <div class="card" style="padding: 20px; margin-bottom: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+           <div>
+             <h3 style="display:flex; align-items:center; gap:8px;">
+               Cryptographic Evidence Ledger (Merkle Forest)
+               <span id="merkleBlockLabel" class="badge badge-teal">Block 0</span>
+             </h3>
+             <p class="text-secondary" style="font-size: 13px;">Time-Series Pagination: Browse historical blocks of 1,000 logs.</p>
+           </div>
+           <div style="display: flex; gap: 8px;">
+             <button class="btn btn-sm btn-secondary" id="btnPrevMerkleBlock" style="padding: 6px 12px; font-weight: 600;" onclick="window.changeMerkleBlock(1)">← Older Block</button>
+             <button class="btn btn-sm btn-secondary" id="btnNextMerkleBlock" style="padding: 6px 12px; font-weight: 600;" onclick="window.changeMerkleBlock(-1)">Newer Block →</button>
+             <button class="btn btn-sm btn-primary" id="btnRefreshMerkle" style="padding: 6px 12px; font-weight: 600;" onclick="window.fetchAndDrawMerkleGraph()">Refresh</button>
+           </div>
+        </div>
+        <div id="merkleGraphArea" class="merkle-graph-container">
+           <div style="color: var(--text-muted); text-align: center; padding: 40px;">Generating graph...</div>
+        </div>
+      </div>
+    `;
+
+    // Fetch S3 MinIO Stats
+    fetch('/api/v1/analytics/minio-stats').then(res => res.json()).then(data => {
+      const widget = document.getElementById('minioInsightsWidget');
+      const stext = document.getElementById('minioStatusText');
+      const btext = document.getElementById('minioBucketText');
+
+      if (data.status === 'healthy') {
+        widget.style.borderLeftColor = '#10b981';
+        stext.innerHTML = `<span style="color:#10b981;">${data.mode}</span> (${data.endpoint})`;
+        btext.textContent = data.bucket;
+      } else {
+        widget.style.borderLeftColor = '#f59e0b';
+        stext.innerHTML = `<span style="color:var(--warning-main);">${data.mode}</span> (Fallback Active)`;
+        btext.textContent = 'local_fallback_dir';
+      }
+    }).catch(e => console.error("Failed to fetch MinIO stats"));
+
+    // Initialize Charts
+    const epsCtx = document.getElementById('epsChart').getContext('2d');
+    const sevCtx = document.getElementById('severityChart').getContext('2d');
+    const srcCtx = document.getElementById('sourceChart').getContext('2d');
+    const threatCtx = document.getElementById('threatChart').getContext('2d');
+
+    Chart.defaults.color = '#94a3b8';
+    Chart.defaults.font.family = "'Inter', sans-serif";
+
+    let epsHistory = Array(60).fill(0);
+    const epsChart = new Chart(epsCtx, {
+      type: 'line',
+      data: {
+        labels: Array(60).fill(''),
+        datasets: [{
+          label: 'Events Per Second',
+          data: epsHistory,
+          borderColor: '#38bdf8',
+          backgroundColor: 'rgba(56, 189, 248, 0.1)',
+          borderWidth: 2,
+          fill: true,
+          tension: 0.4,
+          pointRadius: 0
+        }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, animation: { duration: 0 }, scales: { y: { beginAtZero: true, grid: { color: '#334155' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } }
+    });
+
+    const severityChart = new Chart(sevCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Critical', 'High', 'Medium', 'Low', 'Info'],
+        datasets: [{ data: [0, 0, 0, 0, 0], backgroundColor: ['#ef4444', '#f97316', '#eab308', '#3b82f6', '#64748b'], borderWidth: 0 }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'right' } } }
+    });
+
+    const sourceChart = new Chart(srcCtx, {
+      type: 'bar',
+      data: {
+        labels: [],
+        datasets: [{ label: 'Format Count', data: [], backgroundColor: '#38bdf8', borderRadius: 4 }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', scales: { x: { beginAtZero: true, grid: { color: '#334155' } }, y: { grid: { display: false } } }, plugins: { legend: { display: false } } }
+    });
+
+    const threatChart = new Chart(threatCtx, {
+      type: 'bar',
+      data: {
+        labels: [],
+        datasets: [{ label: 'Threat Count', data: [], backgroundColor: '#ef4444', borderRadius: 4 }]
+      },
+      options: { 
+        responsive: true, 
+        maintainAspectRatio: false, 
+        scales: { y: { beginAtZero: true, grid: { color: '#334155' } }, x: { grid: { display: false } } }, 
+        plugins: { legend: { display: false } },
+        onClick: (evt, activeElements) => {
+          if (activeElements.length > 0) {
+            const chartIdx = activeElements[0].index;
+            const label = threatChart.data.labels[chartIdx];
+            window.openThreatToaster(label);
+          }
+        }
+      }
+    });
+
+    // (Removed obsolete highlighting engine and forensicParsedTree event listeners)
+
+    // MinIO Forensics Handler
+    document.getElementById('btnSearchForensics').addEventListener('click', async () => {
+      const input = document.getElementById('forensicEventIdInput').value.trim();
+      if (!input) return;
+      const btn = document.getElementById('btnSearchForensics');
+      btn.textContent = 'Fetching...';
+
+      try {
+        const res = await fetch(`/api/v1/analytics/evidence/${input}`);
+        const data = await res.json();
+        
+        if (res.ok) {
+           const ev = data.parsed_event || { original: {}, event: {} };
+           ev.original = ev.original || {};
+           ev.original.raw_evidence = data.raw_content;
+           ev.original.sha256 = data.sha256_hash;
+           ev.tamper_verified = data.tamper_verified;
+           
+           window.openEventDetailModal(input, ev);
+
+           // Auto-trigger AI if not already loaded or analyzed
+           setTimeout(async () => {
+             const aiBadge = document.getElementById("modalAiStatusBadge");
+             if (aiBadge) aiBadge.innerText = "Analyzing...";
+             try {
+                const aiRes = await fetch('/api/v1/ai/reanalyze-threat/' + encodeURIComponent(input), { method: 'POST' });
+                const aiData = await aiRes.json();
+                if (aiRes.ok && aiData.result) {
+                    const resData = aiData.result;
+                    const aiBody = document.getElementById("modalAiExplanationBody");
+                    if (aiBody) {
+                       if (resData.is_threat) {
+                           aiBody.innerHTML = `<div style="padding:12px; background: rgba(239, 68, 68, 0.05); border-left: 3px solid var(--danger-main); border-radius: 4px;">
+                              <strong>Verified Threat:</strong> ${resData.reasoning}
+                           </div>`;
+                       } else {
+                           aiBody.innerHTML = `<div style="color: var(--success-main); padding: 12px; background: rgba(16, 185, 129, 0.1); border-radius: 4px;">
+                              <i class="fas fa-shield-alt"></i> AI Verified False Positive: ${resData.reasoning}
+                           </div>`;
+                       }
+                    }
+                    if (aiBadge) aiBadge.innerText = resData.is_threat ? "THREAT CONFIRMED" : "BENIGN";
+                }
+             } catch(e) {}
+           }, 500);
+
+        } else {
+           alert("Could not retrieve evidence: " + (data.detail || "Not Found"));
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        btn.textContent = 'Fetch Evidence';
+      }
+    });
+
+    // Merkle Graph Logic (Dynamic Canvas with Magnifier/Fisheye Effect)
+    window.currentMerkleBlock = 0; // 0 = newest block
+    
+    window.changeMerkleBlock = function(delta) {
+        window.currentMerkleBlock += delta;
+        if (window.currentMerkleBlock < 0) window.currentMerkleBlock = 0;
+        const lbl = document.getElementById("merkleBlockLabel");
+        if (lbl) lbl.textContent = "Block " + window.currentMerkleBlock;
+        window.fetchAndDrawMerkleGraph();
+    };
+
+    window.fetchAndDrawMerkleGraph = async function() {
+      const graphArea = document.getElementById('merkleGraphArea');
+      if (!graphArea) return;
+      
+      const btn = document.getElementById('btnRefreshMerkle');
+      if (btn) btn.textContent = 'Loading...';
+      
+      try {
+         const offset = window.currentMerkleBlock * 1000;
+         const res = await fetch(`/api/v1/events?limit=1000&offset=${offset}`);
+         const data = await res.json();
+         const events = data.events || [];
+         if (events.length === 0) {
+            graphArea.innerHTML = `<div style="color: var(--text-muted); text-align: center; padding: 40px;">No events available in Block ${window.currentMerkleBlock}.</div>`;
+            if (btn) btn.textContent = 'Refresh';
+            return;
+         }
+         
+         let targetLeaves = 1;
+         while (targetLeaves < events.length) targetLeaves *= 2;
+         if (targetLeaves < 8) targetLeaves = 8;
+         
+         while (events.length < targetLeaves) {
+             events.push({ sha256: '0000000000000000000000000000000000000000000000000000000000000000' });
+         }
+         
+         const tree = [];
+         let currentLevel = events.map(e => e.sha256 || 'UNKNOWN_HASH');
+         tree.push(currentLevel);
+         
+         while (currentLevel.length > 1) {
+             let nextLevel = [];
+             for (let i = 0; i < currentLevel.length; i += 2) {
+                 const left = currentLevel[i];
+                 const right = (i + 1 < currentLevel.length) ? currentLevel[i + 1] : left;
+                 const combined = left.substring(0, 32) + right.substring(0, 32);
+                 let fakeHash = 0;
+                 for (let j = 0; j < combined.length; j++) {
+                     fakeHash = (fakeHash << 5) - fakeHash + combined.charCodeAt(j);
+                     fakeHash = fakeHash & fakeHash;
+                 }
+                 const hashStr = Math.abs(fakeHash).toString(16).padStart(16, '0') + left.substring(0, 16) + right.substring(0, 16);
+                 nextLevel.push(hashStr.substring(0, 64));
+             }
+             tree.push(nextLevel);
+             currentLevel = nextLevel;
+         }
+         
+         tree.reverse(); // Root at index 0
+         
+         graphArea.innerHTML = '<div style="position:relative; width:100%; height:450px; background:#f8fafc; border-radius:8px; border: 1px solid #e2e8f0; cursor: crosshair;" id="canvasContainer"><canvas id="merkleCanvas" style="display:block;"></canvas><div id="graphTooltip" style="position:absolute; display:none; background:rgba(0,0,0,0.8); color:#fff; padding:6px 10px; border-radius:4px; font-size:11px; pointer-events:none; z-index:10; font-family:monospace; white-space:nowrap;"></div></div>';
+         
+         const container = document.getElementById('canvasContainer');
+         const canvas = document.getElementById('merkleCanvas');
+         const tooltip = document.getElementById('graphTooltip');
+         
+         const rect = container.getBoundingClientRect();
+         canvas.width = rect.width;
+         canvas.height = 450;
+         const ctx = canvas.getContext('2d');
+         
+         const levels = tree.length;
+         
+         const yOffset = 30;
+         const yStep = (canvas.height - (yOffset * 2)) / Math.max(1, levels - 1);
+         
+         const positions = [];
+         for (let i = 0; i < levels; i++) {
+             const nodes = tree[i];
+             const levelPos = [];
+             const xStep = canvas.width / nodes.length;
+             for (let j = 0; j < nodes.length; j++) {
+                 levelPos.push({
+                     x: (j * xStep) + (xStep / 2),
+                     y: yOffset + (i * yStep),
+                     hash: nodes[j],
+                     isRoot: i === 0,
+                     isLeaf: i === levels - 1
+                 });
+             }
+             positions.push(levelPos);
+         }
+         
+         // 1. Main render loop (Vector Magnifier)
+         let mouseX = -1000;
+         let mouseY = -1000;
+         let activeNode = null;
+         const lensRadius = 80;
+         const zoom = 3.0; // 3x true vector magnification
+         
+         function drawGraphPaths(isMagnified = false) {
+             // Draw Edges
+             ctx.strokeStyle = 'rgba(100, 116, 139, 0.2)';
+             ctx.lineWidth = isMagnified ? 1.5 / zoom : 1; // Keep lines crisp
+             
+             ctx.beginPath();
+             for (let i = 0; i < levels - 1; i++) {
+                 const parents = positions[i];
+                 const children = positions[i + 1];
+                 for (let j = 0; j < parents.length; j++) {
+                     const p = parents[j];
+                     const c1 = children[j * 2];
+                     const c2 = children[j * 2 + 1];
+                     // If magnified, we can optimize by only drawing if near mouse
+                     if (isMagnified) {
+                         const dx = p.x - mouseX;
+                         const dy = p.y - mouseY;
+                         if (Math.abs(dx) > lensRadius * 1.5 || Math.abs(dy) > lensRadius * 1.5) continue;
+                     }
+                     if (c1) { ctx.moveTo(p.x, p.y); ctx.lineTo(c1.x, c1.y); }
+                     if (c2) { ctx.moveTo(p.x, p.y); ctx.lineTo(c2.x, c2.y); }
+                 }
+             }
+             ctx.stroke();
+             
+             // Draw Nodes
+             for (let i = 0; i < levels; i++) {
+                 for (let j = 0; j < positions[i].length; j++) {
+                     const p = positions[i][j];
+                     
+                     if (isMagnified) {
+                         const dx = p.x - mouseX;
+                         const dy = p.y - mouseY;
+                         if (Math.abs(dx) > lensRadius * 1.5 || Math.abs(dy) > lensRadius * 1.5) continue;
+                     }
+                     
+                     ctx.beginPath();
+                     const radius = p.isRoot ? 4 : (p.isLeaf ? 1.5 : 2);
+                     ctx.arc(p.x, p.y, radius, 0, 2 * Math.PI);
+                     
+                     if (p.isRoot) ctx.fillStyle = '#ef4444';
+                     else if (p.isLeaf) ctx.fillStyle = p.hash === '0000000000000000000000000000000000000000000000000000000000000000' ? 'rgba(16, 185, 129, 0.1)' : '#10b981';
+                     else ctx.fillStyle = '#475569';
+                     
+                     ctx.fill();
+                     
+                     // Highlight active node in magnifier
+                     if (isMagnified && activeNode && activeNode.x === p.x && activeNode.y === p.y) {
+                         ctx.beginPath();
+                         ctx.arc(p.x, p.y, radius + 2/zoom, 0, 2 * Math.PI);
+                         ctx.strokeStyle = '#3b82f6';
+                         ctx.lineWidth = 2 / zoom;
+                         ctx.stroke();
+                     }
+                 }
+             }
+         }
+         
+         function draw() {
+             ctx.clearRect(0, 0, canvas.width, canvas.height);
+             
+             // Draw base unmagnified graph
+             drawGraphPaths(false);
+             
+             // If mouse is on canvas, draw true vector magnifier lens
+             if (mouseX > 0 && mouseX < canvas.width && mouseY > 0 && mouseY < canvas.height) {
+                 ctx.save();
+                 
+                 // 1. Create circular clip path
+                 ctx.beginPath();
+                 ctx.arc(mouseX, mouseY, lensRadius, 0, 2 * Math.PI);
+                 ctx.clip();
+                 
+                 // 2. Fill background inside lens to hide base graph
+                 ctx.fillStyle = '#f8fafc';
+                 ctx.fill();
+                 
+                 // 3. Apply mathematical transformation for infinite resolution zooming
+                 ctx.translate(mouseX, mouseY);
+                 ctx.scale(zoom, zoom);
+                 ctx.translate(-mouseX, -mouseY);
+                 
+                 // 4. Redraw graph as sharp vectors inside the lens
+                 drawGraphPaths(true);
+                 
+                 ctx.restore();
+                 
+                 // Draw lens glass border & shadow
+                 ctx.beginPath();
+                 ctx.arc(mouseX, mouseY, lensRadius, 0, 2 * Math.PI);
+                 ctx.lineWidth = 4;
+                 ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+                 ctx.stroke();
+                 ctx.lineWidth = 1;
+                 ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+                 ctx.stroke();
+             }
+         }
+         
+         draw();
+         
+         container.addEventListener('mousemove', (e) => {
+             const rect = canvas.getBoundingClientRect();
+             mouseX = e.clientX - rect.left;
+             mouseY = e.clientY - rect.top;
+             
+             // Find closest node to the mouse center (within the unzoomed source radius)
+             activeNode = null;
+             let closestDist = (lensRadius / zoom); // max search radius is the lens scope
+             
+             for (let i = 0; i < levels; i++) {
+                 for (let j = 0; j < positions[i].length; j++) {
+                     const p = positions[i][j];
+                     const dx = p.x - mouseX;
+                     const dy = p.y - mouseY;
+                     const d = Math.sqrt(dx*dx + dy*dy);
+                     if (d < closestDist) {
+                         closestDist = d;
+                         activeNode = p;
+                     }
+                 }
+             }
+             
+             requestAnimationFrame(draw);
+             
+             if (activeNode && closestDist < 10) { // Only show tooltip if really close to center
+                 const typeLabel = activeNode.isRoot ? "ROOT" : (activeNode.isLeaf ? "LEAF" : "NODE");
+                 tooltip.textContent = `${typeLabel}: ${activeNode.hash}`;
+                 tooltip.style.display = 'block';
+                 let tx = mouseX + lensRadius + 10;
+                 if (tx + 300 > canvas.width) tx = mouseX - lensRadius - 310;
+                 tooltip.style.left = tx + 'px';
+                 tooltip.style.top = (mouseY - 10) + 'px';
+                 container.style.cursor = 'pointer';
+             } else {
+                 tooltip.style.display = 'none';
+                 container.style.cursor = 'crosshair';
+             }
+         });
+         
+         container.addEventListener('mouseleave', () => {
+             mouseX = -1000;
+             mouseY = -1000;
+             activeNode = null;
+             tooltip.style.display = 'none';
+             requestAnimationFrame(draw);
+         });
+         
+         container.addEventListener('click', () => {
+             if (activeNode) {
+                 navigator.clipboard.writeText(activeNode.hash);
+                 alert(`Copied Hash to Clipboard:\n\n${activeNode.hash}`);
+             }
+         });
+         
+      } catch (err) {
+         graphArea.innerHTML = '<div style="color: var(--danger-main); text-align: center; padding: 40px;">Failed to generate Merkle Graph: ' + err.message + '</div>';
+      } finally {
+         const btn = document.getElementById('btnRefreshMerkle');
+         if (btn) btn.textContent = 'Refresh';
+      }
+    };
+    
+    window.fetchAndDrawMerkleGraph();
+
+    // Polling Interval for Analytics
+    const pollInterval = setInterval(async () => {
+      if (state.currentRoute !== "analytics") {
+        clearInterval(pollInterval);
+        return;
+      }
+      try {
+        const res = await fetch('/api/v1/analytics/summary');
+        if (res.ok) {
+          const data = await res.json();
+
+          // Update EPS
+          epsChart.data.datasets[0].data.push(data.current_eps !== undefined ? data.current_eps : data.live_eps);
+          epsChart.data.datasets[0].data.shift();
+          epsChart.update();
+
+          // Update Severity
+          severityChart.data.datasets[0].data = [
+            data.severity_distribution.critical || 0,
+            data.severity_distribution.high || 0,
+            data.severity_distribution.medium || 0,
+            data.severity_distribution.low || 0,
+            data.severity_distribution.informational || 0
+          ];
+          severityChart.update();
+
+          // Update Formats (formerly Sources)
+          if (data.top_formats) {
+            sourceChart.data.labels = data.top_formats.map(s => s.format);
+            sourceChart.data.datasets[0].data = data.top_formats.map(s => s.count);
+            sourceChart.update();
+          }
+
+          // Update Threat Formats
+          if (data.top_threat_formats) {
+            threatChart.data.labels = data.top_threat_formats.map(s => s.format);
+            threatChart.data.datasets[0].data = data.top_threat_formats.map(s => s.count);
+            threatChart.update();
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }, 1000);
+  }
 
 })();

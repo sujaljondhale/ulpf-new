@@ -488,6 +488,10 @@ class HuggingFaceProvider(BaseAiModelProvider):
         **kwargs,
     ):
         model = model_name or os.getenv("HF_MODEL", "Qwen/Qwen2.5-Coder-7B-Instruct")
+        # If it's passed an Ollama local tag instead of a HF repo, override it
+        if "qwen" in model.lower() and "/" not in model:
+            model = "Qwen/Qwen2.5-Coder-7B-Instruct"
+            
         super().__init__(model, **kwargs)
         self.api_key = api_key or settings.huggingface_api_key or os.getenv("HUGGINGFACE_API_KEY", "")
         self.timeout = timeout or settings.ai_timeout_seconds or 5.0
@@ -506,31 +510,30 @@ class HuggingFaceProvider(BaseAiModelProvider):
         if not self.api_key:
             raise ValueError("HUGGINGFACE_API_KEY is not configured.")
 
-        url = f"https://api-inference.huggingface.co/models/{self.model_name}"
-        full_prompt = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
-        payload = {
-            "inputs": full_prompt,
-            "parameters": {"temperature": temperature, "max_new_tokens": 1024},
-        }
+        try:
+            from huggingface_hub import InferenceClient
+        except ImportError:
+            raise RuntimeError("huggingface_hub is not installed. Run 'pip install huggingface_hub'.")
 
-        req_data = json.dumps(payload).encode("utf-8")
-        req = urllib.request.Request(
-            url,
-            data=req_data,
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {self.api_key}",
-            },
-            method="POST",
-        )
-
-        with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-            if isinstance(data, list) and len(data) > 0:
-                return data[0].get("generated_text", "")
-            elif isinstance(data, dict):
-                return data.get("generated_text", "")
-            return str(data)
+        client = InferenceClient(token=self.api_key, timeout=self.timeout)
+        
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+        
+        try:
+            # Using chat_completion for instruct models like Qwen2.5-Coder-7B-Instruct
+            response = client.chat_completion(
+                model=self.model_name,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=1024
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            print(f"Hugging Face API Error: {e}")
+            raise
 
     def check_health(self) -> Dict[str, Any]:
         if not self.api_key:
@@ -719,6 +722,62 @@ class HeuristicProvider(BaseAiModelProvider):
             "zero_api_key_required": True,
         }
 
+# =============================================================================
+# 8. THREE-STEP CASCADING FALLBACK PROVIDER
+# =============================================================================
+class ThreeStepFallbackProvider(BaseAiModelProvider):
+    """
+    Cascading 3-Step Router:
+    1. Local Model (Ollama)
+    2. API Key Model (HuggingFace/OpenAI)
+    3. Default (Heuristic/Pydantic)
+    """
+
+    def __init__(self, model_name: Optional[str] = None, **kwargs):
+        super().__init__(model_name or "cascading-router", **kwargs)
+        self.step1_local = OllamaProvider()
+        self.step2_api = HuggingFaceProvider()
+        self.step3_default = HeuristicProvider()
+
+    @property
+    def provider_name(self) -> str:
+        return "three_step"
+
+    def generate_text(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        json_format: bool = False,
+        temperature: float = 0.2,
+    ) -> str:
+        # Step 1: Local Model
+        try:
+            h1 = self.step1_local.check_health()
+            if h1.get("status") in ("ready", "models_present"):
+                return self.step1_local.generate_text(prompt, system_prompt, json_format, temperature)
+        except Exception:
+            pass
+
+        # Step 2: API Key Model
+        try:
+            h2 = self.step2_api.check_health()
+            if h2.get("status") == "configured":
+                return self.step2_api.generate_text(prompt, system_prompt, json_format, temperature)
+        except Exception:
+            pass
+
+        # Step 3: Default Pydantic/Heuristic
+        return self.step3_default.generate_text(prompt, system_prompt, json_format, temperature)
+
+    def check_health(self) -> Dict[str, Any]:
+        return {
+            "status": "ready",
+            "provider": self.provider_name,
+            "model": self.model_name,
+            "message": "3-Step Fallback Strategy Enabled (Local -> API -> Pydantic)"
+        }
+
+
 
 # =============================================================================
 # AI PROVIDER FACTORY & ORCHESTRATOR
@@ -737,6 +796,7 @@ class AiProviderFactory:
         "huggingface",
         "local_ml",
         "heuristic",
+        "three_step",
     ]
 
     _instances: Dict[str, BaseAiModelProvider] = {}
@@ -757,6 +817,8 @@ class AiProviderFactory:
             return LocalMLDetectorProvider(model_name=model_name or "ulpf_isolation_forest_v1")
         elif p_name == "heuristic":
             return HeuristicProvider(model_name=model_name)
+        elif p_name == "three_step":
+            return ThreeStepFallbackProvider(model_name=model_name)
         else:
             return OllamaProvider(model_name=model_name)
 

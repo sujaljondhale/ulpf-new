@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
-    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400;1,700;1,900&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
     rel="stylesheet">
   <link rel="stylesheet" href="style.css?v=1.0.0_phase8">
   <script>
@@ -26,12 +26,17 @@
   <!-- Top Navigation Bar -->
   <header class="top-navbar">
     <div class="brand-section">
-      <div class="brand-icon"><svg class="svg-icon svg-icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+      <div class="brand-icon"><svg class="svg-icon svg-icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2.5">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+        </svg></div>
       <div class="brand-text-wrap">
         <div class="brand-title">ULPF Virtual Device Simulator &amp; Testbed</div>
         <div class="brand-subtitle-row">
           <span class="brand-badge">CORE 2</span>
-          <span class="brand-badge" style="background:rgba(52, 211, 153, 0.15); color:#10b981; border-color:rgba(52, 211, 153, 0.35);">v1.0.0 Enterprise (Phase 8)</span>
+          <span class="brand-badge"
+            style="background:rgba(52, 211, 153, 0.15); color:#10b981; border-color:rgba(52, 211, 153, 0.35);">v1.0.0
+            Enterprise (Phase 8)</span>
           <span class="brand-desc">Network Telemetry &amp; Validation Studio</span>
           <span class="brand-live-dot" title="Testbed Engine Ready"></span>
         </div>
@@ -44,7 +49,10 @@
         <a href="http://localhost:8000/dashboard/index.html#/overview" target="_blank"
           class="nav-link-btn nav-link-server" style="padding: 6px 14px; font-weight: 700; gap: 8px;"
           title="Open Main Server SOC Dashboard (Core 1)">
-          <span class="nav-link-icon"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>
+          <span class="nav-link-icon"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+            </svg></span>
           <span>Open Main SOC Dashboard</span>
           <span class="nav-link-arrow">↗</span>
         </a>
@@ -55,6 +63,7 @@
       <!-- Theme Controls -->
       <div class="theme-selector-wrap">
         <select id="themeSelector" class="theme-select-dropdown" title="Switch SOC Theme Palette">
+          <option value="light">Arctic Frost (Light)</option>
           <option value="nord" selected>Nordic Frost (Dark)</option>
           <option value="midnight">Midnight Slate (Deep Dark)</option>
           <option value="catppuccin">Catppuccin Mocha (Warm Dark)</option>
@@ -68,10 +77,11 @@
     <!-- Page Title Header -->
     <div class="section-header" style="margin-bottom:14px;">
       <div>
-        <h1 class="section-title" style="font-size:22px; color:var(--text-primary); display:flex; align-items:center; gap:8px;">
+        <h1 class="section-title"
+          style="font-size:22px; color:var(--text-primary); display:flex; align-items:center; gap:8px;">
           <span>Universal Log Testing & Verification Studio</span>
         </h1>
-        <p class="section-subtitle" style="color:var(--text-muted); font-size:13px;">
+        <p class="section-subtitle" style="color:var(--text-secondary); font-size:13px;">
           Easily test your log server, simulate office routers and firewalls, launch safe test cyberattacks, and check
           live system health — designed to be completely visual and beginner-friendly.
         </p>
@@ -82,7 +92,11 @@
     <div class="target-server-banner">
       <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
         <div style="display:flex; align-items:center; gap:6px;">
-          <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="2" y1="12" x2="22" y2="12" />
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+          </svg>
           <span style="font-size:11px; font-weight:800; color:var(--text-primary); letter-spacing:0.5px;">MAIN SERVER
             DESTINATION:</span>
         </div>
@@ -103,7 +117,8 @@
 
         <!-- API Port -->
         <div style="display:flex; align-items:center; gap:2px;">
-          <span style="color:var(--text-muted); font-size:12px; font-family:var(--font-mono); font-weight:700;">:</span>
+          <span
+            style="color:var(--text-secondary); font-size:12px; font-family:var(--font-mono); font-weight:700;">:</span>
           <input type="number" id="targetPortInput" class="input-field" value="8000" placeholder="Port"
             style="width:72px; padding:5px 6px; font-family:var(--font-mono); font-size:12px; height:32px;"
             title="HTTP REST Port (default 8000)">
@@ -114,7 +129,6 @@
           style="width:165px; padding:4px 6px; font-size:11px; height:32px;">
           <option value="" disabled selected>Preset Machine...</option>
           <option value="127.0.0.1:8000">Localhost (127.0.0.1:8000)</option>
-          <option value="host.docker.internal:8000">Docker Host (8000)</option>
           <option value="lan_custom">Remote LAN Machine...</option>
           <option value="cloud_custom">Remote Cloud / VPS...</option>
         </select>
@@ -162,7 +176,8 @@
       <button type="button" class="workflow-step-btn" data-tab="tabConnectionCheck"
         title="Phase 4: Check Live Port Radar">
         <span class="workflow-step-phase">Phase 4</span>
-        <span class="workflow-step-title">Port Radar <span class="badge-status-dot online" id="serverStateDot" title="Server Status"></span></span>
+        <span class="workflow-step-title">Port Radar <span class="badge-status-dot online" id="serverStateDot"
+            title="Server Status"></span></span>
       </button>
       <button type="button" class="workflow-step-btn" data-tab="tabRealDevices"
         title="Phase 5: Connect Real Office Hardware">
@@ -198,31 +213,46 @@
         <div class="guide-cards-grid">
           <div class="guide-card">
             <div class="guide-card-header">
-              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span>
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <circle cx="12" cy="12" r="6" />
+                  <circle cx="12" cy="12" r="2" />
+                </svg></span>
               <h4 class="guide-card-title">What This Does</h4>
             </div>
             <p class="guide-card-text">
-              Simulates a live office network. It creates virtual routers, firewalls, Wi-Fi access points, and Linux servers that send realistic everyday activity logs to the main server.
+              Simulates a live office network. It creates virtual routers, firewalls, Wi-Fi access points, and Linux
+              servers that send realistic everyday activity logs to the main server.
             </p>
           </div>
           <div class="guide-card">
             <div class="guide-card-header">
-              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg></span>
               <h4 class="guide-card-title">When To Use This</h4>
             </div>
             <p class="guide-card-text">
-              Use this first! It proves that normal, everyday network traffic flows into the server smoothly across UDP, TCP, and HTTP without dropping any packets.
+              Use this first! It proves that normal, everyday network traffic flows into the server smoothly across UDP,
+              TCP, and HTTP without dropping any packets.
             </p>
           </div>
           <div class="guide-card">
             <div class="guide-card-header">
-              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                </svg></span>
               <h4 class="guide-card-title">3-Step Simple Test</h4>
             </div>
             <ul class="guide-steps-list">
               <li><span class="guide-step-num">1</span> Pick an active device from the roster on the left.</li>
               <li><span class="guide-step-num">2</span> Tweak fields on the right or click "Randomize".</li>
-              <li><span class="guide-step-num">3</span> Click <b>" Send 1 Test Log Now"</b> and watch the green receipt!</li>
+              <li><span class="guide-step-num">3</span> Click <b>" Send 1 Test Log Now"</b> and watch the green receipt!
+              </li>
             </ul>
           </div>
         </div>
@@ -234,16 +264,21 @@
         <!-- LEFT COLUMN: VIRTUAL DEVICE ROSTER & CREATOR -->
         <div style="display:flex; flex-direction:column; gap:20px;">
 
-          <!-- 1. Configured Virtual Devices Roster (Step 1) -->
+          <!-- Configured Virtual Devices Roster -->
           <div class="card" id="step1DeviceCard" style="display:flex; flex-direction:column;">
             <div class="section-header" style="margin-bottom:14px;">
               <div>
                 <h3 class="section-title">
-                  <svg class="svg-icon svg-icon-md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--accent-cyan);"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
-                  <span>Step 1: Select a Device from List</span>
+                  <svg class="svg-icon svg-icon-md" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2" style="color:var(--accent-cyan);">
+                    <rect x="2" y="2" width="20" height="8" rx="2" ry="2" />
+                    <rect x="2" y="14" width="20" height="8" rx="2" ry="2" />
+                    <line x1="6" y1="6" x2="6.01" y2="6" />
+                    <line x1="6" y1="18" x2="6.01" y2="18" />
+                  </svg>
+                  <span>Select a Device from List</span>
                   <span id="devCountBadge" class="badge badge-cyan">0</span>
                 </h3>
-                <p class="section-subtitle">Click any device below to load its profile, brand parser, and payload template</p>
               </div>
             </div>
 
@@ -258,10 +293,14 @@
             <div class="section-header" style="margin-bottom:14px;">
               <div class="section-header-left">
                 <h3 class="section-title">
-                  <svg class="svg-icon svg-icon-md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                  <svg class="svg-icon svg-icon-md" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="16" />
+                    <line x1="8" y1="12" x2="16" y2="12" />
+                  </svg>
                   <span>Add a Virtual Device</span>
                 </h3>
-                <p class="section-subtitle">Create a simulated hardware device with custom IP address, brand parser, and protocol</p>
               </div>
             </div>
 
@@ -283,7 +322,8 @@
                 <div class="input-group">
                   <label class="input-label">Device Brand &amp; Log Format</label>
                   <select id="newDevVendor" class="input-field" style="height:42px;">
-                    <option value="Palo Alto Networks|palo_alto_panos">Palo Alto Networks PAN-OS (Traffic/Threat CSV/KV)</option>
+                    <option value="Palo Alto Networks|palo_alto_panos">Palo Alto Networks PAN-OS (Traffic/Threat CSV/KV)
+                    </option>
                     <option value="Cisco|cisco_asa">Cisco ASA / FTD (Security Syslog)</option>
                     <option value="Fortinet|fortinet_fortigate">Fortinet FortiGate (FortiOS UTM &amp; NGFW)</option>
                     <option value="Amazon Web Services|aws_cloudtrail">AWS CloudTrail &amp; VPC Flow (JSON)</option>
@@ -307,13 +347,11 @@
 
               <div class="form-row" style="grid-template-columns: 1fr 1fr; margin-bottom:16px;">
                 <div class="input-group">
-                  <label class="input-label">Stream Interval (ms)</label>
-                  <input type="number" id="newDevInterval" class="input-field" value="100" min="5" max="5000" step="10" placeholder="100ms">
+                  <label class="input-label">Logs per second (EPS)</label>
+                  <input type="number" id="newDevInterval" class="input-field" value="10" min="1" max="1000" step="1"
+                    placeholder="e.g. 10 EPS">
                 </div>
-                <div class="input-group">
-                  <label class="input-label">Risk Factor / Threat Ratio (%)</label>
-                  <input type="number" id="newDevRisk" class="input-field" value="15" min="0" max="100" step="5" placeholder="0 - 100%">
-                </div>
+                <div></div>
               </div>
 
               <button type="submit" class="btn-primary" style="width:100%; justify-content:center;">
@@ -330,18 +368,36 @@
             <div class="section-header">
               <div class="section-header-left">
                 <h3 class="section-title">
-                  <svg class="svg-icon svg-icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/></svg>
-                  Step 2: Configure &amp; Transmit Test Log
+                  <svg class="svg-icon svg-icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2">
+                    <circle cx="12" cy="12" r="2" />
+                    <path
+                      d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14" />
+                  </svg>
+                  Active/Selected Device Configurations
                 </h3>
-                <p class="section-subtitle">Customize payload attributes or edit raw byte streams in real time</p>
               </div>
               <div class="section-header-actions">
-                <button type="button" class="btn-secondary btn-sm" id="btnQuickUploadNav" title="Switch to Log File Ingestion & Uploader">
-                  <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <button type="button" class="btn-secondary btn-sm" id="btnQuickUploadNav"
+                  title="Switch to Log File Ingestion & Uploader">
+                  <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
                   <span>Upload File</span>
                 </button>
-                <button type="button" class="btn-secondary btn-sm" id="btnRandomizeSession" title="Generate new random IP, Port, and Session ID">
-                  <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+                <button type="button" class="btn-secondary btn-sm" id="btnRandomizeSession"
+                  title="Generate new random IP, Port, and Session ID">
+                  <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2">
+                    <polyline points="16 3 21 3 21 8" />
+                    <line x1="4" y1="20" x2="21" y2="3" />
+                    <polyline points="21 16 21 21 16 21" />
+                    <line x1="15" y1="15" x2="21" y2="21" />
+                    <line x1="4" y1="4" x2="9" y2="9" />
+                  </svg>
                   <span>Randomize</span>
                 </button>
                 <div id="activeDevBadge" class="active-dev-badge">
@@ -352,7 +408,7 @@
 
             <!-- Dynamic Field Customizer Grid -->
             <div class="builder-grid"
-              style="background:rgba(24,20,19,0.5); padding:12px; border-radius:8px; border:1px solid rgba(56,189,248,0.18); margin-bottom:14px;">
+              style="background:var(--bg-card); padding:12px; border-radius:8px; border:1px solid var(--border-subtle); margin-bottom:14px;">
               <div>
                 <label class="builder-field-label">From IP (Source)</label>
                 <input type="text" id="fieldSrcIp" class="builder-field-input" value="192.168.1.100">
@@ -387,12 +443,24 @@
                 <label class="builder-field-label">Service Protocol</label>
                 <input type="text" id="fieldApp" class="builder-field-input" value="HTTPS">
               </div>
+              <div>
+                <label class="builder-field-label">Attack Payload</label>
+                <select id="fieldAttack" class="builder-field-input" style="height:35px;">
+                  <option value="none" selected>None (Clean Traffic)</option>
+                  <option value="sqli">SQL Injection</option>
+                  <option value="xss">Cross-Site Scripting (XSS)</option>
+                  <option value="path">Path Traversal</option>
+                  <option value="log4j">Log4Shell (JNDI)</option>
+                  <option value="ssrf">Server-Side Request Forgery</option>
+                </select>
+              </div>
             </div>
 
             <!-- Monospaced Log Payload Wire Editor -->
             <div class="editor-wrapper">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                <label class="input-label" style="margin:0; font-weight:600;">Raw Wire Payload (Wire Stream Sent to Ingress Socket)</label>
+                <label class="input-label" style="margin:0; font-weight:600;">Raw Wire Payload (Wire Stream Sent to
+                  Ingress Socket)</label>
                 <span class="badge badge-neutral badge-sm" id="wireByteLengthBadge">0 bytes</span>
               </div>
               <textarea id="simLogPayload" class="log-textarea" spellcheck="false" rows="5"
@@ -401,33 +469,33 @@
 
             <!-- Action Controls Toolbar -->
             <div
-              style="background:rgba(24,20,19,0.5); border:1px solid rgba(56,189,248,0.2); border-radius:10px; padding:14px; margin-bottom:14px;">
+              style="background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:10px; padding:14px; margin-bottom:14px;">
               <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
                 <!-- Single Log Button -->
                 <button id="btnSendSingleSimLog" class="btn-primary" style="padding:10px 20px; font-size:13px;">
-                  <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                  <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="22" y1="2" x2="11" y2="13" />
+                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                  </svg>
                   <span>Send 1 Test Log Now</span>
                 </button>
 
                 <!-- Stream Controls -->
-                <div style="display:flex; align-items:center; gap:8px;">
-                  <span style="font-size:12px; color:var(--text-muted); font-weight:600;">Stream Speed:</span>
-                  <select id="simStreamSpeed" class="input-field"
-                    style="padding:6px 10px; font-size:12px; height:36px;">
-                    <option value="1000">1 log / sec (Normal)</option>
-                    <option value="500">2 logs / sec (Moderate)</option>
-                    <option value="200">5 logs / sec (Fast)</option>
-                    <option value="100">10 logs / sec (Rapid)</option>
-                  </select>
-                  <button id="btnToggleSimStream" class="btn-teal" style="padding:10px 18px; font-size:13px;">
-                    <svg class="svg-icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                    <span>Send Continuous Logs</span>
-                  </button>
-                </div>
+                <button id="btnToggleSimStream" class="btn-teal" style="padding:10px 18px; font-size:13px;">
+                  <svg class="svg-icon" viewBox="0 0 24 24" fill="currentColor">
+                    <polygon points="5 3 19 12 5 21 5 3" />
+                  </svg>
+                  <span>Send Continuous Logs</span>
+                </button>
 
                 <!-- Clear Payload -->
                 <button id="btnClearPayload" class="btn-secondary" style="padding:8px 14px; font-size:12px;">
-                  <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                  <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2">
+                    <polyline points="23 4 23 10 17 10" />
+                    <polyline points="1 20 1 14 7 14" />
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                  </svg>
                   <span>Reset to Default</span>
                 </button>
               </div>
@@ -435,7 +503,7 @@
 
             <!-- Two-Way Server Receipt Card -->
             <div id="simFeedbackBox"
-              style="display:none; padding:14px 18px; background:rgba(45,212,191,0.15); border:1px solid rgba(45,212,191,0.4); border-radius:8px;">
+              style="display:none; padding:14px 18px; background:rgba(45,212,191,0.15); border:1px solid var(--border-subtle); border-radius:8px;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                 <span style="font-weight:700; font-size:13px; color:#a7f3d0;" id="simFeedbackTitle"> Ingested &
                   Normalized by Server</span>
@@ -449,7 +517,7 @@
                 <span class="badge badge-neutral badge-sm" id="receiptShaBadge">SHA-256: 4b2277...</span>
                 <a href="http://localhost:8000/dashboard/index.html#/logs" target="_blank"
                   style="margin-left:auto; font-size:11px; color:#38BDF8; text-decoration:underline;">Inspect on Server
-                  </a>
+                </a>
               </div>
             </div>
 
@@ -476,7 +544,8 @@
         </div>
 
         <div id="simTerminalFeed" class="terminal-feed">
-          <div style="color:var(--text-muted); text-align:center; padding:30px;">Terminal idle. Click "Transmit Single
+          <div style="color:var(--text-secondary); text-align:center; padding:30px;">Terminal idle. Click "Transmit
+            Single
             Log" or "Start Live Stream" to simulate traffic.</div>
         </div>
       </div>
@@ -500,25 +569,38 @@
         <div class="guide-cards-grid">
           <div class="guide-card">
             <div class="guide-card-header">
-              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span>
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <circle cx="12" cy="12" r="6" />
+                  <circle cx="12" cy="12" r="2" />
+                </svg></span>
               <h4 class="guide-card-title">What This Does</h4>
             </div>
             <p class="guide-card-text">
-              Launches safe, simulated cyberattacks (such as password guessing, website database hacking, port scanner sweeps, and unknown industrial telemetry) against the server to test its defense shields.
+              Launches safe, simulated cyberattacks (such as password guessing, website database hacking, port scanner
+              sweeps, and unknown industrial telemetry) against the server to test its defense shields.
             </p>
           </div>
           <div class="guide-card">
             <div class="guide-card-header">
-              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg></span>
               <h4 class="guide-card-title">What You Should Expect</h4>
             </div>
             <p class="guide-card-text">
-              The server automatically inspects incoming packets, classifies the threat, emits high-priority security alerts on the SOC Dashboard, and immediately blocks the attacker IP.
+              The server automatically inspects incoming packets, classifies the threat, emits high-priority security
+              alerts on the SOC Dashboard, and immediately blocks the attacker IP.
             </p>
           </div>
           <div class="guide-card">
             <div class="guide-card-header">
-              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                </svg></span>
               <h4 class="guide-card-title">3-Step Simple Test</h4>
             </div>
             <ul class="guide-steps-list">
@@ -697,12 +779,13 @@
         <div class="section-header" style="margin-bottom:10px;">
           <h3 class="section-title">Live Attack Execution & Defense Verification Console</h3>
           <button type="button" class="btn-secondary" style="font-size:11px; padding:4px 10px;"
-            onclick="document.getElementById('attackConsoleFeed').innerHTML='<div style=\'color:var(--text-muted); padding:20px; text-align:center;\'>Console cleared. Ready for attack execution.</div>'">
+            onclick="document.getElementById('attackConsoleFeed').innerHTML='<div style=\'color:var(--text-secondary); padding:20px; text-align:center;\'>Console cleared. Ready for attack execution.</div>'">
             <span>Clear Feed</span>
           </button>
         </div>
         <div id="attackConsoleFeed" class="terminal-feed" style="height:200px; color:#7dd3fc;">
-          <div style="color:var(--text-muted); padding:20px; text-align:center;">Select any scenario above to launch an
+          <div style="color:var(--text-secondary); padding:20px; text-align:center;">Select any scenario above to launch
+            an
             attack simulation and trace server defense responses.</div>
         </div>
       </div>
@@ -726,25 +809,39 @@
         <div class="guide-cards-grid">
           <div class="guide-card">
             <div class="guide-card-header">
-              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span>
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <circle cx="12" cy="12" r="6" />
+                  <circle cx="12" cy="12" r="2" />
+                </svg></span>
               <h4 class="guide-card-title">What This Does</h4>
             </div>
             <p class="guide-card-text">
-              Simulates a heavy network spike by blasting 50 to 500 log packets into the server in a few milliseconds to measure how fast the server handles heavy load.
+              Simulates a heavy network spike by blasting 50 to 500 log packets into the server in a few milliseconds to
+              measure how fast the server handles heavy load.
             </p>
           </div>
           <div class="guide-card">
             <div class="guide-card-header">
-              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg></span>
               <h4 class="guide-card-title">When To Use This</h4>
             </div>
             <p class="guide-card-text">
-              Use this to ensure that during peak office hours or DDoS traffic storms, the server pipeline never freezes, stalls, or drops incoming event logs.
+              Use this to ensure that during peak office hours or DDoS traffic storms, the server pipeline never
+              freezes, stalls, or drops incoming event logs.
             </p>
           </div>
           <div class="guide-card">
             <div class="guide-card-header">
-              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                </svg></span>
               <h4 class="guide-card-title">3-Step Simple Test</h4>
             </div>
             <ul class="guide-steps-list">
@@ -776,7 +873,7 @@
 
         <!-- Controls Row -->
         <div
-          style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:16px; background:rgba(24,20,19,0.5); padding:16px; border-radius:8px; border:1px solid rgba(56,189,248,0.2);">
+          style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:16px; background:var(--bg-card); padding:16px; border-radius:8px; border:1px solid var(--border-subtle);">
           <div>
             <label class="input-label">Burst Packet Count</label>
             <div style="display:flex; gap:6px; margin-top:4px;">
@@ -847,12 +944,13 @@
         <div class="section-header" style="margin-bottom:10px;">
           <h3 class="section-title">Live Stress Transmission Audit</h3>
           <button type="button" class="btn-secondary" style="font-size:11px; padding:4px 10px;"
-            onclick="document.getElementById('loadgenConsoleFeed').innerHTML='<div style=\'color:var(--text-muted); padding:20px; text-align:center;\'>Ready to execute load test.</div>'">
+            onclick="document.getElementById('loadgenConsoleFeed').innerHTML='<div style=\'color:var(--text-secondary); padding:20px; text-align:center;\'>Ready to execute load test.</div>'">
             <span>Clear Log</span>
           </button>
         </div>
         <div id="loadgenConsoleFeed" class="terminal-feed" style="height:220px; color:#a7f3d0;">
-          <div style="color:var(--text-muted); padding:20px; text-align:center;">Configure packet count above and click
+          <div style="color:var(--text-secondary); padding:20px; text-align:center;">Configure packet count above and
+            click
             "Execute Load Storm" to test high-throughput ingestion.</div>
         </div>
       </div>
@@ -876,31 +974,47 @@
         <div class="guide-cards-grid">
           <div class="guide-card">
             <div class="guide-card-header">
-              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span>
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <circle cx="12" cy="12" r="6" />
+                  <circle cx="12" cy="12" r="2" />
+                </svg></span>
               <h4 class="guide-card-title">What This Does</h4>
             </div>
             <p class="guide-card-text">
-              Scans every doorway (network port) on the main server (Syslog UDP, TCP, REST API, and Local Sovereign AI) to confirm they are actively listening and ready to receive traffic.
+              Scans every doorway (network port) on the main server (Syslog UDP, TCP, REST API, and Local Sovereign AI)
+              to confirm they are actively listening and ready to receive traffic.
             </p>
           </div>
           <div class="guide-card">
             <div class="guide-card-header">
-              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg></span>
               <h4 class="guide-card-title">When To Use This</h4>
             </div>
             <p class="guide-card-text">
-              Check this anytime you start the system or troubleshoot connectivity. Green cards mean the port is open and accepting traffic from your devices.
+              Check this anytime you start the system or troubleshoot connectivity. Green cards mean the port is open
+              and accepting traffic from your devices.
             </p>
           </div>
           <div class="guide-card">
             <div class="guide-card-header">
-              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                </svg></span>
               <h4 class="guide-card-title">3-Step Simple Test</h4>
             </div>
             <ul class="guide-steps-list">
-              <li><span class="guide-step-num">1</span> Click <b>"Test Connection Now"</b> or <b>"Run Full Diagnostic"</b>.</li>
+              <li><span class="guide-step-num">1</span> Click <b>"Test Connection Now"</b> or <b>"Run Full
+                  Diagnostic"</b>.</li>
               <li><span class="guide-step-num">2</span> Confirm all cards display green badges (Online / Ready).</li>
-              <li><span class="guide-step-num">3</span> Turn on "Auto-Probe" for automatic background health monitoring.</li>
+              <li><span class="guide-step-num">3</span> Turn on "Auto-Probe" for automatic background health monitoring.
+              </li>
             </ul>
           </div>
         </div>
@@ -908,7 +1022,7 @@
 
       <!-- HERO STATUS BANNER -->
       <div class="card p-md"
-        style="margin-bottom:24px; background:linear-gradient(135deg, rgba(45, 212, 191, 0.15) 0%, rgba(36, 30, 28, 0.85) 100%); border:1px solid rgba(45, 212, 191, 0.45);">
+        style="margin-bottom:24px; background:var(--bg-secondary) 0%, rgba(36, 30, 28, 0.85) 100%; border:1px solid var(--border-subtle);">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
           <div>
             <div style="display:flex; align-items:center; gap:10px;">
@@ -922,11 +1036,12 @@
                   style="font-family:var(--font-mono); color:#38BDF8;">http://127.0.0.1:8000</b></span>
               <span>Round-Trip Latency: <b id="serverHeroLatency"
                   style="font-family:var(--font-mono); color:#a7f3d0;">&lt; 1 ms</b></span>
-              <span>Subsystems: <b id="serverHeroSubsystems" style="color:#F1F5F9;">8/8 Ready</b></span>
+              <span>Subsystems: <b id="serverHeroSubsystems" style="color:var(--text-primary);">8/8 Ready</b></span>
             </div>
           </div>
           <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-            <button type="button" class="btn-primary" id="btnHeroTestServerConnection" onclick="window.checkServerHealth()">
+            <button type="button" class="btn-primary" id="btnHeroTestServerConnection"
+              onclick="window.checkServerHealth()">
               <span>Test Connection Now</span>
             </button>
             <button type="button" class="btn-teal" id="btnDiagnosticCheck" onclick="window.runFullDiagnostics()">
@@ -951,98 +1066,103 @@
       <div class="grid grid-3 gap-md"
         style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:14px; margin-bottom:24px;">
         <!-- Card 1: HTTP API -->
-        <div class="card p-sm" style="background:rgba(24,20,19,0.5); border:1px solid rgba(56,189,248,0.2);">
+        <div class="card p-sm" style="background:var(--bg-card); border:1px solid var(--border-subtle);">
           <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
             <span style="font-weight:700; font-size:13px; color:#F1F5F9;">FastAPI REST Ingest &amp; Dashboard</span>
             <span class="badge badge-teal" id="badge_http_api">ONLINE</span>
           </div>
           <div style="font-family:var(--font-mono); font-size:11px; color:#38BDF8; margin-bottom:4px;">TCP :8000 ·
             /api/v1/health/live</div>
-          <p style="font-size:11.5px; color:var(--text-muted); margin-bottom:8px;">Synchronous JSON, CEF &amp; Batch
+          <p style="font-size:11.5px; color:var(--text-secondary); margin-bottom:8px;">Synchronous JSON, CEF &amp; Batch
             Ingestion Endpoint</p>
           <div style="font-size:11px; font-family:var(--font-mono); color:#94a3b8;" id="detail_http_api">RTT: 0.65 ms ·
             HTTP 200 OK</div>
         </div>
 
         <!-- Card 2: Syslog UDP -->
-        <div class="card p-sm" style="background:rgba(24,20,19,0.5); border:1px solid rgba(56,189,248,0.2);">
+        <div class="card p-sm" style="background:var(--bg-card); border:1px solid var(--border-subtle);">
           <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
             <span style="font-weight:700; font-size:13px; color:#F1F5F9;">Syslog UDP Ingress Collector</span>
             <span class="badge badge-teal" id="badge_syslog_udp">READY</span>
           </div>
           <div style="font-family:var(--font-mono); font-size:11px; color:#38BDF8; margin-bottom:4px;">UDP :5140 · RFC
             3164 / 5424</div>
-          <p style="font-size:11.5px; color:var(--text-muted); margin-bottom:8px;">High-speed stateless datagram
+          <p style="font-size:11.5px; color:var(--text-secondary); margin-bottom:8px;">High-speed stateless datagram
             ingestion for network firewalls</p>
           <div style="font-size:11px; font-family:var(--font-mono); color:#94a3b8;" id="detail_syslog_udp">Datagram
             socket open &amp; accepting</div>
         </div>
 
         <!-- Card 3: Syslog TCP -->
-        <div class="card p-sm" style="background:rgba(24,20,19,0.5); border:1px solid rgba(56,189,248,0.2);">
+        <div class="card p-sm" style="background:var(--bg-card); border:1px solid var(--border-subtle);">
           <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
             <span style="font-weight:700; font-size:13px; color:#F1F5F9;">Syslog TCP Stream Collector</span>
             <span class="badge badge-teal" id="badge_syslog_tcp">ONLINE</span>
           </div>
           <div style="font-family:var(--font-mono); font-size:11px; color:#38BDF8; margin-bottom:4px;">TCP :5141 ·
             Multi-Threaded Acceptor</div>
-          <p style="font-size:11.5px; color:var(--text-muted); margin-bottom:8px;">Connection-oriented streaming with
+          <p style="font-size:11.5px; color:var(--text-secondary); margin-bottom:8px;">Connection-oriented streaming
+            with
             newline &amp; octet framing</p>
           <div style="font-size:11px; font-family:var(--font-mono); color:#94a3b8;" id="detail_syslog_tcp">TCP 3-way
             handshake established</div>
         </div>
 
         <!-- Card 4: Local Sovereign AI Qwen 7B -->
-        <div class="card p-sm" style="background:rgba(24,20,19,0.5); border:1px solid rgba(168,85,247,0.35);">
+        <div class="card p-sm" style="background:var(--bg-card); border:1px solid var(--border-subtle);">
           <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
             <span style="font-weight:700; font-size:13px; color:#d8b4fe;">Sovereign AI Engine (Qwen 7B)</span>
             <span class="badge badge-purple" id="badge_ai_engine">READY</span>
           </div>
           <div style="font-family:var(--font-mono); font-size:11px; color:#c084fc; margin-bottom:4px;">TCP :11434 ·
             Ollama qwen2.5:7b</div>
-          <p style="font-size:11.5px; color:var(--text-muted); margin-bottom:8px;">Air-gapped GPU-accelerated model for
+          <p style="font-size:11.5px; color:var(--text-secondary); margin-bottom:8px;">Air-gapped GPU-accelerated model
+            for
             unknown log structure inference</p>
           <div style="font-size:11px; font-family:var(--font-mono); color:#94a3b8;" id="detail_ai_engine">Local Model
             Resident in VRAM (Ready)</div>
         </div>
 
         <!-- Card 5: Redpanda Kafka Bus -->
-        <div class="card p-sm" style="background:rgba(24,20,19,0.5); border:1px solid rgba(56,189,248,0.2);">
+        <div class="card p-sm" style="background:var(--bg-card); border:1px solid var(--border-subtle);">
           <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
             <span style="font-weight:700; font-size:13px; color:#F1F5F9;">Redpanda Streaming Message Bus</span>
             <span class="badge badge-teal" id="badge_redpanda">ACTIVE</span>
           </div>
           <div style="font-family:var(--font-mono); font-size:11px; color:#38BDF8; margin-bottom:4px;">TCP :9092 · Kafka
             Raft Engine</div>
-          <p style="font-size:11.5px; color:var(--text-muted); margin-bottom:8px;">Sub-millisecond stream buffer between
+          <p style="font-size:11.5px; color:var(--text-secondary); margin-bottom:8px;">Sub-millisecond stream buffer
+            between
             ingress &amp; workers</p>
           <div style="font-size:11px; font-family:var(--font-mono); color:#94a3b8;" id="detail_redpanda">Topic:
             ulpf-raw-ingress (Ready)</div>
         </div>
 
         <!-- Card 6: MinIO S3 -->
-        <div class="card p-sm" style="background:rgba(24,20,19,0.5); border:1px solid rgba(56,189,248,0.2);">
+        <div class="card p-sm" style="background:var(--bg-card); border:1px solid var(--border-subtle);">
           <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
             <span style="font-weight:700; font-size:13px; color:#F1F5F9;">MinIO Immutable S3 Storage</span>
             <span class="badge badge-teal" id="badge_minio_s3">SECURE</span>
           </div>
           <div style="font-family:var(--font-mono); font-size:11px; color:#38BDF8; margin-bottom:4px;">TCP :9000 · S3
             Object API</div>
-          <p style="font-size:11.5px; color:var(--text-muted); margin-bottom:8px;">Forensically intact raw bit storage
+          <p style="font-size:11.5px; color:var(--text-secondary); margin-bottom:8px;">Forensically intact raw bit
+            storage
             with SHA-256 evidence</p>
           <div style="font-size:11px; font-family:var(--font-mono); color:#94a3b8;" id="detail_minio_s3">Bucket:
             ulpf-raw · SHA-256 Verified</div>
         </div>
 
         <!-- Card 7: OpenSearch -->
-        <div class="card p-sm" style="background:rgba(24,20,19,0.5); border:1px solid rgba(56,189,248,0.2);">
+        <div class="card p-sm" style="background:var(--bg-card); border:1px solid var(--border-subtle);">
           <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
             <span style="font-weight:700; font-size:13px; color:#F1F5F9;">OpenSearch Normalized Index</span>
             <span class="badge badge-teal" id="badge_opensearch">INDEXING</span>
           </div>
           <div style="font-family:var(--font-mono); font-size:11px; color:#38BDF8; margin-bottom:4px;">TCP :9200 · OCSF
             &amp; ECS Schema</div>
-          <p style="font-size:11.5px; color:var(--text-muted); margin-bottom:8px;">Fast query engine for SIEM dashboards
+          <p style="font-size:11.5px; color:var(--text-secondary); margin-bottom:8px;">Fast query engine for SIEM
+            dashboards
             &amp; threat hunting</p>
           <div style="font-size:11px; font-family:var(--font-mono); color:#94a3b8;" id="detail_opensearch">Index:
             ulpf-events (Cluster OK)</div>
@@ -1086,31 +1206,46 @@
         <div class="guide-cards-grid">
           <div class="guide-card">
             <div class="guide-card-header">
-              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span>
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <circle cx="12" cy="12" r="6" />
+                  <circle cx="12" cy="12" r="2" />
+                </svg></span>
               <h4 class="guide-card-title">What This Does</h4>
             </div>
             <p class="guide-card-text">
-              Provides ready-to-use configuration commands to connect real physical hardware in your office (Cisco switches, Fortinet firewalls, Linux servers, MikroTik routers) directly to this system.
+              Provides ready-to-use configuration commands to connect real physical hardware in your office (Cisco
+              switches, Fortinet firewalls, Linux servers, MikroTik routers) directly to this system.
             </p>
           </div>
           <div class="guide-card">
             <div class="guide-card-header">
-              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg></span>
               <h4 class="guide-card-title">When To Use This</h4>
             </div>
             <p class="guide-card-text">
-              When moving from simulation to production! Use these copy-paste commands to turn on remote syslog forwarding from your real office hardware to port 5140 or 5141.
+              When moving from simulation to production! Use these copy-paste commands to turn on remote syslog
+              forwarding from your real office hardware to port 5140 or 5141.
             </p>
           </div>
           <div class="guide-card">
             <div class="guide-card-header">
-              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                </svg></span>
               <h4 class="guide-card-title">3-Step Simple Test</h4>
             </div>
             <ul class="guide-steps-list">
               <li><span class="guide-step-num">1</span> Select your hardware brand from the category buttons below.</li>
               <li><span class="guide-step-num">2</span> Click the copy button next to the configuration snippet.</li>
-              <li><span class="guide-step-num">3</span> Paste the snippet into your hardware's admin console or SSH terminal!</li>
+              <li><span class="guide-step-num">3</span> Paste the snippet into your hardware's admin console or SSH
+                terminal!</li>
             </ul>
           </div>
         </div>
@@ -1258,7 +1393,7 @@
             </thead>
             <tbody id="auditHistoryTableBody">
               <tr>
-                <td colspan="8" style="text-align:center; padding:24px; color:var(--text-muted);">
+                <td colspan="8" style="text-align:center; padding:24px; color:var(--text-secondary);">
                   No logs transmitted yet in this test session.
                 </td>
               </tr>
@@ -1286,31 +1421,49 @@
         <div class="guide-cards-grid">
           <div class="guide-card">
             <div class="guide-card-header">
-              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span>
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <circle cx="12" cy="12" r="6" />
+                  <circle cx="12" cy="12" r="2" />
+                </svg></span>
               <h4 class="guide-card-title">What This Does</h4>
             </div>
             <p class="guide-card-text">
-              Runs a complete, automated health and accuracy audit of the entire platform. In seconds, it verifies all 61 parser test cases, checks port connectivity, launches security defense tests, and measures raw log throughput speed.
+              Runs a complete, automated health and accuracy audit of the entire platform. In seconds, it verifies all
+              61 parser test cases, checks port connectivity, launches security defense tests, and measures raw log
+              throughput speed.
             </p>
           </div>
           <div class="guide-card">
             <div class="guide-card-header">
-              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg></span>
               <h4 class="guide-card-title">When To Use This</h4>
             </div>
             <p class="guide-card-text">
-              Run this when you want 100% confidence that everything is working properly without having to manually test each firewall, parser, and database port one by one.
+              Run this when you want 100% confidence that everything is working properly without having to manually test
+              each firewall, parser, and database port one by one.
             </p>
           </div>
           <div class="guide-card">
             <div class="guide-card-header">
-              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                </svg></span>
               <h4 class="guide-card-title">3-Step Simple Test</h4>
             </div>
             <ul class="guide-steps-list">
-              <li><span class="guide-step-num">1</span> Click <b>" Fast Smoke Check"</b> for a quick 5-second health check.</li>
-              <li><span class="guide-step-num">2</span> Watch each stage card below turn <b style="color:#2DD4BF;">GREEN (PASSED)</b>.</li>
-              <li><span class="guide-step-num">3</span> Check the summary report at the bottom for pass rates and latency numbers.</li>
+              <li><span class="guide-step-num">1</span> Click <b>" Fast Smoke Check"</b> for a quick 5-second health
+                check.</li>
+              <li><span class="guide-step-num">2</span> Watch each stage card below turn <b style="color:#2DD4BF;">GREEN
+                  (PASSED)</b>.</li>
+              <li><span class="guide-step-num">3</span> Check the summary report at the bottom for pass rates and
+                latency numbers.</li>
             </ul>
           </div>
         </div>
@@ -1345,7 +1498,7 @@
 
         <!-- Pipeline Execution Configurations Strip -->
         <div
-          style="display:flex; gap:16px; align-items:center; flex-wrap:wrap; margin-bottom:12px; background:rgba(30,41,59,0.5); padding:10px 14px; border-radius:8px; border:1px solid rgba(56,189,248,0.2);">
+          style="display:flex; gap:16px; align-items:center; flex-wrap:wrap; margin-bottom:12px; background:var(--bg-secondary); padding:10px 14px; border-radius:8px; border:1px solid var(--border-subtle);">
           <div style="display:flex; align-items:center; gap:8px;">
             <label style="font-size:11.5px; font-weight:700; color:#94a3b8;">Device Timeout (s):</label>
             <input type="number" id="pipelineDeviceTimeout" class="input-field" value="3.0" step="0.5" min="0.1"
@@ -1370,9 +1523,9 @@
 
         <!-- Stage Filter Buttons Strip -->
         <div
-          style="display:flex; gap:8px; flex-wrap:wrap; background:rgba(24,20,19,0.5); padding:12px; border-radius:8px; border:1px solid rgba(56,189,248,0.2);">
+          style="display:flex; gap:8px; flex-wrap:wrap; background:var(--bg-card); padding:12px; border-radius:8px; border:1px solid var(--border-subtle);">
           <span
-            style="font-size:11.5px; color:var(--text-muted); font-weight:700; align-self:center; margin-right:4px;">TARGET
+            style="font-size:11.5px; color:var(--text-secondary); font-weight:700; align-self:center; margin-right:4px;">TARGET
             STAGE:</span>
           <button type="button" class="btn-secondary" style="font-size:11px; padding:5px 12px;"
             onclick="window.runTestPipeline('suites')">
@@ -1396,7 +1549,7 @@
           </button>
           <button type="button" class="btn-teal" style="font-size:11px; padding:5px 12px; font-weight:700;"
             onclick="window.runTestPipeline('bench_all')">
-            ⚡ All Parsers Benchmark (C + 9 Vendors)
+            All Parsers Benchmark (C + 9 Vendors)
           </button>
         </div>
       </div>
@@ -1405,24 +1558,24 @@
       <div class="pipeline-verdict-box" id="pipelineVerdictBox">
         <div>
           <span
-            style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; font-weight:700;">Overall
+            style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px; font-weight:700;">Overall
             Verdict</span>
           <div style="font-size:16px; font-weight:800; color:#38BDF8; margin-top:2px;" id="pipelineVerdictText">PIPELINE
             IDLE · READY FOR EXECUTION</div>
         </div>
         <div style="display:flex; gap:20px; align-items:center; flex-wrap:wrap;">
           <div>
-            <span style="font-size:11px; color:var(--text-muted);">Stages Passed:</span>
-            <div style="font-family:var(--font-mono); font-weight:700; font-size:13px; color:#F1F5F9;"
+            <span style="font-size:11px; color:var(--text-secondary);">Stages Passed:</span>
+            <div style="font-family:var(--font-mono); font-weight:700; font-size:13px; color:#3d599a;"
               id="pipelineStagesSummary">0/6 Stages</div>
           </div>
           <div>
-            <span style="font-size:11px; color:var(--text-muted);">Total Duration:</span>
+            <span style="font-size:11px; color:var(--text-secondary);">Total Duration:</span>
             <div style="font-family:var(--font-mono); font-weight:700; font-size:13px; color:#a7f3d0;"
               id="pipelineTotalDuration">0.00s</div>
           </div>
           <div>
-            <span style="font-size:11px; color:var(--text-muted);">Active Filter:</span>
+            <span style="font-size:11px; color:var(--text-secondary);">Active Filter:</span>
             <div style="font-family:var(--font-mono); font-weight:700; font-size:13px; color:#7dd3fc;"
               id="pipelineActiveFilter">ALL</div>
           </div>
@@ -1445,7 +1598,8 @@
           </div>
           <div class="pipeline-stage-footer">
             <span class="pipeline-duration" id="stage_dur_suites">0.00s</span>
-            <span style="font-size:11px; font-family:var(--font-mono); color:var(--text-muted);">testing/suites/</span>
+            <span
+              style="font-size:11px; font-family:var(--font-mono); color:var(--text-secondary);">testing/suites/</span>
           </div>
         </div>
 
@@ -1464,7 +1618,7 @@
           <div class="pipeline-stage-footer">
             <span class="pipeline-duration" id="stage_dur_smoke">0.00s</span>
             <span
-              style="font-size:11px; font-family:var(--font-mono); color:var(--text-muted);">testing/smoke_test.py</span>
+              style="font-size:11px; font-family:var(--font-mono); color:var(--text-secondary);">testing/smoke_test.py</span>
           </div>
         </div>
 
@@ -1483,7 +1637,7 @@
           <div class="pipeline-stage-footer">
             <span class="pipeline-duration" id="stage_dur_security">0.00s</span>
             <span
-              style="font-size:11px; font-family:var(--font-mono); color:var(--text-muted);">security_smoke_test.py</span>
+              style="font-size:11px; font-family:var(--font-mono); color:var(--text-secondary);">security_smoke_test.py</span>
           </div>
         </div>
 
@@ -1502,7 +1656,7 @@
           <div class="pipeline-stage-footer">
             <span class="pipeline-duration" id="stage_dur_stack">0.00s</span>
             <span
-              style="font-size:11px; font-family:var(--font-mono); color:var(--text-muted);">scripts/verify_stack.py</span>
+              style="font-size:11px; font-family:var(--font-mono); color:var(--text-secondary);">scripts/verify_stack.py</span>
           </div>
         </div>
 
@@ -1521,7 +1675,7 @@
           <div class="pipeline-stage-footer">
             <span class="pipeline-duration" id="stage_dur_bench">0.00s</span>
             <span
-              style="font-size:11px; font-family:var(--font-mono); color:var(--text-muted);">benchmarks/benchmark.py</span>
+              style="font-size:11px; font-family:var(--font-mono); color:var(--text-secondary);">benchmarks/benchmark.py</span>
           </div>
         </div>
 
@@ -1533,12 +1687,14 @@
               <span class="pipeline-status-badge idle" id="stage_badge_bench_all">IDLE</span>
             </div>
             <p class="pipeline-stage-desc">
-              Comprehensive micro-benchmarks across deterministic C-engine (218k EPS) and all 9 enterprise vendor parsers (Cisco, Fortinet, Palo Alto, AWS, Suricata, CEF, LEEF, Syslog, Key=Value).
+              Comprehensive micro-benchmarks across deterministic C-engine (218k EPS) and all 9 enterprise vendor
+              parsers (Cisco, Fortinet, Palo Alto, AWS, Suricata, CEF, LEEF, Syslog, Key=Value).
             </p>
           </div>
           <div class="pipeline-stage-footer">
             <span class="pipeline-duration" id="stage_dur_bench_all">0.00s</span>
-            <span style="font-size:11px; font-family:var(--font-mono); color:var(--text-muted);">testing/benchmark_all.py</span>
+            <span
+              style="font-size:11px; font-family:var(--font-mono); color:var(--text-secondary);">testing/benchmark_all.py</span>
           </div>
         </div>
       </div>
@@ -1549,13 +1705,13 @@
           <h3 class="section-title">Live Pipeline Execution Standard Output</h3>
           <div style="display:flex; gap:8px; align-items:center;">
             <button type="button" class="btn-secondary" style="font-size:11px; padding:4px 10px;"
-              onclick="document.getElementById('pipelineConsoleFeed').innerHTML='<div style=\'color:var(--text-muted); padding:20px; text-align:center;\'>Console cleared.</div>'">
+              onclick="document.getElementById('pipelineConsoleFeed').innerHTML='<div style=\'color:var(--text-secondary); padding:20px; text-align:center;\'>Console cleared.</div>'">
               <span>Clear</span>
             </button>
           </div>
         </div>
         <div id="pipelineConsoleFeed" class="terminal-feed" style="height:260px; color:#a7f3d0;">
-          <div style="color:var(--text-muted); padding:20px; text-align:center;">Click "Run Full Pipeline" or "Fast
+          <div style="color:var(--text-secondary); padding:20px; text-align:center;">Click "Run Full Pipeline" or "Fast
             Smoke Check" above to trigger automated testing.</div>
         </div>
       </div>
@@ -1579,31 +1735,49 @@
         <div class="guide-cards-grid">
           <div class="guide-card">
             <div class="guide-card-header">
-              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span>
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <circle cx="12" cy="12" r="6" />
+                  <circle cx="12" cy="12" r="2" />
+                </svg></span>
               <h4 class="guide-card-title">What This Does</h4>
             </div>
             <p class="guide-card-text">
-              Allows you to test real-world log files or sample security files from top vendors (Palo Alto, Cisco, Suricata, Linux, and industrial SCADA). The platform automatically detects the file format and feeds each line into the pipeline.
+              Allows you to test real-world log files or sample security files from top vendors (Palo Alto, Cisco,
+              Suricata, Linux, and industrial SCADA). The platform automatically detects the file format and feeds each
+              line into the pipeline.
             </p>
           </div>
           <div class="guide-card">
             <div class="guide-card-header">
-              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg></span>
               <h4 class="guide-card-title">When To Use This</h4>
             </div>
             <p class="guide-card-text">
-              Use this when you have an existing log file (e.g. from an actual firewall or server) and want to see how the system processes and normalizes all events at once.
+              Use this when you have an existing log file (e.g. from an actual firewall or server) and want to see how
+              the system processes and normalizes all events at once.
             </p>
           </div>
           <div class="guide-card">
             <div class="guide-card-header">
-              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                </svg></span>
               <h4 class="guide-card-title">3-Step Simple Test</h4>
             </div>
             <ul class="guide-steps-list">
-              <li><span class="guide-step-num">1</span> Click one of the <b>Quick Load Sample Files</b> (or drag &amp; drop your own file).</li>
-              <li><span class="guide-step-num">2</span> Select <b>Direct HTTP REST Upload</b> as your ingestion mode.</li>
-              <li><span class="guide-step-num">3</span> Click <b>" Start Ingestion / Upload"</b> and see all normalized logs appear below!</li>
+              <li><span class="guide-step-num">1</span> Click one of the <b>Quick Load Sample Files</b> (or drag &amp;
+                drop your own file).</li>
+              <li><span class="guide-step-num">2</span> Select <b>Direct HTTP REST Upload</b> as your ingestion mode.
+              </li>
+              <li><span class="guide-step-num">3</span> Click <b>" Start Ingestion / Upload"</b> and see all normalized
+                logs appear below!</li>
             </ul>
           </div>
         </div>
@@ -1695,7 +1869,10 @@
             <div class="upload-drop-zone" id="uploadDropZone">
               <input type="file" id="logFileInput" accept=".log,.txt,.raw,.json,.csv,.xml,.cef,.leef,.syslog"
                 style="display:none;">
-              <div class="upload-icon-circle"><svg class="svg-icon svg-icon-xl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>
+              <div class="upload-icon-circle"><svg class="svg-icon svg-icon-xl" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                </svg></div>
               <div style="font-size:14px; font-weight:700; color:#F1F5F9;">
                 Drag & drop your log file here, or <span style="color:#38BDF8; text-decoration:underline;">Browse</span>
               </div>
@@ -1707,7 +1884,11 @@
             <!-- File Metadata Badge (Shown once file is selected) -->
             <div id="fileMetaCard" class="file-meta-card" style="display:none;">
               <div style="display:flex; align-items:center; gap:10px;">
-                <svg class="svg-icon svg-icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                <svg class="svg-icon svg-icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                </svg>
                 <div>
                   <div id="metaFileName" style="font-size:13px; font-weight:700; color:#F1F5F9;">logfile.log</div>
                   <div style="font-size:11px; color:#a7f3d0;">
@@ -1731,7 +1912,7 @@
 
             <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:16px;">
               <label
-                style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; background:rgba(24,20,19,0.5); padding:10px 12px; border-radius:8px; border:1px solid rgba(56,189,248,0.2);">
+                style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; background:var(--bg-card); padding:10px 12px; border-radius:8px; border:1px solid var(--border-subtle);">
                 <input type="radio" name="uploadTransportMode" value="http_upload" checked
                   style="margin-top:3px; accent-color:#38BDF8;">
                 <div>
@@ -1743,7 +1924,7 @@
               </label>
 
               <label
-                style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; background:rgba(24,20,19,0.5); padding:10px 12px; border-radius:8px; border:1px solid rgba(56,189,248,0.2);">
+                style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; background:var(--bg-card); padding:10px 12px; border-radius:8px; border:1px solid var(--border-subtle);">
                 <input type="radio" name="uploadTransportMode" value="udp_stream"
                   style="margin-top:3px; accent-color:#38BDF8;">
                 <div>
@@ -1755,7 +1936,7 @@
               </label>
 
               <label
-                style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; background:rgba(24,20,19,0.5); padding:10px 12px; border-radius:8px; border:1px solid rgba(56,189,248,0.2);">
+                style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; background:var(--bg-card); padding:10px 12px; border-radius:8px; border:1px solid var(--border-subtle);">
                 <input type="radio" name="uploadTransportMode" value="tcp_stream"
                   style="margin-top:3px; accent-color:#38BDF8;">
                 <div>
@@ -1767,7 +1948,7 @@
               </label>
 
               <label
-                style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; background:rgba(24,20,19,0.5); padding:10px 12px; border-radius:8px; border:1px solid rgba(56,189,248,0.2);">
+                style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; background:var(--bg-card); padding:10px 12px; border-radius:8px; border:1px solid var(--border-subtle);">
                 <input type="radio" name="uploadTransportMode" value="file_drop"
                   style="margin-top:3px; accent-color:#38BDF8;">
                 <div>
@@ -1781,7 +1962,7 @@
 
             <!-- Streaming Pacing Delay -->
             <div id="streamingPacingRow"
-              style="display:none; background:rgba(24,20,19,0.7); padding:10px 14px; border-radius:8px; border:1px solid rgba(56,189,248,0.2); margin-bottom:14px;">
+              style="display:none; background:var(--bg-card); padding:10px 14px; border-radius:8px; border:1px solid var(--border-subtle); margin-bottom:14px;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                 <label style="font-size:12px; font-weight:600; color:#F1F5F9;">Inter-Line Pacing Delay:</label>
                 <span id="streamingDelayVal"
@@ -1876,7 +2057,8 @@
               Ingestion Execution Trace:
             </div>
             <div id="uploadConsoleFeed" class="terminal-feed" style="height:120px; font-size:11px;">
-              <div style="color:var(--text-muted); padding:10px; text-align:center;">Select a log file and click "Start
+              <div style="color:var(--text-secondary); padding:10px; text-align:center;">Select a log file and click
+                "Start
                 Ingestion / Upload" to view wire execution logs.</div>
             </div>
 
@@ -1895,11 +2077,16 @@
     <div class="modal-card">
       <div class="modal-header">
         <div style="display:flex; align-items:center; gap:8px;">
-          <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3" />
+            <path
+              d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
           <h3 style="font-size:15px; font-weight:700; color:#F1F5F9; margin:0;">Remote Server Network Endpoints</h3>
         </div>
         <button type="button" class="btn-secondary" id="btnCloseEndpointsModal"
-          style="padding:4px 10px; font-size:12px; cursor:pointer;" onclick="document.getElementById('endpointsModal').classList.remove('active')">✕ Close</button>
+          style="padding:4px 10px; font-size:12px; cursor:pointer;"
+          onclick="document.getElementById('endpointsModal').classList.remove('active')"> Close</button>
       </div>
       <div class="modal-body">
         <p style="font-size:12px; color:#94a3b8; margin-bottom:16px;">
@@ -1977,13 +2164,13 @@
     <div class="modal-card" style="max-width:580px;">
       <div class="modal-header">
         <div style="display:flex; align-items:center; gap:10px;">
-          <span style="font-size:20px;">⚙️</span>
+          <span style="font-size:20px;"></span>
           <div>
             <h3 class="modal-title" id="editDevModalTitle">Edit Virtual Device Configuration</h3>
-            <p class="modal-subtitle">Modify device vendor, parser format, transmission interval, and cyber risk factor</p>
+            <p class="modal-subtitle">Modify device vendor, parser format, and log generation rate</p>
           </div>
         </div>
-        <button type="button" class="btn-close" onclick="window.closeEditDevModal()">✕</button>
+        <button type="button" class="btn-close" onclick="window.closeEditDevModal()"></button>
       </div>
       <div class="modal-body" style="display:flex; flex-direction:column; gap:14px;">
         <input type="hidden" id="editDevId">
@@ -2024,29 +2211,26 @@
           </div>
         </div>
 
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-          <div>
-            <label class="input-label">Stream Interval (ms)</label>
-            <input type="number" id="editDevInterval" class="input-field" min="5" max="5000" step="10" placeholder="e.g. 100">
-            <span style="font-size:10px; color:var(--text-muted);">Lower interval = higher Events/sec</span>
-          </div>
-          <div>
-            <label class="input-label">Risk Factor / Threat Ratio (%)</label>
-            <input type="number" id="editDevRisk" class="input-field" min="0" max="100" step="5" placeholder="0 - 100%">
-            <span style="font-size:10px; color:var(--text-muted);">% of packets that simulate attacks</span>
-          </div>
+        <div>
+          <label class="input-label">Logs per second (EPS)</label>
+          <input type="number" id="editDevInterval" class="input-field" min="1" max="1000" step="1"
+            placeholder="e.g. 10 EPS">
         </div>
 
         <div>
           <label class="input-label">Custom Log Template (Optional Override)</label>
-          <textarea id="editDevTemplate" class="input-field" rows="3" style="font-family:var(--font-mono); font-size:11px;" placeholder="Optional raw template pattern, e.g. {{timestamp}} {{device_name}} src={{src_ip}} act=allow"></textarea>
+          <textarea id="editDevTemplate" class="input-field" rows="3"
+            style="font-family:var(--font-mono); font-size:11px;"
+            placeholder="Optional raw template pattern, e.g. {{timestamp}} {{device_name}} src={{src_ip}} act=allow"></textarea>
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn-secondary" onclick="window.closeEditDevModal()" style="font-size:12px; padding:6px 14px;">
+        <button type="button" class="btn-secondary" onclick="window.closeEditDevModal()"
+          style="font-size:12px; padding:6px 14px;">
           <span>Cancel</span>
         </button>
-        <button type="button" class="btn-primary" onclick="window.saveSimDeviceEdit()" style="font-size:12px; padding:6px 18px;">
+        <button type="button" class="btn-primary" onclick="window.saveSimDeviceEdit()"
+          style="font-size:12px; padding:6px 18px;">
           <span>Save Changes</span>
         </button>
       </div>
@@ -2056,7 +2240,8 @@
   <!-- Toast Notification -->
   <div id="toast" class="toast-msg">Notification</div>
 
-  <footer style="margin-top:48px; padding:24px 20px; text-align:center; border-top:1px solid var(--border-subtle); color:var(--text-muted); font-size:12px; background:rgba(15,23,42,0.4);">
+  <footer
+    style="margin-top:48px; padding:24px 20px; text-align:center; border-top:1px solid var(--border-subtle); color:var(--text-secondary); font-size:12px; background:var(--bg-card);">
     <div style="display:flex; justify-content:center; align-items:center; gap:12px; flex-wrap:wrap;">
       <span style="font-weight:600; color:var(--text-primary);">ULPF — Universal Log Pre-processing Framework</span>
       <span>•</span>
@@ -2068,7 +2253,7 @@
     </div>
   </footer>
 
-  <script src="simulator.js?v=1.0.0_phase8"></script>
+  <script src="simulator.js?v=1.0.0_phase10"></script>
 </body>
 
 </html>

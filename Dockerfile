@@ -47,4 +47,4 @@ HEALTHCHECK --interval=20s --timeout=5s --start-period=10s --retries=3 \
 
 # Start ULPF Unified API Server & Web Dashboard
 # PORT env var is used by Render; defaults to ULPF_API_PORT (8000) on other platforms
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-${ULPF_API_PORT:-8000}}"]
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-${ULPF_API_PORT:-8000}} --no-access-log"]

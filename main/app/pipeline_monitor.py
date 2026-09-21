@@ -3,6 +3,7 @@ import threading
 import logging
 from collections import deque
 from typing import Dict, Any
+from app.config import settings
 
 logger = logging.getLogger("ulpf.throughput")
 
@@ -18,7 +19,7 @@ class ThroughputMonitor:
         self.print_interval = print_interval
         self.console_logging = console_logging
 
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
         self._timestamps = deque()  # (timestamp, byte_size, latency_us)
         self._total_events = 0
         self._total_bytes = 0
@@ -97,7 +98,17 @@ class ThroughputMonitor:
                 "avg_latency_us": avg_lat_us,
                 "formatted_rate": f"{current_eps:,.0f} logs/sec" if current_eps > 0 else (f"{avg_eps:,.0f} logs/sec" if avg_eps > 0 else "0 logs/sec"),
                 "is_active": current_eps > 0 or (now - (self._timestamps[-1][0] if self._timestamps else 0) < 3.0),
+                "load_shedding": self.is_load_shedding_active(),
             }
+
+    def is_load_shedding_active(self) -> bool:
+        """Returns True if current throughput exceeds 90% of maximum configured EPS."""
+        threshold = settings.max_events_per_second * 0.9
+        with self._lock:
+            now = time.time()
+            cutoff_1s = now - 1.0
+            events_1s = [item for item in self._timestamps if item[0] >= cutoff_1s]
+            return float(len(events_1s)) > threshold
 
     def start_console_monitor(self) -> None:
         """Start background daemon thread that prints live throughput rates to console."""

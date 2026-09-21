@@ -35,6 +35,7 @@ class MinioStore:
         self._is_online: Optional[bool] = False
         self._last_check_time = 0.0
         self._check_interval = 30.0  # seconds between probes when offline
+        self._http_client = httpx.Client(timeout=5.0)
 
     def _ensure_local_fallback(self, event_id: str, raw_message: str, sha256_hash: str) -> str:
         """Store raw log to local disk fallback directory."""
@@ -70,7 +71,8 @@ class MinioStore:
 
         # 2. HTTP health check
         try:
-            with httpx.Client(timeout=0.2) as client:
+            client = self._http_client
+            if True:
                 res = client.get(f"{self.base_url}/minio/health/live")
                 self._is_online = (res.status_code == 200)
                 return self._is_online
@@ -87,7 +89,8 @@ class MinioStore:
 
         try:
             url = f"{self.base_url}/{self.bucket}"
-            with httpx.Client(timeout=0.5) as client:
+            client = self._http_client
+            if True:
                 res = client.head(url)
                 if res.status_code == 200:
                     self._bucket_initialized = True
@@ -129,7 +132,8 @@ class MinioStore:
                     "x-amz-meta-format": log_format,
                     "x-amz-meta-ingested-at": datetime.now(timezone.utc).isoformat(),
                 }
-                with httpx.Client(timeout=0.5) as client:
+                client = self._http_client
+                if True:
                     resp = client.put(put_url, content=raw_message.encode("utf-8"), headers=headers)
                     if resp.status_code in (200, 201, 204):
                         return f"s3://{self.bucket}/{object_name}", "stored_minio"
@@ -161,7 +165,8 @@ class MinioStore:
                 path_part = storage_uri.replace("s3://", "")
                 bucket, obj_key = path_part.split("/", 1)
                 get_url = f"{self.base_url}/{bucket}/{obj_key}"
-                with httpx.Client(timeout=0.5) as client:
+                client = self._http_client
+                if True:
                     resp = client.get(get_url)
                     if resp.status_code == 200:
                         content = resp.text

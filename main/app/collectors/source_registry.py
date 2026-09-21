@@ -23,14 +23,11 @@ class SourceRegistry:
         pass
 
     def _load_sources_from_db(self):
-        """Hydrate sources from database repository upon startup."""
+        """Hydrate sources from database repository upon startup.
+        (Updated: Clears default connected IP devices on server startup per user request)"""
         try:
-            db_sources = self.db.list_sources()
-            for s in db_sources:
-                sid = s.get("source_id")
-                if sid:
-                    self._sources[sid] = s
-                    self._event_counts[sid] = 0
+            self.db.clear_all_sources()
+            self._sources = {}
         except Exception:
             pass
 
@@ -243,6 +240,30 @@ class SourceRegistry:
             return bool(self._sources[source_id].get("is_blocked", 0))
         return False
 
+    def remove_source(self, source_id: str) -> bool:
+        """Explicitly remove a source from the live registry."""
+        if source_id in self._sources:
+            del self._sources[source_id]
+            self._event_counts.pop(source_id, None)
+            self._last_event_times.pop(source_id, None)
+            try:
+                self.db.delete_source(source_id)
+            except Exception:
+                pass
+            return True
+        # Also try matching by address/ip
+        for sid, details in list(self._sources.items()):
+            if details.get("address") == source_id or details.get("ip") == source_id:
+                del self._sources[sid]
+                self._event_counts.pop(sid, None)
+                self._last_event_times.pop(sid, None)
+                try:
+                    self.db.delete_source(sid)
+                except Exception:
+                    pass
+                return True
+        return False
+
     def list_sources(self) -> List[Dict[str, Any]]:
         """Return all registered sources with live statistics and IP mappings."""
         results = []
@@ -252,7 +273,6 @@ class SourceRegistry:
             is_bl = bool(s.get("is_blocked", 0))
             last_t = self._last_event_times.get(sid, 0.0)
             is_recent = (now - last_t) < 30.0 if last_t > 0 else False
-
             status_str = "BLOCKED" if is_bl else ("ACTIVE" if cnt > 0 else "READY")
             rate = 12 if is_recent else 0
 

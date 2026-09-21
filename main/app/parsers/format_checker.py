@@ -65,6 +65,9 @@ class FormatDriftChecker:
             "cef": {"DeviceVendor", "DeviceProduct", "SignatureID", "Name", "Severity"},
             "key_value": {"src", "dst", "action"},
         }
+        
+        # Extended Schema Tracking for field types and order
+        self._extended_schemas: Dict[str, Dict[str, Any]] = {}
 
     def inspect_event(self, raw_message: str, parser_id: str, extracted_fields: Dict[str, Any], status: str) -> Optional[DriftNotification]:
         """
@@ -74,13 +77,45 @@ class FormatDriftChecker:
             return None
 
         baseline = self._baseline_schemas.get(parser_id)
-        current_keys = set(extracted_fields.keys()) - {"vendor", "product", "raw_hash"}
+        current_keys_ordered = list(extracted_fields.keys())
+        current_keys = set(current_keys_ordered) - {"vendor", "product", "raw_hash"}
+        
+        # 0. Initialize or update extended tracking
+        if parser_id not in self._extended_schemas and status == "success":
+            self._extended_schemas[parser_id] = {
+                "order": current_keys_ordered,
+                "types": {k: type(v).__name__ for k, v in extracted_fields.items()}
+            }
 
-        # 1. Check for newly appeared schema fields
+        # 1. Check for newly appeared schema fields or type/order drift
+        is_drifting = False
+        drift_reason = ""
+        new_keys = set()
+        
         if baseline and current_keys:
             new_keys = current_keys - baseline
             # If 2 or more persistent new fields appear, record schema drift
             if len(new_keys) >= 2:
+                is_drifting = True
+                drift_reason = f"Detected {len(new_keys)} new telemetry attributes"
+                
+            # Check structural drift (Order / Type mismatch)
+            elif parser_id in self._extended_schemas:
+                ext = self._extended_schemas[parser_id]
+                # Check for significant order change (top 3 fields swapped)
+                if len(current_keys_ordered) > 3 and len(ext["order"]) > 3:
+                    if current_keys_ordered[:3] != ext["order"][:3]:
+                        is_drifting = True
+                        drift_reason = "Significant structural reordering detected"
+                
+                # Check for type mutation on standard fields
+                for k, v in extracted_fields.items():
+                    if k in ext["types"] and type(v).__name__ != ext["types"][k] and v is not None:
+                        is_drifting = True
+                        drift_reason = f"Data type mutation on field '{k}' ({ext['types'][k]} -> {type(v).__name__})"
+                        break
+                        
+        if is_drifting:
                 meta = self.registry.get_metadata(parser_id)
                 vendor = meta.vendor if meta else "Vendor"
                 product = meta.product if meta else "Appliance"
@@ -106,8 +141,8 @@ class FormatDriftChecker:
                     parser_id=parser_id,
                     vendor=vendor,
                     product=product,
-                    drift_type="NEW_FIELDS",
-                    summary=f"Detected {len(new_keys)} new telemetry attributes ({', '.join(sorted(new_keys)[:4])}) in {vendor} {product} logs.",
+                    drift_type="SCHEMA_DRIFT",
+                    summary=f"{drift_reason} in {vendor} {product} logs. ({', '.join(sorted(new_keys)[:4])})",
                     sample_log=raw_message,
                     detected_fields=list(current_keys),
                     new_fields=list(new_keys),

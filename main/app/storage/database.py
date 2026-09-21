@@ -74,7 +74,11 @@ class DatabaseManager:
         self.init_db()
 
     def _ensure_dir(self):
-        Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
+        if self.db_path and self.db_path != ":memory:":
+            try:
+                Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
+            except Exception:
+                pass
 
     def _execute_sql(
         self,
@@ -105,7 +109,19 @@ class DatabaseManager:
             finally:
                 conn.close()
         else:
-            conn = sqlite3.connect(self.db_path, timeout=float(settings.db_timeout))
+            self._ensure_dir()
+            try:
+                conn = sqlite3.connect(self.db_path, timeout=float(settings.db_timeout))
+            except sqlite3.OperationalError:
+                try:
+                    fallback_dir = Path.home() / ".ulpf" / "storage"
+                    fallback_dir.mkdir(parents=True, exist_ok=True)
+                    self.db_path = str(fallback_dir / "ulpf_metadata.db")
+                    conn = sqlite3.connect(self.db_path, timeout=float(settings.db_timeout))
+                except Exception:
+                    self.db_path = ":memory:"
+                    conn = sqlite3.connect(self.db_path, timeout=float(settings.db_timeout))
+
             conn.row_factory = sqlite3.Row
             # Enable SQLite Write-Ahead Logging (WAL) and synchronous=NORMAL for high throughput
             try:
@@ -285,6 +301,70 @@ class DatabaseManager:
                     updated_at TEXT
                 )
             """)
+            
+            # 7. Immutable Merkle Root Ledger
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS merkle_ledger (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    root_hash TEXT,
+                    created_at TEXT
+                )
+            """)
+
+    def set_config(self, key: str, value: str) -> bool:
+        """Set a key-value configuration setting."""
+        try:
+            is_pg = (self.db_type == "postgres" and HAS_PSYCOPG and self.database_url)
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                now_str = datetime.now(timezone.utc).isoformat()
+                if is_pg:
+                    cursor.execute(
+                        "INSERT INTO system_config (key, value, updated_at) VALUES (%s, %s, %s) "
+                        "ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at",
+                        (key, value, now_str)
+                    )
+                else:
+                    cursor.execute(
+                        "INSERT OR REPLACE INTO system_config (key, value, updated_at) VALUES (?, ?, ?)",
+                        (key, value, now_str)
+                    )
+                return True
+        except Exception as e:
+            print(f"[DatabaseManager] Failed to set config {key}: {e}")
+            return False
+
+    def append_merkle_root(self, root_hash: str) -> bool:
+        """Append a new Merkle Root to the permanent immutable ledger."""
+        try:
+            is_pg = (self.db_type == "postgres" and HAS_PSYCOPG and self.database_url)
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                now_str = datetime.now(timezone.utc).isoformat()
+                if is_pg:
+                    cursor.execute(
+                        "INSERT INTO merkle_ledger (root_hash, created_at) VALUES (%s, %s)",
+                        (root_hash, now_str)
+                    )
+                else:
+                    cursor.execute(
+                        "INSERT INTO merkle_ledger (root_hash, created_at) VALUES (?, ?)",
+                        (root_hash, now_str)
+                    )
+                return True
+        except Exception as e:
+            print(f"[DatabaseManager] Failed to append to merkle ledger: {e}")
+            return False
+
+    def get_config(self, key: str, default: Any = None) -> Any:
+        """Get a key-value configuration setting."""
+        is_pg = (self.db_type == "postgres" and HAS_PSYCOPG and self.database_url)
+        ph = "%s" if is_pg else "?"
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(f"SELECT value FROM system_config WHERE key = {ph}", (key,))
+            row = cursor.fetchone()
+            return row["value"] if row else default
 
     # =========================================================================
     # 1. EVENTS REPOSITORY
@@ -377,6 +457,13 @@ class DatabaseManager:
         except Exception as e:
             print(f"[DatabaseManager] Failed to save event {record.get('event_id')}: {e}")
             return False
+
+    def clear_all_events(self) -> bool:
+        """Clear all stored events from database."""
+        with self.get_connection() as conn:
+            cursor: Any = conn.cursor()
+            cursor.execute("DELETE FROM events")
+            return True
 
     def get_event(self, event_id: str) -> Optional[Dict[str, Any]]:
         """Retrieve single event by event_id or raw_event_id."""
@@ -599,6 +686,50 @@ class DatabaseManager:
             cursor.execute(f"SELECT * FROM sources WHERE source_id = {ph} LIMIT 1", (source_id,))
             row = cursor.fetchone()
             return dict(row) if row else None
+
+    def get_event(self, event_id: str) -> Optional[Dict[str, Any]]:
+        """Retrieve single event by ID."""
+        is_pg = (self.db_type == "postgres" and HAS_PSYCOPG and self.database_url)
+        ph = "%s" if is_pg else "?"
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(f"SELECT * FROM events WHERE event_id = {ph} LIMIT 1", (event_id,))
+            row = cursor.fetchone()
+            if row:
+                d = _to_dict(row)
+                if d.get("threat_json"):
+                    try:
+                        d["threat"] = json.loads(d["threat_json"])
+                    except Exception:
+                        d["threat"] = None
+                return d
+            return None
+
+    def downgrade_event(self, event_id: str) -> bool:
+        """Mark an event as a false positive by downgrading severity and removing threat details."""
+        try:
+            is_pg = (self.db_type == "postgres" and HAS_PSYCOPG and self.database_url)
+            ph = "%s" if is_pg else "?"
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    f"UPDATE events SET threat_json = NULL, severity = 'info', action = 'allow' WHERE event_id = {ph}",
+                    (event_id,)
+                )
+                return True
+        except Exception as e:
+            print(f"[DatabaseManager] Failed to downgrade event {event_id}: {e}")
+            return False
+
+    def clear_all_sources(self) -> bool:
+        """Clear all registered sources from the database on startup."""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM sources")
+                return True
+        except Exception:
+            return False
 
     def list_sources(self) -> List[Dict[str, Any]]:
         """Retrieve all registered sources ordered by last seen."""

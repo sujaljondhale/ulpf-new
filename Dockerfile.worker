@@ -16,7 +16,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN groupadd -r ulpfgroup && useradd -r -g ulpfgroup -d /app -s /sbin/nologin ulpfuser
 RUN mkdir -p /app/storage/raw && chown -R ulpfuser:ulpfgroup /app
 
-COPY --chown=ulpfuser:ulpfgroup . .
+COPY --chown=ulpfuser:ulpfgroup main/ main/
+COPY --chown=ulpfuser:ulpfgroup scripts/ scripts/
 
 USER ulpfuser
 

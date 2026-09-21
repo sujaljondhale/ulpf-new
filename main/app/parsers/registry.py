@@ -163,7 +163,16 @@ class ParserRegistry:
             return self._metadata[parser_id]
         return None
 
-    def get_parser(self, parser_id: str) -> Optional[BaseParser]:
+    def get_parser(self, parser_id: str, allow_draft: bool = False) -> Optional[BaseParser]:
+        meta = self._metadata.get(parser_id)
+        if not meta:
+            return None
+        
+        # Priority 6: Parser Lifecycle Integrity
+        # Prevent DRAFT or AI-generated unapproved parsers from being used in production pipelines
+        if not allow_draft and meta.status in (ParserStatus.DRAFT, ParserStatus.DEPRECATED):
+            return None
+            
         return self._parsers.get(parser_id)
 
     def get_metadata(self, parser_id: str) -> Optional[ParserMetadata]:

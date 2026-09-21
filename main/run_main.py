@@ -22,22 +22,6 @@ if str(MAIN_DIR) not in sys.path:
 # Point storage paths to main/storage
 os.environ.setdefault("STORAGE_DIR", str(MAIN_DIR / "storage" / "raw"))
 os.environ.setdefault("DB_SQLITE_PATH", str(MAIN_DIR / "storage" / "ulpf_metadata.db"))
-# Silence Windows asyncio ProactorEventLoop WinError 10054 on sudden client socket disconnects
-if sys.platform == "win32":
-    try:
-        from asyncio.proactor_events import _ProactorBasePipeTransport
-        _orig_call_connection_lost = _ProactorBasePipeTransport._call_connection_lost
-
-        def _silent_call_connection_lost(self, exc=None):
-            try:
-                _orig_call_connection_lost(self, exc)
-            except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError, OSError):
-                pass
-
-        _ProactorBasePipeTransport._call_connection_lost = _silent_call_connection_lost
-    except Exception:
-        pass
-
 if __name__ == "__main__":
     import uvicorn
     from app.config import settings
@@ -54,4 +38,4 @@ if __name__ == "__main__":
     print(f"  AI Sovereign Engine: {settings.ai_provider.upper()} ({settings.ai_model_name}) @ {settings.ollama_host}")
     print("=" * 70)
 
-    uvicorn.run("app.main:app", host=host, port=port, log_level="info")
+    uvicorn.run("app.main:app", host=host, port=port, log_level="info", access_log=False)

@@ -25,6 +25,7 @@ class OpenSearchStore:
         self._is_online: Optional[bool] = False
         self._last_check_time = 0.0
         self._check_interval = 30.0  # seconds
+        self._http_client = httpx.Client(timeout=5.0)
 
     def is_available(self) -> bool:
         """Fast connectivity check with socket pre-check and circuit breaker."""
@@ -52,7 +53,8 @@ class OpenSearchStore:
 
         # 2. HTTP Health check
         try:
-            with httpx.Client(timeout=0.15) as client:
+            client = self._http_client
+            if True:
                 res = client.get(f"{self.url}/_cluster/health")
                 self._is_online = (res.status_code == 200)
                 return self._is_online
@@ -96,7 +98,8 @@ class OpenSearchStore:
         }
 
         try:
-            with httpx.Client(timeout=0.5) as client:
+            client = self._http_client
+            if True:
                 res = client.head(f"{self.url}/{self.index_name}")
                 if res.status_code == 200:
                     self._index_initialized = True
@@ -119,7 +122,8 @@ class OpenSearchStore:
             try:
                 self.ensure_index()
                 doc_url = f"{self.url}/{self.index_name}/_doc/{event_id}"
-                with httpx.Client(timeout=0.5) as client:
+                client = self._http_client
+                if True:
                     resp = client.put(doc_url, json=document)
                     if resp.status_code in (200, 201):
                         return True, "indexed_opensearch"
@@ -176,7 +180,9 @@ class OpenSearchStore:
             else:
                 query_body["query"] = {"match_all": {}}
 
-            with httpx.Client(timeout=0.8) as client:
+            client = self._http_client
+
+            if True:
                 resp = client.post(f"{self.url}/{self.index_name}/_search", json=query_body)
                 if resp.status_code == 200:
                     data = resp.json()
@@ -192,7 +198,8 @@ class OpenSearchStore:
         """Check OpenSearch cluster health and node status."""
         if self.is_available():
             try:
-                with httpx.Client(timeout=0.5) as client:
+                client = self._http_client
+                if True:
                     resp = client.get(f"{self.url}/_cluster/health")
                     if resp.status_code == 200:
                         data = resp.json()

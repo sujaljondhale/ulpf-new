@@ -9,6 +9,7 @@ from app.exporters.ocsf import OcsfExporter
 from app.exporters.ecs import EcsExporter
 from app.validation.validator import SecurityValidator
 from app.pipeline_monitor import global_throughput_monitor
+from app.config.settings import settings
 
 
 class UlpfPipeline:
@@ -25,6 +26,7 @@ class UlpfPipeline:
         self.ocsf_exporter = OcsfExporter()
         self.ecs_exporter = EcsExporter()
         self.throughput_monitor = global_throughput_monitor
+        self._last_hash: str = ""
 
     def process(self, raw_message: str, source: str = "network_device") -> CanonicalEvent:
         """
@@ -54,7 +56,8 @@ class UlpfPipeline:
             return res
 
         # 2. Raw Event Creation & Hash Verification
-        raw_event = create_raw_event(raw_message, source=source)
+        raw_event = create_raw_event(raw_message, source=source, previous_hash=self._last_hash)
+        self._last_hash = raw_event.chain_hash
 
         # 3. Format Detection
         detection: DetectionResult = self.detector.detect(raw_message)
@@ -119,11 +122,12 @@ class UlpfPipeline:
         # 6. Check Parse Failure / Unknown / Plaintext -> Trigger Local Sovereign AI Model
         is_unknown_format = detection.format in ("Plaintext", "Unknown", "Unknown (Proprietary)")
         if parse_result.status != "success" or is_unknown_format:
-            ai_canonical = self._parse_with_local_ai(raw_event, detection, source)
-            if ai_canonical:
-                lat_us = (time.perf_counter() - t0) * 1000000
-                self.throughput_monitor.record_event(byte_size=raw_bytes_len, latency_us=lat_us)
-                return ai_canonical
+            if settings.ai_enabled and settings.ai_fallback_enabled:
+                ai_canonical = self._parse_with_local_ai(raw_event, detection, source)
+                if ai_canonical:
+                    lat_us = (time.perf_counter() - t0) * 1000000
+                    self.throughput_monitor.record_event(byte_size=raw_bytes_len, latency_us=lat_us)
+                    return ai_canonical
 
             res = CanonicalEvent(
                 ulpf=UlpfMeta(event_id=raw_event.event_id),
@@ -143,21 +147,26 @@ class UlpfPipeline:
         # 7. Semantic Normalization & Field Provenance Mapping
         meta = self.registry.get_metadata(parser_id)
         confidence = meta.confidence if meta else 1.0
+        parser_version = meta.version if meta else "1.0"
 
         taxonomy, provenance, unmapped = self.normalizer.normalize(
             extracted_fields=parse_result.fields,
             parser_name=parse_result.parser_name,
             confidence=confidence,
+            parser_version=parser_version,
+            raw_event_id=raw_event.event_id
         )
 
         # If standard normalizer failed to identify critical taxonomy fields (no action and no IP),
         # trigger local sovereign AI model to understand the proprietary schema
         if not taxonomy.event.action and not taxonomy.source.ip:
-            ai_canonical = self._parse_with_local_ai(raw_event, detection, source)
-            if ai_canonical:
-                lat_us = (time.perf_counter() - t0) * 1000000
-                self.throughput_monitor.record_event(byte_size=raw_bytes_len, latency_us=lat_us)
-                return ai_canonical
+            if settings.ai_enabled and settings.ai_fallback_enabled:
+                print("pipeline.process: parsing with AI")
+                ai_canonical = self._parse_with_local_ai(raw_event, detection, source)
+                if ai_canonical:
+                    lat_us = (time.perf_counter() - t0) * 1000000
+                    self.throughput_monitor.record_event(byte_size=raw_bytes_len, latency_us=lat_us)
+                    return ai_canonical
 
         # 8. Construct ULPF-IR CanonicalEvent
         ir = CanonicalEvent(
@@ -198,6 +207,17 @@ class UlpfPipeline:
         """
         Invoke local AI model to parse unknown / unparsed logs directly into ULPF-IR CanonicalEvent.
         """
+        if not settings.ai_enabled:
+            return None
+
+        # Priority 11: Real-time System Load Shedding
+        print("pipeline.process: checking load shedding")
+        from app.pipeline_monitor import global_throughput_monitor
+        if global_throughput_monitor.is_load_shedding_active():
+            print("pipeline.process: load shedding active")
+            return None
+
+        print("pipeline.process: inside ai fallback")
         try:
             from app.ai.onboarding import AiOnboardingEngine
             from app.normalization.taxonomy import (
@@ -208,51 +228,74 @@ class UlpfPipeline:
                 DeviceDetails,
                 UserDetails,
             )
-            from app.models.provenance import ProvenanceRecord
-
+            from app.models.provenance import ProvenanceRecord, EvidenceType, RawSourceLocation, ParserMetadataInfo
+            
             ai_engine = AiOnboardingEngine()
             ai_data = ai_engine.parse_unknown_log(raw_event.raw_message)
+            print("pipeline.process: ai finished")
             if not ai_data or not isinstance(ai_data, dict):
                 return None
 
             src_ip = ai_data.get("source_ip")
             dst_ip = ai_data.get("destination_ip")
-            action = ai_data.get("event_action") or "allow"
-            sev = str(ai_data.get("severity") or "medium").lower()
-            threat = ai_data.get("threat_type") or "Unknown Telemetry"
-            cat = ai_data.get("event_category") or "security"
+            
+            raw_action = ai_data.get("event_action")
+            action = raw_action if raw_action and raw_action != "unknown" else None
+            
+            sev = str(ai_data.get("severity")).lower() if ai_data.get("severity") else None
+            threat = ai_data.get("threat_type")
+            cat = ai_data.get("event_category")
             user = ai_data.get("user_name")
-            dev = ai_data.get("device_hostname") or source or "Generic"
-            proto = str(ai_data.get("protocol") or "tcp").lower()
+            dev = ai_data.get("device_hostname") or source
+            proto = str(ai_data.get("protocol")).lower() if ai_data.get("protocol") else None
 
-            prov = {
-                "source.ip": ProvenanceRecord(
-                    value=src_ip,
-                    original_field="source_ip",
-                    original_value=src_ip,
-                    parser="ai_engine",
-                    confidence=0.92,
-                ),
-                "destination.ip": ProvenanceRecord(
-                    value=dst_ip,
-                    original_field="destination_ip",
-                    original_value=dst_ip,
-                    parser="ai_engine",
-                    confidence=0.92,
-                ),
-                "event.action": ProvenanceRecord(
-                    value=action,
-                    original_field="event_action",
-                    original_value=action,
-                    parser="ai_engine",
-                    confidence=0.90,
-                ),
-            }
+            parser_info = ParserMetadataInfo(id="ai_engine", version="1.0")
+            source_loc = RawSourceLocation(raw_event_id=raw_event.event_id)
+
+            prov = {}
+            if src_ip and src_ip != "N/A":
+                prov["source.ip"] = ProvenanceRecord(
+                    value=src_ip, original_field="source_ip", original_value=src_ip,
+                    source=source_loc, parser="ai_engine", parser_info=parser_info,
+                    evidence_type=EvidenceType.INFERRED, confidence=0.92,
+                )
+            else:
+                prov["source.ip"] = ProvenanceRecord(
+                    value=None, original_field="N/A", original_value=None,
+                    source=source_loc, parser="ai_engine", parser_info=parser_info,
+                    evidence_type=EvidenceType.UNKNOWN, confidence=1.0,
+                )
+
+            if dst_ip and dst_ip != "N/A":
+                prov["destination.ip"] = ProvenanceRecord(
+                    value=dst_ip, original_field="destination_ip", original_value=dst_ip,
+                    source=source_loc, parser="ai_engine", parser_info=parser_info,
+                    evidence_type=EvidenceType.INFERRED, confidence=0.92,
+                )
+            else:
+                prov["destination.ip"] = ProvenanceRecord(
+                    value=None, original_field="N/A", original_value=None,
+                    source=source_loc, parser="ai_engine", parser_info=parser_info,
+                    evidence_type=EvidenceType.UNKNOWN, confidence=1.0,
+                )
+
+            if action:
+                prov["event.action"] = ProvenanceRecord(
+                    value=action, original_field="event_action", original_value=action,
+                    source=source_loc, parser="ai_engine", parser_info=parser_info,
+                    evidence_type=EvidenceType.INFERRED, confidence=0.90,
+                )
+            else:
+                prov["event.action"] = ProvenanceRecord(
+                    value=None, original_field="N/A", original_value=None,
+                    source=source_loc, parser="ai_engine", parser_info=parser_info,
+                    evidence_type=EvidenceType.UNKNOWN, confidence=1.0,
+                )
 
             return CanonicalEvent(
                 ulpf=UlpfMeta(event_id=raw_event.event_id),
                 event=EventDetails(
-                    category=cat,
+                    category=cat or "network",
                     type=threat,
                     action=action,
                 ),
@@ -264,7 +307,7 @@ class UlpfPipeline:
                     ip=dst_ip if (dst_ip and dst_ip != "N/A") else None,
                     port=ai_data.get("destination_port"),
                 ),
-                network=NetworkDetails(transport=proto if proto in ("tcp", "udp", "icmp") else "tcp"),
+                network=NetworkDetails(transport=proto if proto in ("tcp", "udp", "icmp") else None),
                 device=DeviceDetails(hostname=dev, product="AI Inferred Device"),
                 user=UserDetails(name=user if (user and user != "N/A") else None),
                 severity=sev,

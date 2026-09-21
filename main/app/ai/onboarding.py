@@ -4,7 +4,12 @@ import re
 import urllib.request
 import urllib.error
 import urllib.parse
-from typing import Dict, Any, List, Optional
+import json
+import logging
+import hashlib
+import time
+import functools
+from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime, timezone
 from pydantic import BaseModel, Field
 from app.config import settings
@@ -235,11 +240,17 @@ class AiOnboardingEngine:
             event_category = "web"
 
         # 5. Extract general Key=Value attributes if present
-        kv_pairs = re.findall(r'([a-zA-Z0-9_.-]+)=(?:"([^"]*)"|\'([^\']*)\'|(\S+))', msg)
+        kv_pairs = re.findall(r'([a-zA-Z0-9_.-]+)=(?:"([^"]*)"|\'([^\']*)\'|([^|\s,]+))', msg)
         for k, v1, v2, v3 in kv_pairs:
             val = v1 or v2 or v3
             if k not in extracted_fields:
                 extracted_fields[k] = val
+
+        if detected_format == "raw_text" and len(kv_pairs) >= 1:
+            if "|" in msg and not msg.startswith("<"):
+                detected_format = "delimited"
+            else:
+                detected_format = "key_value"
 
         # Check vendor signatures across raw payload if not explicitly set by CEF/LEEF/W3C
         raw_upper = msg.upper()
@@ -503,6 +514,7 @@ class AiOnboardingEngine:
             "extracted_fields": extracted_fields if extracted_fields else {"raw": raw_message},
         }
 
+    @functools.lru_cache(maxsize=4096)
     def parse_unknown_log(self, raw_message: str) -> Dict[str, Any]:
         """
         Parse an unknown, proprietary, or unstructured log into structured canonical fields.
@@ -629,6 +641,9 @@ Extract the structure and output ONLY a JSON object with this exact key structur
         product = parsed_json.get("product", "CustomDevice")
         mappings = parsed_json.get("suggested_mappings", {})
         conf = float(parsed_json.get("confidence", 0.95))
+
+        if not mappings or not isinstance(mappings, dict) or len(mappings) == 0:
+            return self._heuristic_analysis(sample_logs)
 
         yaml_str = self._build_yaml_str(
             parser_id=f"{vendor.lower()}_{product.lower()}_v1",
@@ -778,9 +793,13 @@ Provide your findings strictly in JSON format with these exact keys:
         cleaned = re.sub(r'```(?:json)?', '', raw_resp).strip()
         parsed = json.loads(cleaned)
 
+        threat_type = parsed.get("threat_type")
+        if not threat_type or threat_type in ("Suspicious Activity", "Unknown", "Normal Operation / Telemetry"):
+            return self._heuristic_incident_explanation(log_message)
+
         return AiIncidentExplanation(
             summary=parsed.get("summary", "Security event detected and analyzed."),
-            threat_type=parsed.get("threat_type", "Suspicious Activity"),
+            threat_type=threat_type,
             severity=parsed.get("severity", "high"),
             mitre_attack_id=parsed.get("mitre_attack_id", "T1078"),
             mitre_attack_name=parsed.get("mitre_attack_name", "Valid Accounts"),
@@ -897,6 +916,9 @@ Respond strictly with JSON containing these exact keys:
         raw_resp = provider.generate_text(prompt, json_format=True)
         cleaned = re.sub(r'```(?:json)?', '', raw_resp).strip()
         parsed = json.loads(cleaned)
+
+        if not parsed.get("query_dsl") or not parsed.get("ulpf_filter"):
+            return self._heuristic_nl_query(nl_query)
 
         return AiQueryTranslation(
             natural_language_query=nl_query,
@@ -1126,3 +1148,34 @@ mapping:
             "yaml_spec": custom_yaml,
             "sample_count": len(sample_logs),
         }
+
+    def reanalyze_threat(self, raw_message: str, parsed_threat: str) -> Dict[str, Any]:
+        """
+        AI Re-analysis: Act as a Senior SOC Analyst to determine if a parsed threat is a true positive or a benign false positive.
+        """
+        try:
+            provider = AiProviderFactory.get_provider(self.provider, self.model)
+            prompt = f"""
+            You are a Senior Security Operations Center (SOC) Analyst investigating a potential false positive.
+            The SIEM parser flagged the following log as a cyber threat.
+
+            Flagged Threat Type: {parsed_threat}
+            Raw Log Event: {raw_message}
+
+            Analyze the raw log comprehensively. Does it genuinely represent a true positive '{parsed_threat}'? 
+            Or is it benign behavior, routine telemetry, a false positive, or an expected network interaction?
+            IMPORTANT: A blocked connection, dropped packet, or WAF block (e.g., 'blocked by CloudWAF') is STILL a threat. It means an attacker attempted a cyber attack, even if the security system successfully stopped it. You MUST NOT classify a blocked or dropped attack as a false positive or benign behavior.
+            
+            Return ONLY a valid JSON object matching this schema exactly:
+            {{
+                "is_threat": bool,
+                "reasoning": "A concise 1-sentence explanation of why it is a true positive or a false positive."
+            }}
+            """
+            
+            raw_resp = provider.generate_text(prompt.strip(), json_format=True)
+            cleaned = re.sub(r'^```[a-zA-Z]*\n', '', raw_resp.strip(), flags=re.MULTILINE)
+            cleaned = re.sub(r'```$', '', cleaned.strip(), flags=re.MULTILINE).strip()
+            return json.loads(cleaned)
+        except Exception as e:
+            return {"is_threat": True, "reasoning": f"AI Verification failed: {str(e)}"}

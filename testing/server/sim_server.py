@@ -141,11 +141,20 @@ def get_target_status(
         scheme = req_body.scheme or scheme
     import concurrent.futures
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-        f_http = executor.submit(probe_socket, host, api_port, scheme, 1.0)
-        f_tcp = executor.submit(probe_socket, host, tcp_port, "tcp", 0.5)
-        f_udp = executor.submit(probe_socket, host, udp_port, "udp", 0.5)
-        f_ai = executor.submit(probe_socket, host, ollama_port, "tcp", 0.25)
+    # Split-Horizon DNS Translation: When the browser on the host machine requests a probe for 
+    # '127.0.0.1' or 'localhost', the completely decoupled simulator backend needs to translate this 
+    # to 'host.docker.internal' to route the health check OUT of the simulator container and into 
+    # the host machine's exposed ports, acting as an anonymous external client.
+    internal_target_host = host
+    if internal_target_host in ("127.0.0.1", "localhost"):
+        default_internal = "host.docker.internal" if os.path.exists("/.dockerenv") else "127.0.0.1"
+        internal_target_host = os.environ.get("ULPF_INTERNAL_API_HOST", default_internal)
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+        f_http = executor.submit(probe_socket, internal_target_host, api_port, scheme, 1.0)
+        f_tcp = executor.submit(probe_socket, internal_target_host, tcp_port, "tcp", 0.5)
+        f_udp = executor.submit(probe_socket, internal_target_host, udp_port, "udp", 0.5)
+        f_ai = executor.submit(probe_socket, internal_target_host, ollama_port, "tcp", 0.25)
 
         http_probe = f_http.result()
         tcp_probe = f_tcp.result()
@@ -962,6 +971,11 @@ def trigger_burst_traffic(req: BurstRequest):
     total_bytes = 0
     receipts = []
 
+    # Split-Horizon DNS Translation
+    internal_target_host = req.host
+    if internal_target_host in ("127.0.0.1", "localhost"):
+        internal_target_host = os.environ.get("ULPF_INTERNAL_API_HOST", "host.docker.internal")
+
     # Calculate inter-packet sleep interval if interval / rate limiting / pacing is requested
     sleep_interval = 0.0
     if req.interval_ms is not None and req.interval_ms >= 0:
@@ -975,11 +989,11 @@ def trigger_burst_traffic(req: BurstRequest):
         msg = generate_random_event()
         r = {}
         if proto == "UDP":
-            r = send_udp_log(req.host, port, msg, timeout=req.device_timeout)
+            r = send_udp_log(internal_target_host, port, msg, timeout=req.device_timeout)
         elif proto == "TCP":
-            r = send_tcp_log(req.host, port, msg, timeout=req.device_timeout)
+            r = send_tcp_log(internal_target_host, port, msg, timeout=req.device_timeout)
         else:
-            api_url = f"{req.scheme}://{req.host}:{port}/api/v1/ingest"
+            api_url = f"{req.scheme}://{internal_target_host}:{port}/api/v1/ingest"
             r = send_http_log(api_url, msg, source=req.source, timeout=req.device_timeout)
 
         if r.get("success"):

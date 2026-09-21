@@ -1,3 +1,4 @@
+import os
 import json
 import time
 import socket
@@ -58,6 +59,55 @@ class RedpandaCollector(BaseCollector):
         self._recent_messages: List[Dict[str, Any]] = []
         self._local_topic_buffer: List[Dict[str, Any]] = []
         self._buffer_lock = threading.Lock()
+        self._spool_lock = threading.Lock()
+
+        # Disk spooling for high-throughput buffering
+        self.spool_file = os.path.join(os.environ.get("STORAGE_DIR", "storage/raw"), "temp_spool.jsonl")
+        self.max_mem_buffer = int(os.environ.get("REDPANDA_MAX_MEM_BUFFER", "5000"))
+        self.spooling_active = False
+
+    def _spool_to_disk(self, items: List[Dict[str, Any]]) -> None:
+        """Dump excess logs to a temporary JSONL file."""
+        try:
+            os.makedirs(os.path.dirname(self.spool_file), exist_ok=True)
+            with self._spool_lock:
+                with open(self.spool_file, "a", encoding="utf-8") as f:
+                    for item in items:
+                        f.write(json.dumps(item) + "\n")
+                self.spooling_active = True
+        except Exception as e:
+            logger.error(f"Failed to spool logs to disk: {e}")
+
+    def _read_from_spool(self, limit: int = 500) -> List[Dict[str, Any]]:
+        """Read up to `limit` logs from the spool file and remove them."""
+        with self._spool_lock:
+            if not os.path.exists(self.spool_file):
+                self.spooling_active = False
+                return []
+                
+            items = []
+            remaining_lines = []
+            try:
+                with open(self.spool_file, "r", encoding="utf-8") as f:
+                    lines = f.readlines()
+                    
+                for line in lines[:limit]:
+                    if line.strip():
+                        items.append(json.loads(line))
+                        
+                remaining_lines = lines[limit:]
+                
+                if remaining_lines:
+                    with open(self.spool_file, "w", encoding="utf-8") as f:
+                        f.writelines(remaining_lines)
+                else:
+                    os.remove(self.spool_file)
+                    self.spooling_active = False
+                    
+            except Exception as e:
+                logger.error(f"Failed to read from spool: {e}")
+                
+            return items
 
     def start(self) -> None:
         """Start background consumer loop."""
@@ -150,10 +200,17 @@ class RedpandaCollector(BaseCollector):
                 pass
 
         with self._buffer_lock:
-            self._local_topic_buffer.append(msg_payload)
             self._recent_messages.insert(0, msg_payload)
             if len(self._recent_messages) > 100:
                 self._recent_messages.pop()
+
+            if target_topic == self.input_topic:
+                self._local_topic_buffer.append(msg_payload)
+                if len(self._local_topic_buffer) >= self.max_mem_buffer:
+                    # Spool the entire current buffer to disk to prevent thread explosion and free RAM instantly
+                    items_to_spool = self._local_topic_buffer[:]
+                    self._local_topic_buffer = []
+                    threading.Thread(target=self._spool_to_disk, args=(items_to_spool,), daemon=True).start()
 
         self.messages_produced += 1
         self.bytes_produced += len(raw_message.encode("utf-8"))
@@ -168,32 +225,46 @@ class RedpandaCollector(BaseCollector):
         }
 
     def _consumer_loop(self) -> None:
-        """Continuous polling and ingestion worker loop."""
+        """Continuous polling and ingestion worker loop with chunking."""
         last_conn_check = time.time()
+        batch_size = 500
+
         while self._is_running:
             try:
-                # 1. Process local buffer first so testbench & local queue are never blocked
-                item_to_process = None
+                now = time.time()
+                # 1. Periodically check socket connectivity asynchronously
+                if now - last_conn_check >= 5.0:
+                    threading.Thread(target=self._async_check_broker, daemon=True).start()
+                    last_conn_check = now
+
+                # 2. Process local buffer in chunks
+                items_to_process = []
                 with self._buffer_lock:
                     if self._local_topic_buffer:
-                        item_to_process = self._local_topic_buffer.pop(0)
+                        chunk_size = min(len(self._local_topic_buffer), batch_size)
+                        items_to_process = self._local_topic_buffer[:chunk_size]
+                        self._local_topic_buffer = self._local_topic_buffer[chunk_size:]
 
-                if item_to_process:
-                    self._process_message(item_to_process)
+                # 3. If memory buffer is low and spooling is active, recover from disk
+                if len(items_to_process) < batch_size and self.spooling_active:
+                    recovered = self._read_from_spool(limit=batch_size - len(items_to_process))
+                    items_to_process.extend(recovered)
+
+                if items_to_process:
+                    for item in items_to_process:
+                        self._process_message(item)
                     continue
-
-                now = time.time()
-                # 2. Periodically check socket connectivity every 5 seconds
-                if now - last_conn_check >= 5.0:
-                    is_online, _ = self.check_broker_connectivity(timeout=0.05)
-                    self._connected = is_online
-                    last_conn_check = now
 
                 time.sleep(0.02)
             except Exception as e:
                 self._last_error = str(e)
                 self.total_errors += 1
                 time.sleep(0.1)
+
+    def _async_check_broker(self) -> None:
+        """Background thread to check broker connectivity without blocking ingestion."""
+        is_online, _ = self.check_broker_connectivity(timeout=0.05)
+        self._connected = is_online
 
     def _process_message(self, msg_payload: Dict[str, Any]) -> None:
         """Process consumed message into ULPF pipeline."""

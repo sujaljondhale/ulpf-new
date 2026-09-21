@@ -14,6 +14,7 @@ class Settings(BaseModel):
     version: str = "1.0.0"
     schema_version: str = "1.0"
     environment: str = Field(default_factory=lambda: os.getenv("ULPF_ENV", "development"))
+    mode: str = Field(default_factory=lambda: os.getenv("ULPF_MODE", "DEMO").upper())
     # Simple API key authentication (optional)
     api_key: Optional[str] = Field(default_factory=lambda: os.getenv("ULPF_API_KEY", None))
     debug: bool = Field(default_factory=lambda: os.getenv("ULPF_DEBUG", "false").lower() in ("true", "1", "yes"))
@@ -61,7 +62,10 @@ class Settings(BaseModel):
         default_factory=lambda: os.getenv("AI_ENABLED", "true").lower() in ("true", "1", "yes")
     )
     ai_provider: str = Field(
-        default_factory=lambda: os.getenv("AI_PROVIDER", "ollama")
+        default_factory=lambda: os.getenv("AI_PROVIDER", "three_step").lower()
+    )
+    ai_model: str = Field(
+        default_factory=lambda: os.getenv("AI_MODEL", "Qwen/Qwen2.5-7B-Instruct")
     )
     ai_fallback_enabled: bool = Field(
         default_factory=lambda: os.getenv("AI_FALLBACK_ENABLED", "false").lower() in ("true", "1", "yes")

@@ -6,11 +6,17 @@ import random
 import asyncio
 import socket
 import urllib.request
+import threading
+import hashlib
+import logging
+import psutil
 from pathlib import Path
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
-from fastapi import APIRouter, HTTPException, Query, UploadFile, File, Request, Body
+from fastapi import APIRouter, HTTPException, Query, UploadFile, File, Request, Body, Depends, Security
+from fastapi.security import APIKeyHeader
 from fastapi.responses import StreamingResponse
+from starlette.concurrency import run_in_threadpool
 from app.api.schemas import (
     LogInputRequest,
     IngestRequest,
@@ -45,7 +51,9 @@ from app.config import settings
 from app.api.generator import generate_log
 from app.pipeline_monitor import global_throughput_monitor
 from app.parsers.format_checker import global_format_drift_checker
+from app.parsers.c_fast_parser import c_fast_parser
 
+logger = logging.getLogger("ulpf.api.routes")
 router = APIRouter()
 pipeline = UlpfPipeline()
 ai_engine = AiOnboardingEngine()
@@ -71,13 +79,37 @@ EVENT_LIST: List[Dict[str, Any]] = []  # Ordered list of summaries
 SSE_SUBSCRIBERS: List[asyncio.Queue] = []
 
 
+# API Key Security
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+def verify_api_key(api_key: str = Security(api_key_header)):
+    if settings.mode == "PROD" and settings.api_key:
+        if not api_key or api_key != settings.api_key:
+            raise HTTPException(status_code=403, detail="Invalid API Key. Production mode requires valid X-API-Key header.")
+    return api_key
+
+_main_event_loop = None
+
+def get_main_loop():
+    global _main_event_loop
+    if _main_event_loop is None:
+        try:
+            _main_event_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            pass
+    return _main_event_loop
+
 def broadcast_event(event_dict: Dict[str, Any]):
     """Broadcast new event to all active SSE streaming subscribers."""
+    loop = get_main_loop()
     for q in list(SSE_SUBSCRIBERS):
-        try:
-            q.put_nowait(event_dict)
-        except Exception:
-            pass
+        if loop and not loop.is_closed():
+            loop.call_soon_threadsafe(q.put_nowait, event_dict)
+        else:
+            try:
+                q.put_nowait(event_dict)
+            except Exception:
+                pass
 
 
 BLOCKED_SOURCES: set = set()
@@ -181,11 +213,15 @@ UNKNOWN_LOGS_QUEUE: List[Dict[str, Any]] = [
 
 
 def check_security_threats(raw_message: str, src_ip: str) -> Optional[Dict[str, str]]:
-    """Detect cyberattack patterns (SQLi, XSS, Path Traversal, Command Injection, Blacklisted IP)."""
+    """Detect cyberattack patterns using heuristic scoring (SQLi, XSS, LFI, RCE, Log4j, SSRF, Scanners)."""
     msg = raw_message or ""
     lower_msg = msg.lower()
+    
+    total_score = 0
+    triggered_signatures = []
+    threat_types = set()
 
-    # 1. Blacklisted IP check
+    # 1. Blacklisted IP check (Absolute Critical)
     if src_ip and src_ip in BLOCKED_IPS:
         return {
             "threat_type": "Blocked IP Violation",
@@ -194,77 +230,89 @@ def check_security_threats(raw_message: str, src_ip: str) -> Optional[Dict[str, 
             "signature": f"Blacklist match: {src_ip}",
         }
 
-    # 2. SQL Injection Patterns
-    sqli_patterns = [
-        (r"('|\b)(or|and)\b\s+['\"\d]+=['\"\d]+", "SQLi: Boolean OR/AND injection"),
-        (r"union\s+(all\s+)?select", "SQLi: UNION SELECT query"),
-        (r"drop\s+table", "SQLi: Destructive DROP TABLE command"),
-        (r"information_schema", "SQLi: Database metadata enumeration"),
-        (r"--\s*$", "SQLi: Inline SQL comment truncation"),
-        (r"/\*.*?\*/", "SQLi: Block comment syntax"),
-        (r"admin'--", "SQLi: Classic auth bypass attempt"),
-        (r"1=1", "SQLi: Tautology condition injection"),
-    ]
-    for pat, desc in sqli_patterns:
-        if re.search(pat, lower_msg):
-            return {
-                "threat_type": "SQL Injection Attack (SQLi)",
-                "severity": "critical",
-                "detail": f"Malicious SQL syntax pattern detected: {desc}",
-                "signature": pat,
-            }
+    # Rule Definition: (Pattern, Threat Type, Description, Base Score)
+    rules = [
+        # Modern High-Profile Exploits
+        (r"\$\{jndi:(ldap|rmi|dns|iiop|http)", "Log4Shell (JNDI)", "JNDI lookup injection", 10),
+        (r"169\.254\.169\.254", "SSRF", "Cloud metadata endpoint access attempt", 8),
+        
+        # SQL Injection
+        (r"('|\b)(or|and)\b\s+['\"\d]+=['\"\d]+", "SQL Injection", "Boolean OR/AND injection", 8),
+        (r"union\s+(all\s+)?select", "SQL Injection", "UNION SELECT query", 9),
+        (r"drop\s+table", "SQL Injection", "Destructive DROP TABLE command", 10),
+        (r"information_schema", "SQL Injection", "Database metadata enumeration", 6),
+        (r"--\s*$", "SQL Injection", "Inline SQL comment truncation", 5),
+        (r"/\*.*?\*/", "SQL Injection", "Block comment syntax", 5),
+        (r"admin'--", "SQL Injection", "Classic auth bypass attempt", 7),
+        (r"1=1", "SQL Injection", "Tautology condition injection", 5),
 
-    # 3. Cross-Site Scripting (XSS)
-    xss_patterns = [
-        (r"<script.*?>", "XSS: Injected <script> HTML tag"),
-        (r"javascript:", "XSS: Inline javascript pseudo-protocol"),
-        (r"onerror\s*=", "XSS: DOM Event handler hijacking (onerror)"),
-        (r"onload\s*=", "XSS: DOM Event handler hijacking (onload)"),
-        (r"<img\s+[^>]*?src=x", "XSS: Malicious image tag injection"),
-        (r"alert\(", "XSS: Interactive JavaScript execution test"),
-    ]
-    for pat, desc in xss_patterns:
-        if re.search(pat, lower_msg):
-            return {
-                "threat_type": "Cross-Site Scripting (XSS)",
-                "severity": "critical",
-                "detail": f"Injected script or HTML tag detected: {desc}",
-                "signature": pat,
-            }
+        # Cross-Site Scripting (XSS)
+        (r"<script.*?>", "XSS", "Injected <script> HTML tag", 7),
+        (r"javascript:", "XSS", "Inline javascript pseudo-protocol", 6),
+        (r"onerror\s*=", "XSS", "DOM Event handler hijacking (onerror)", 6),
+        (r"onload\s*=", "XSS", "DOM Event handler hijacking (onload)", 6),
+        (r"<img\s+[^>]*?src=x", "XSS", "Malicious image tag injection", 5),
+        (r"alert\(", "XSS", "Interactive JavaScript execution test", 5),
 
-    # 4. Path Traversal & LFI
-    traversal_patterns = [
-        (r"\.\./\.\./", "Path Traversal: Directory backtracking (../)"),
-        (r"\.\.\\\.\.\\", "Path Traversal: Windows directory backtracking (..\\)"),
-        (r"/etc/passwd", "Path Traversal: Sensitive credential file target (/etc/passwd)"),
-        (r"win\.ini", "Path Traversal: Windows configuration file target (win.ini)"),
-    ]
-    for pat, desc in traversal_patterns:
-        if re.search(pat, lower_msg):
-            return {
-                "threat_type": "Path Traversal / LFI",
-                "severity": "critical",
-                "detail": f"Unauthorized file path navigation attempt: {desc}",
-                "signature": pat,
-            }
+        # Path Traversal & LFI
+        (r"\.\./\.\./", "Path Traversal / LFI", "Directory backtracking (../)", 8),
+        (r"\.\.\\\.\.\\", "Path Traversal / LFI", "Windows directory backtracking (..\\)", 8),
+        (r"/etc/passwd", "Path Traversal / LFI", "Sensitive credential file target", 9),
+        (r"win\.ini", "Path Traversal / LFI", "Windows configuration file target", 8),
 
-    # 5. Remote Code / Command Injection
-    cmd_patterns = [
-        (r";\s*rm\s+-rf", "Command Injection: Destructive rm -rf command"),
-        (r";\s*cat\s+/etc", "Command Injection: Arbitrary file read attempt"),
-        (r"\|\s*bash", "Command Injection: Pipe to bash subshell"),
-        (r"powershell\s+-enc", "Command Injection: Obfuscated PowerShell execution"),
+        # Command Injection / RCE
+        (r";\s*rm\s+-rf", "Command Injection", "Destructive rm -rf command", 10),
+        (r";\s*cat\s+/etc", "Command Injection", "Arbitrary file read attempt", 9),
+        (r"\|\s*bash", "Command Injection", "Pipe to bash subshell", 9),
+        (r"powershell\s+-enc", "Command Injection", "Obfuscated PowerShell execution", 8),
+        
+        # Automated Scanners
+        (r"nikto/", "Automated Scanner", "Nikto web vulnerability scanner", 4),
+        (r"sqlmap/", "Automated Scanner", "sqlmap automated SQLi tool", 6),
+        (r"nmap\s+scripting\s+engine", "Automated Scanner", "Nmap NSE script detection", 4),
     ]
-    for pat, desc in cmd_patterns:
-        if re.search(pat, lower_msg):
-            return {
-                "threat_type": "Command Injection / RCE",
-                "severity": "critical",
-                "detail": f"Operating system shell command pattern detected: {desc}",
-                "signature": pat,
-            }
 
-    return None
+    for pat, t_type, desc, score in rules:
+        if re.search(pat, lower_msg):
+            total_score += score
+            threat_types.add(t_type)
+            triggered_signatures.append(f"[{t_type}] {desc} ({score} pts)")
+
+    # 3. AI Cloud / ML Model Intelligence (Enabled via settings)
+    try:
+        from app.config.settings import settings
+        if settings.ai_enrichment_enabled:
+            ai_res = ai_engine.score_log(raw_message)
+            if ai_res and ai_res.get("is_anomalous"):
+                total_score += 5
+                ai_threat_type = ai_res.get("threat_classification", {}).get("threat_type") or "AI Cloud Anomaly"
+                threat_types.add(ai_threat_type)
+                anomaly_score = ai_res.get("anomaly_score", 0.0)
+                triggered_signatures.append(f"[AI Model] Advanced Threat Detected (Confidence: {anomaly_score:.2f})")
+    except Exception as e:
+        pass
+
+    if total_score == 0:
+        return None
+
+    # Determine Severity based on aggregated heuristic + AI score
+    if total_score >= 10:
+        sev = "critical"
+    elif total_score >= 7:
+        sev = "high"
+    elif total_score >= 4:
+        sev = "medium"
+    else:
+        sev = "low"
+
+    summary_type = list(threat_types)[0] if len(threat_types) == 1 else "Multi-Vector Attack"
+    
+    return {
+        "threat_type": summary_type,
+        "severity": sev,
+        "detail": f"Heuristic Score: {total_score}. Detected {len(triggered_signatures)} threat signatures.",
+        "signature": " | ".join(triggered_signatures)
+    }
 
 
 def get_readable_event_id(raw_id: str) -> str:
@@ -457,11 +505,13 @@ def store_and_broadcast(ir_event, source_name: str = "network_device"):
 
     # Broadcast high-priority Security Alert if attack or blocked access detected
     if threat_info:
+        dst_ip = getattr(ir_event.destination, "ip", "Unknown") if ir_event.destination else "Unknown"
         broadcast_event({
             "type": "SECURITY_ALERT",
             "threat": threat_info,
             "event_id": readable_id,
             "src_ip": src_ip,
+            "dst_ip": dst_ip,
             "source": source_name,
             "message": f" {threat_info['threat_type']} detected from {src_ip}: {threat_info['detail']}",
         })
@@ -565,8 +615,8 @@ def init_event_store():
 init_event_store()
 
 
-@router.post("/api/v1/events/clear")
-@router.delete("/api/v1/events")
+@router.post("/api/v1/events/clear", dependencies=[Depends(verify_api_key)])
+@router.delete("/api/v1/events", dependencies=[Depends(verify_api_key)])
 def clear_all_stored_events():
     """
     Permanently delete all stored data logs from in-memory stores, SQLite database,
@@ -701,6 +751,9 @@ async def events_stream(request: Request):
     """
     Server-Sent Events (SSE) stream endpoint for synchronous live dashboard updates.
     """
+    global _main_event_loop
+    _main_event_loop = asyncio.get_running_loop()
+    
     queue = asyncio.Queue()
     SSE_SUBSCRIBERS.append(queue)
 
@@ -813,8 +866,17 @@ async def post_ingest(request: Request):
         if not raw_message or not raw_message.strip():
             raise HTTPException(status_code=400, detail="Empty log message payload")
 
+        print("post_ingest: checking rate limit")
+        # Priority 14: Collector Rate Limiting
+        if not ingestion_queue._check_rate_limit():
+            ingestion_queue.total_dropped_rate_limit += 1
+            raise HTTPException(status_code=429, detail="Rate limit exceeded. System is under high load.")
+
+        print("post_ingest: detecting")
         detection = pipeline.detector.detect(raw_message)
-        ir = pipeline.process(raw_message, source=source_name)
+        print("post_ingest: processing in threadpool")
+        ir = await run_in_threadpool(pipeline.process, raw_message, source_name)
+        print("post_ingest: processed")
 
         if device_name_hint:
             ir.device.hostname = device_name_hint
@@ -836,6 +898,7 @@ async def post_ingest(request: Request):
         ecs_data = pipeline.export_ecs(ir)
 
         forwarder.forward(ir, target_destination="SIEM_DataLake_Sink")
+        
         api_ingest_stats["total_processed"] += 1
 
         return IngestResponse(
@@ -958,8 +1021,8 @@ def get_metrics():
     """Returns aggregated live metrics for ULPF Home and Analytics views, synced with persistent database."""
     db_stats = persistence_manager.db.get_event_stats()
     db_total = db_stats.get("total_processed", 0)
-    total_processed = max(len(EVENT_LIST), db_total)
-    total_received = api_ingest_stats["total_received"] + total_processed
+    total_processed = max(api_ingest_stats["total_processed"], db_total, len(EVENT_LIST))
+    total_received = max(api_ingest_stats["total_received"], total_processed)
     success_cnt = db_stats.get("success_cnt") if db_total > 0 else sum(1 for e in EVENT_LIST if e.get("status") == "success")
     unparsed_cnt = db_stats.get("unparsed_cnt") if db_total > 0 else sum(1 for e in EVENT_LIST if e.get("status") == "unparsed")
     error_cnt = api_ingest_stats["total_errors"] + (db_stats.get("error_cnt", 0) if db_total > 0 else sum(1 for e in EVENT_LIST if e.get("status") == "error"))
@@ -972,9 +1035,9 @@ def get_metrics():
             fmt_dist[fmt] = fmt_dist.get(fmt, 0) + 1
 
     # Active sources
-    active_sources = db_stats.get("active_sources") or len(set(e.get("source") for e in EVENT_LIST if e.get("source"))) or 4
+    active_sources = db_stats.get("active_sources") or len(set(e.get("source") for e in EVENT_LIST if e.get("source"))) or 0
 
-    parse_rate = round((success_cnt / total_processed * 100), 1) if total_processed > 0 else 100.0
+    parse_rate = round(((success_cnt or 0) / total_processed * 100), 1) if total_processed > 0 else 100.0
     tp_stats = global_throughput_monitor.get_stats()
 
     return {
@@ -996,7 +1059,42 @@ def get_metrics():
         "active_sources": active_sources,
         "active_parsers": len(pipeline.registry.list_parsers()),
         "format_distribution": fmt_dist,
+        "worker_count": getattr(ingestion_queue, "worker_count", 0),
     }
+
+@router.post("/api/v1/workers")
+async def adjust_worker_count(payload: Dict[str, Any] = Body(...)):
+    """Dynamically adjust the number of processing workers without restarting."""
+    count = payload.get("count")
+    if count is None or not isinstance(count, int) or count < 1 or count > 128:
+        raise HTTPException(status_code=400, detail="Worker count must be an integer between 1 and 128")
+    
+    ingestion_queue.set_worker_count(count)
+    return {"status": "success", "worker_count": count}
+
+
+
+@router.get("/api/v1/settings")
+async def get_settings():
+    """Retrieve hot-swappable server settings."""
+    return {
+        "ai_confidence_threshold": settings.ai_confidence_threshold,
+        "rate_limit_per_minute": settings.rate_limit_per_minute,
+        "worker_count": getattr(ingestion_queue, "worker_count", 4),
+        "ai_fallback_enabled": settings.ai_fallback_enabled
+    }
+
+@router.post("/api/v1/settings")
+async def update_settings(payload: Dict[str, Any] = Body(...)):
+    """Dynamically update hot-swappable server settings."""
+    if "ai_confidence_threshold" in payload:
+        settings.ai_confidence_threshold = float(payload["ai_confidence_threshold"])
+    if "rate_limit_per_minute" in payload:
+        settings.rate_limit_per_minute = int(payload["rate_limit_per_minute"])
+    if "ai_fallback_enabled" in payload:
+        settings.ai_fallback_enabled = bool(payload["ai_fallback_enabled"])
+    
+    return {"status": "success", "message": "Settings updated dynamically"}
 
 
 @router.get("/api/v1/events")
@@ -1008,7 +1106,7 @@ def query_events(
     action: Optional[str] = None,
     status: Optional[str] = None,
     search: Optional[str] = None,
-    limit: int = Query(50, ge=1, le=500),
+    limit: int = Query(50, ge=1, le=1000),
     offset: int = Query(0, ge=0),
 ):
     """
@@ -1258,6 +1356,14 @@ async def unblock_ip(request: Request):
     return {"status": "success", "ip": ip, "is_blocked": False, "blocked_ips": sorted(list(BLOCKED_IPS))}
 
 
+@router.delete("/api/v1/sources/{source_id}")
+def delete_source(source_id: str):
+    """Explicitly remove a source from the live registry."""
+    deleted = source_registry.remove_source(source_id)
+    if deleted:
+        return {"status": "success", "message": f"Source {source_id} removed"}
+    return {"status": "error", "message": "Source not found"}, 404
+
 @router.get("/api/v1/sources/{source_id}")
 def get_source_detail(source_id: str):
     """Detailed telemetry and sample events for a specific log source."""
@@ -1306,158 +1412,23 @@ def get_system_health():
             {"name": "Parser Engine", "status": "Healthy", "latency": "12.8 µs", "details": f"{len(pipeline.registry.list_parsers())} parsers loaded"},
             {"name": "Semantic Normalizer", "status": "Healthy", "latency": "18.2 µs", "details": "ULPF-IR taxonomy v1.0 active"},
             {"name": "Security Validator", "status": "Healthy", "latency": "3.1 µs", "details": "Payload security & SHA-256 validator operational"},
-            {"name": "Mock SIEM Forwarder", "status": "Healthy", "latency": "4.5 ms", "details": f"{forwarder.total_forwarded} events delivered"},
+            {"name": "In-Memory SIEM Forwarder", "status": "Healthy", "latency": "4.5 ms", "details": f"{forwarder.total_forwarded} events delivered"},
             {"name": "MinIO / Raw Store", "status": "Healthy", "latency": "8.0 ms", "details": "Local raw evidence preservation store online"},
             {"name": "OpenSearch Engine", "status": "Healthy", "latency": "14.2 ms", "details": "Search index synched"},
             {"name": "AI Parser Engine", "status": "Healthy", "latency": "120 ms", "details": "Qwen / Ollama local AI fallback available"},
             {"name": "Frontend Control Center", "status": "Healthy", "latency": "0.8 ms", "details": "Synchronous real-time SSE stream connected"},
         ]
     }
-
-
-# ---------------------------------------------------------
-# Synthetic Demo Traffic Generator
-# ---------------------------------------------------------
-
-@router.post("/api/v1/demo/traffic/generate")
-def generate_demo_traffic(
-    events: int = Query(10, ge=1, le=1000),
-    source: str = Query("Firewall-01"),
-    format: str = Query("cef"),
-):
-    """
-    Generates N synthetic log events and processes them immediately via ULPF.
-    Updates the dashboard synchronously via SSE broadcast.
-    """
-    src_map = {
-        "Firewall-01": "firewall",
-        "Router-01": "router",
-        "VPN-01": "vpn",
-        "IDS-01": "ids_ips",
-        "Demo-Web-01": "waf",
-    }
-    sim_source = src_map.get(source, "firewall")
-    created = []
-
-    for _ in range(events):
-        raw = generate_log(sim_source, format.lower())
-        ir = pipeline.process(raw, source=source)
-        rec = store_and_broadcast(ir, source_name=source)
-        forwarder.forward(ir, target_destination="SIEM_DataLake_Sink")
-        created.append(rec)
-
+@router.get("/api/v1/system/workload")
+def get_system_workload():
+    mem = psutil.virtual_memory()
     return {
-        "status": "success",
-        "generated_count": len(created),
-        "source": source,
-        "format": format,
-        "sample_event_id": created[0]["event_id"] if created else None,
-    }
-
-
-# ---------------------------------------------------------
-# Demo Company Simulated Endpoints (Nova Retail Systems)
-# ---------------------------------------------------------
-
-@router.get("/api/demo/products")
-def demo_get_products():
-    log_str = 'source=Demo-Web-01 method=GET url=/api/products status=200 client_ip=192.168.1.105 user_agent="Mozilla/5.0" action=product_catalog_view'
-    ir = pipeline.process(log_str, source="Demo-Web-01")
-    store_and_broadcast(ir, source_name="Demo-Web-01")
-    forwarder.forward(ir, target_destination="SIEM_DataLake_Sink")
-
-    return {
-        "company": "Nova Retail Systems",
-        "products": [
-            {"id": "PROD-101", "name": "Enterprise Security Gateway X1", "category": "Hardware", "price": 4999.00},
-            {"id": "PROD-102", "name": "ULPF Operations Collector License", "category": "Software", "price": 1200.00},
-            {"id": "PROD-103", "name": "High-Speed Syslog Buffer Node", "category": "Appliance", "price": 2450.00},
-        ]
-    }
-
-
-@router.post("/api/demo/login")
-async def demo_post_login(request: Request):
-    try:
-        body = await request.json()
-    except Exception:
-        body = {"username": "admin", "password": "****"}
-
-    username = body.get("username", "user")
-    success = username in ["admin", "demo", "analyst"]
-
-    status_code = 200 if success else 401
-    action_name = "user_login_success" if success else "user_login_failed"
-
-    log_str = f'source=Demo-Web-01 method=POST url=/api/login status={status_code} username="{username}" client_ip=192.168.1.42 action={action_name} reason="{"valid_credentials" if success else "invalid_password"}"'
-    ir = pipeline.process(log_str, source="Demo-Web-01")
-    store_and_broadcast(ir, source_name="Demo-Web-01")
-    forwarder.forward(ir, target_destination="SIEM_DataLake_Sink")
-
-    if success:
-        return {"status": "authenticated", "token": "jwt_demo_token_xyz987", "user": username}
-    else:
-        raise HTTPException(status_code=401, detail="Authentication failed: Invalid credentials")
-
-
-@router.post("/api/demo/orders")
-async def demo_create_order(request: Request):
-    try:
-        body = await request.json()
-    except Exception:
-        body = {"product_id": "PROD-101", "quantity": 1}
-
-    order_id = f"ORD-{random.randint(10000, 99999)}"
-    log_str = f'source=Demo-Web-01 method=POST url=/api/orders status=201 order_id={order_id} product_id="{body.get("product_id")}" client_ip=192.168.1.42 action=order_created'
-    ir = pipeline.process(log_str, source="Demo-Web-01")
-    store_and_broadcast(ir, source_name="Demo-Web-01")
-    forwarder.forward(ir, target_destination="SIEM_DataLake_Sink")
-
-    return {"status": "created", "order_id": order_id, "total": 4999.00}
-
-
-# ---------------------------------------------------------
-# Performance Benchmark Execution API
-# ---------------------------------------------------------
-
-@router.post("/api/v1/benchmark/run")
-async def run_benchmark_test(request: Request, events_count: Optional[int] = Query(None)):
-    """Runs micro-benchmark against deterministic engine and returns empirical stats."""
-    count = events_count
-    if count is None:
-        try:
-            body = await request.json()
-            if isinstance(body, dict):
-                count = body.get("events_count") or body.get("count") or body.get("iterations")
-        except Exception:
-            pass
-    if count is None:
-        count = 10000
-    try:
-        count = int(count)
-    except Exception:
-        count = 10000
-    count = max(10, min(count, 100000))
-
-    start_t = time.perf_counter()
-    sample_log = "CEF:0|CheckPoint|VPN-1|R80|100|Accept|Low|src=10.10.1.5 dst=8.8.8.8 spt=51522 dpt=443 proto=tcp act=allow"
-
-    for _ in range(count):
-        pipeline.process(sample_log, source="benchmark")
-
-    elapsed = time.perf_counter() - start_t
-    events_per_sec = round(count / elapsed) if elapsed > 0 else count * 1000
-    latency_us = round((elapsed / count) * 1000000, 2)
-
-    return {
-        "status": "success",
-        "test_size": f"{count:,} events",
-        "time_taken_seconds": round(elapsed, 4),
-        "events_per_second": f"{events_per_sec:,}",
-        "avg_latency": f"{latency_us} µs",
-        "cpu_utilization": "2.7%",
-        "memory_rss": "31.14 MB",
-        "failures": 0,
+        "cpu_percent": psutil.cpu_percent(interval=None),
+        "per_core_cpu": psutil.cpu_percent(interval=None, percpu=True),
+        "memory_percent": mem.percent,
+        "memory_used_mb": int(mem.used / 1024 / 1024),
+        "memory_total_mb": int(mem.total / 1024 / 1024),
+        "active_threads": threading.active_count()
     }
 
 
@@ -1473,7 +1444,7 @@ def get_collectors_status():
         syslog_collector=syslog_collector.get_status(),
         file_collector=file_collector.get_status(),
         downstream_forwarder={
-            "name": "Mock SIEM Forwarder",
+            "name": "In-Memory SIEM Forwarder",
             "total_forwarded": forwarder.total_forwarded,
             "buffered_in_mock_siem": len(mock_siem.events),
         },
@@ -1590,8 +1561,13 @@ def post_onboarding_analyze(request: SamplesInputRequest):
     return proposal.model_dump()
 
 
+@router.post("/api/v1/parsers/generate", response_model=Dict[str, Any])
 @router.post("/onboarding/generate-parser")
-def post_onboarding_generate(request: GenerateParserRequest):
+def generate_parser(request: GenerateParserRequest):
+    """
+    AI-driven Parser Synthesis.
+    Takes sample unparsed logs and generates a declarative YAML Parser Spec.
+    """
     try:
         spec, compiled_parser = ParserCompiler.compile_from_yaml(request.yaml_spec)
         meta = pipeline.registry.register_compiled_parser(spec, compiled_parser, status=ParserStatus.DRAFT)
@@ -1608,8 +1584,79 @@ def post_onboarding_validate(parser_id: str = Query(...)):
     return {"status": "validated", "metadata": meta.model_dump()}
 
 
+@router.post("/api/v1/parsers/regression-test")
+def parser_regression_test(parser_id: str, yaml_content: str = Body(..., media_type="text/plain"), limit: int = 100):
+    """
+    Priority 9: Parser Regression Lab.
+    Compares the current ACTIVE parser (v1) against a proposed new YAML parser (v2) 
+    using historical raw logs from the database.
+    """
+    # 1. Compile v2 parser
+    try:
+        spec, v2_parser = ParserCompiler.compile_from_yaml(yaml_content)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid YAML spec: {e}")
+
+    # 2. Load v1 parser
+    v1_parser = pipeline.registry.get_parser(parser_id, allow_draft=True)
+    if not v1_parser:
+        raise HTTPException(status_code=404, detail=f"Base parser {parser_id} not found.")
+
+    # 3. Load historical logs
+    _, historical_events = persistence_manager.db.query_events(parser=parser_id, limit=limit)
+    if not historical_events:
+        return {"status": "no_data", "message": f"No historical logs found for {parser_id}"}
+
+    v1_success = 0
+    v2_success = 0
+    field_additions = 0
+    field_drops = 0
+
+    for ev in historical_events:
+        raw_msg = ev.get("raw_message", "")
+        if not raw_msg:
+            continue
+            
+        dummy_event = create_raw_event(raw_msg, source="regression_test")
+        
+        # Test v1
+        try:
+            r1 = v1_parser.parse(dummy_event)
+            if r1.status == "success":
+                v1_success += 1
+        except Exception:
+            r1 = None
+
+        # Test v2
+        try:
+            r2 = v2_parser.parse(dummy_event)
+            if r2.status == "success":
+                v2_success += 1
+        except Exception:
+            r2 = None
+
+        if r1 and r2 and r1.status == "success" and r2.status == "success":
+            v1_keys = set(r1.fields.keys())
+            v2_keys = set(r2.fields.keys())
+            field_additions += len(v2_keys - v1_keys)
+            field_drops += len(v1_keys - v2_keys)
+
+    total = len(historical_events)
+    return {
+        "status": "success",
+        "parser_id": parser_id,
+        "historical_events_tested": total,
+        "v1_success_rate": round(v1_success / total, 2) if total else 0,
+        "v2_success_rate": round(v2_success / total, 2) if total else 0,
+        "field_additions": field_additions,
+        "field_drops": field_drops,
+        "recommendation": "APPROVE" if (v2_success >= v1_success and field_drops == 0) else "REVIEW",
+    }
+
+
+@router.post("/api/v1/parsers/approve")
 @router.post("/onboarding/approve")
-def post_onboarding_approve(request: ApproveParserRequest):
+def approve_parser(request: ApproveParserRequest):
     meta = pipeline.registry.update_status(request.parser_id, ParserStatus.ACTIVE)
     if not meta:
         raise HTTPException(status_code=404, detail="Parser ID not found")
@@ -1958,8 +2005,10 @@ async def approve_unknown_log(log_id: str, request: Request):
     UNKNOWN_LOGS_QUEUE.remove(log_item)
 
     # Re-process and promote the log into the live pipeline with success status
-    ir = pipeline.process(log_item["raw_message"], source=log_item["source"])
+    ir = await run_in_threadpool(pipeline.process, log_item["raw_message"], source=log_item["source"])
     ir.status = "success"
+    if not ir.original.format or "unknown" in str(ir.original.format).lower():
+        ir.original.format = parser_name
     if not ir.event.action:
         ir.event.action = "allow"
     rec = store_and_broadcast(ir, source_name=log_item["source"])
@@ -2026,7 +2075,6 @@ def get_event_by_id(event_id: str):
     rec = next((e for e in EVENT_LIST if e.get("event_id") == event_id or e.get("raw_event_id") == event_id), None)
     if rec:
         data["source_device"] = rec.get("source")
-        data["source"] = rec.get("source")
         data["readable_id"] = rec.get("event_id")
         data["threat"] = rec.get("threat")
         data.setdefault("device", {})
@@ -2069,158 +2117,8 @@ def get_event_provenance(event_id: str):
 
 
 # ==============================================================================
-# PHASE 3 — MULTI-VENDOR LAB, PARSER TEST BENCH, SCENARIOS & DEMO RESET
+# PHASE 3 — PARSER TEST BENCH
 # ==============================================================================
-
-MULTIVENDOR_SPECS = [
-    {
-        "vendor": "Fortinet",
-        "device": "FortiGate 60E Firewall",
-        "format": "Key-Value / Logsys",
-        "raw_template": 'date=2026-09-06 time=14:32:10 devname="FGT-EDGE-01" devid="FGT60E4Q16000000" type="traffic" subtype="forward" level="warning" action="{action}" srcip={src_ip} dstip={dst_ip} proto=6 srcport=54321 dstport={dst_port} policyid=4 app="HTTPS" msg="Policy violation traffic blocked"',
-        "field_mappings": {"srcip": "source.ip", "dstip": "destination.ip", "dstport": "destination.port", "action": "event.action", "proto": "network.transport"}
-    },
-    {
-        "vendor": "Cisco",
-        "device": "Cisco ASA 5525-X",
-        "format": "Cisco Syslog (RFC 5424)",
-        "raw_template": '%ASA-4-106023: Deny tcp src outside:{src_ip}/54321 dst inside:{dst_ip}/{dst_port} by access-group "OUTSIDE_IN" [0x0, 0x0]',
-        "field_mappings": {"src": "source.ip", "dst": "destination.ip", "dst_port": "destination.port", "Deny": "event.action", "tcp": "network.transport"}
-    },
-    {
-        "vendor": "Palo Alto Networks",
-        "device": "PA-3220 Next-Gen Firewall",
-        "format": "Structured JSON",
-        "raw_template": '{{"serial": "001801000001", "type": "TRAFFIC", "subtype": "drop", "src": "{src_ip}", "dst": "{dst_ip}", "sport": 54321, "dport": {dst_port}, "proto": "{protocol}", "action": "{action}", "app": "ssl", "sessionid": 98421, "reason": "threat-detected"}}',
-        "field_mappings": {"src": "source.ip", "dst": "destination.ip", "dport": "destination.port", "action": "event.action", "proto": "network.transport"}
-    },
-    {
-        "vendor": "CheckPoint",
-        "device": "CheckPoint Quantum Security Gateway",
-        "format": "ArcSight CEF (Common Event Format)",
-        "raw_template": 'CEF:0|CheckPoint|VPN-1 & FireWall-1|9.0|drop|Drop traffic|6|src={src_ip} dst={dst_ip} spt=54321 dpt={dst_port} proto={protocol} act={action} app=HTTPS rule=12 cs1Label=Policy cs1=Perimeter-Block',
-        "field_mappings": {"src": "source.ip", "dst": "destination.ip", "dpt": "destination.port", "act": "event.action", "proto": "network.transport"}
-    },
-    {
-        "vendor": "Suricata IDS",
-        "device": "Suricata Network Threat Sensor",
-        "format": "IBM LEEF 2.0",
-        "raw_template": 'LEEF:2.0|Suricata|Suricata-IDS|6.0.4|ALERT|devTime=2026-09-06T14:32:10Z|src={src_ip}|dst={dst_ip}|spt=54321|dpt={dst_port}|proto=TCP|cat=Exploit|act={action}|sev=4|msg="ET POLICY Outbound TLS connection blocked"',
-        "field_mappings": {"src": "source.ip", "dst": "destination.ip", "dpt": "destination.port", "act": "event.action", "proto": "network.transport"}
-    },
-    {
-        "vendor": "Microsoft Windows",
-        "device": "Windows Server 2022 Security",
-        "format": "Windows Event Security XML",
-        "raw_template": '<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event"><System><Provider Name="Microsoft-Windows-Security-Auditing"/><EventID>5157</EventID></System><EventData><Data Name="Application">svchost.exe</Data><Data Name="Direction">Outbound</Data><Data Name="SourceAddress">{src_ip}</Data><Data Name="SourcePort">54321</Data><Data Name="DestAddress">{dst_ip}</Data><Data Name="DestPort">{dst_port}</Data><Data Name="Protocol">6</Data></EventData></Event>',
-        "field_mappings": {"SourceAddress": "source.ip", "DestAddress": "destination.ip", "DestPort": "destination.port", "5157": "event.action", "Protocol": "network.transport"}
-    }
-]
-
-
-@router.post("/api/v1/demo/traffic/multivendor")
-async def generate_multivendor_traffic(request: Request):
-    """
-    Generate the SAME conceptual network event across multiple enterprise vendors (Fortinet, Cisco, Palo Alto, CheckPoint, Suricata, Windows).
-    Proves that N distinct vendor formats converge into 1 identical ULPF-IR representation.
-    """
-    body = {}
-    try:
-        body = await request.json()
-    except Exception:
-        pass
-
-    src_ip = body.get("src_ip", "10.10.10.20")
-    dst_ip = body.get("dst_ip", "8.8.8.8")
-    dst_port = int(body.get("dst_port", 443))
-    action = body.get("action", "deny")
-    protocol = body.get("protocol", "tcp")
-
-    results = []
-    canonical_summary = {
-        "source_ip": src_ip,
-        "destination_ip": dst_ip,
-        "destination_port": dst_port,
-        "action": action,
-        "protocol": protocol,
-        "target_service": "HTTPS (Port 443)",
-        "convergence_status": "100% IDENTICAL ULPF-IR SCHEMA",
-    }
-
-    for spec in MULTIVENDOR_SPECS:
-        raw_template = str(spec.get("raw_template", ""))
-        device_name = str(spec.get("device", ""))
-        vendor_name = str(spec.get("vendor", ""))
-        format_name = str(spec.get("format", ""))
-        raw_msg = raw_template.format(
-            src_ip=src_ip,
-            dst_ip=dst_ip,
-            dst_port=dst_port,
-            action=action,
-            protocol=protocol,
-        )
-        
-        # Process through pipeline
-        ir = pipeline.process(raw_msg, source=device_name)
-        # Ensure canonical event reflects the unified concept
-        ir.source.ip = src_ip
-        ir.destination.ip = dst_ip
-        ir.destination.port = dst_port
-        ir.event.action = action
-        ir.network.transport = protocol
-        ir.device.vendor = vendor_name
-        ir.device.product = device_name
-        ir.status = "success"
-
-        rec = store_and_broadcast(ir, source_name=device_name)
-
-        ir_dict = ir.model_dump() if hasattr(ir, "model_dump") else dict(ir)
-        results.append({
-            "vendor": vendor_name,
-            "device": device_name,
-            "format": format_name,
-            "raw_log": raw_msg,
-            "sha256": rec["sha256"],
-            "event_id": rec["event_id"],
-            "field_mappings": spec["field_mappings"],
-            "parsed_keys": ir_dict.get("unmapped", {}),
-            "ulpf_ir": {
-                "event_id": rec["event_id"],
-                "timestamp": rec["timestamp"],
-                "source": {"ip": src_ip, "port": 54321},
-                "destination": {"ip": dst_ip, "port": dst_port},
-                "network": {"transport": protocol, "protocol": "https"},
-                "event": {"action": action, "category": "Network", "type": "Traffic Blocked"},
-                "device": {"vendor": spec["vendor"], "product": spec["device"]},
-                "status": "success"
-            },
-            "ocsf_preview": {
-                "class_uid": 4001,
-                "class_name": "Network Activity",
-                "activity_id": 2,
-                "src_endpoint": {"ip": src_ip, "port": 54321},
-                "dst_endpoint": {"ip": dst_ip, "port": dst_port},
-                "disposition": "Blocked",
-                "severity_id": 3
-            },
-            "ecs_preview": {
-                "event.category": ["network"],
-                "event.type": ["denied"],
-                "event.action": action,
-                "source.ip": src_ip,
-                "destination.ip": dst_ip,
-                "destination.port": dst_port,
-                "network.transport": protocol
-            }
-        })
-
-    return {
-        "status": "success",
-        "tested_vendors_count": len(results),
-        "conceptual_event": canonical_summary,
-        "vendor_comparisons": results,
-        "message": f"Successfully processed {len(results)} vendor formats for identical network event {src_ip} -> {dst_ip}:{dst_port} ({action})."
-    }
 
 
 @router.post("/api/v1/parsers/test")
@@ -2242,15 +2140,16 @@ async def test_parser_input(request: Request):
     parser_type = body.get("parser_type", "auto")
     t0 = time.time()
 
+
     # Detect format
-    detection = pipeline.detector.detect(raw_log)
-    detected_format = detection.format
-    confidence = detection.confidence
+    det = pipeline.detector.detect(raw_log)
+    detected_format = det.format
+    confidence = det.confidence
     if parser_type != "auto" and parser_type:
         detected_format = parser_type
-
+        
     # Process through pipeline
-    ir = pipeline.process(raw_log, source="Parser-Test-Bench")
+    ir = await run_in_threadpool(pipeline.process, raw_log, source="Parser-Test-Bench")
     elapsed_ms = round((time.time() - t0) * 1000, 2)
 
     # Validate results
@@ -2326,164 +2225,7 @@ async def test_parser_input(request: Request):
     }
 
 
-@router.post("/api/v1/demo/reset")
-def reset_demo_state():
-    """
-    Reset the ULPF state: clears in-memory event stores, resets counters, and removes all persistent events.
-    """
-    global EVENT_STORE, EVENT_LIST, EVENT_COUNTER, api_ingest_stats
 
-    EVENT_STORE.clear()
-    EVENT_LIST.clear()
-    EVENT_COUNTER = 1000
-
-    api_ingest_stats["total_received"] = 0
-    api_ingest_stats["total_processed"] = 0
-    api_ingest_stats["total_errors"] = 0
-
-    deleted = persistence_manager.clear_all_events()
-
-    # Clear raw payload files
-    try:
-        from pathlib import Path
-        raw_dir = Path(settings.storage_dir)
-        if raw_dir.exists():
-            for f in raw_dir.glob("*.raw"):
-                try:
-                    f.unlink()
-                except Exception:
-                    pass
-    except Exception:
-        pass
-
-    broadcast_event({
-        "type": "DEMO_RESET",
-        "message": "Demo state reset to clean baseline (all events cleared).",
-        "deleted_count": deleted
-    })
-
-    return {
-        "status": "success",
-        "message": "Demo state successfully reset. All event storage cleared.",
-        "deleted_count": deleted,
-        "seeded_events_count": 0,
-        "total_active_events": 0
-    }
-
-
-@router.post("/api/v1/demo/scenarios/{scenario_id}")
-def trigger_demo_scenario(scenario_id: str):
-    """
-    Trigger one of 4 predefined demo scenarios for presentation and judging.
-    - scenario_1 / normal: Mixed normal enterprise traffic (15 events)
-    - scenario_2 / security: Security incidents and alert traffic (10 events)
-    - scenario_3 / attack: High-velocity attack simulation (20 events)
-    - scenario_4 / unknown: Ingest unknown formats into AI Onboarding queue (3 events)
-    """
-    scenario_clean = scenario_id.lower().replace("-", "_")
-
-    if scenario_clean in ("scenario_1", "1", "normal"):
-        # Scenario 1: Mixed normal traffic
-        devices = ["Fortinet-Edge-01", "Cisco-Core-Router", "PaloAlto-NGFW", "AWS-VPC-Flow", "Linux-Auth-Server", "Nginx-Web-Proxy"]
-        actions = ["allow", "allow", "allow", "deny", "allow"]
-        for i in range(15):
-            dev = random.choice(devices)
-            src_ip = f"10.0.{random.randint(1, 10)}.{random.randint(2, 250)}"
-            dst_ip = f"192.168.1.{random.randint(2, 100)}"
-            sport = random.randint(30000, 65000)
-            dport = random.choice([80, 443, 22, 53, 8080, 8443])
-            act = random.choice(actions)
-            raw = f'devname="{dev}" type="traffic" action="{act}" srcip={src_ip} dstip={dst_ip} srcport={sport} dstport={dport} proto=6 msg="Normal enterprise traffic flow"'
-            ir = pipeline.process(raw, source=dev)
-            ir.status = "success"
-            ir.source.ip = src_ip
-            ir.destination.ip = dst_ip
-            ir.destination.port = dport
-            ir.event.action = act
-            store_and_broadcast(ir, source_name=dev)
-
-        return {
-            "status": "success",
-            "scenario": "Scenario 1: Normal Mixed Enterprise Traffic",
-            "generated_events": 15,
-            "description": "Generated 15 normal traffic events across firewalls, routers, and proxies."
-        }
-
-    elif scenario_clean in ("scenario_2", "2", "security"):
-        # Scenario 2: Security Incidents
-        security_logs = [
-            ("Fortinet-Edge-01", 'date=2026-09-06 time=16:50:00 devname="FGT-EDGE-01" action="deny" srcip=198.51.100.99 dstip=10.0.1.5 dstport=443 proto=6 msg="Blocked blacklisted source IP"'),
-            ("WAF-Perimeter", '{"agent": "Cloud-WAF", "client_ip": "203.0.113.44", "uri": "/login?user=admin\'--", "status": 403, "msg": "SQL Injection attempt detected and blocked"}'),
-            ("Cisco-Core-Router", '%ASA-4-106023: Deny tcp src outside:198.51.100.12/48192 dst inside:10.0.2.1/3389 by access-group "PERIMETER_DROP" [0x0, 0x0]'),
-            ("Linux-Auth-Server", 'Sep 06 16:50:22 auth-server-01 sshd[19022]: Failed password for invalid user root from 203.0.113.88 port 59124 ssh2'),
-            ("Suricata-IDS", 'LEEF:2.0|Suricata|Suricata-IDS|6.0.4|ALERT|devTime=2026-09-06T16:50:35Z|src=203.0.113.50|dst=10.0.1.10|spt=61200|dpt=80|proto=TCP|cat=WebAttack|act=drop|sev=5|msg="ET WEB_SPECIFIC_APPS Apache Struts RCE Detected"')
-        ]
-        for dev, raw in security_logs:
-            ir = pipeline.process(raw, source=dev)
-            ir.status = "blocked"
-            store_and_broadcast(ir, source_name=dev)
-
-        return {
-            "status": "success",
-            "scenario": "Network Security Events",
-            "generated_events": len(security_logs),
-            "description": "Simulated active security threats: SQLi, RCE, Brute Force, and Blacklisted IP violations."
-        }
-
-    elif scenario_clean in ("scenario_3", "3", "unknown", "unknown_vendor"):
-        # Scenario 3: Unknown Vendor Format
-        new_unknown = {
-            "id": f"UNK-2026-{random.randint(200, 999)}",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "source": "Industrial-SCADA-RTU",
-            "src_ip": "10.250.8.19",
-            "format": "Unknown (Proprietary RTU Binary-Hex)",
-            "raw_message": "[RTU-TELEMETRY] NODE=0xFA12 SENSOR_VAL=0x7F2A STATUS=CRITICAL_ALARM ADDR=10.250.8.19 DEST=10.0.1.1 REG=40001",
-            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-            "reason": "Proprietary SCADA RTU telemetry packet format",
-            "status": "pending_review"
-        }
-        UNKNOWN_LOGS_QUEUE.insert(0, new_unknown)
-
-        broadcast_event({
-            "type": "UNKNOWN_LOG_DETECTED",
-            "unknown_log": new_unknown,
-            "message": f"New unrecognized format detected from {new_unknown['source']}. Sent to AI Onboarding queue."
-        })
-
-        return {
-            "status": "success",
-            "scenario": "Unknown Vendor Format",
-            "new_unknown_id": new_unknown["id"],
-            "queue_length": len(UNKNOWN_LOGS_QUEUE),
-            "description": "Injected unknown proprietary RTU format into AI Onboarding review queue."
-        }
-
-    elif scenario_clean in ("scenario_4", "4", "security_incident", "incident", "attack"):
-        # Scenario 4: Security Incident Simulation
-        incident_logs = [
-            ("Auth-Service", '{"event": "AUTH_FAILURE", "user": "admin", "src_ip": "198.51.100.99", "reason": "Repeated password failure (attempt 5)", "action": "alert"}'),
-            ("Web-App-Gateway", '{"event": "SUSPICIOUS_REQUEST", "src_ip": "198.51.100.99", "uri": "/admin/config.php", "status": 403, "action": "deny"}'),
-            ("WAF-01", '{"event": "SQL_INJECTION", "src_ip": "203.0.113.88", "payload": "\' OR 1=1 --", "action": "block", "signature": "SQLi-Generic-01"}'),
-            ("Edge-Firewall", 'CEF:0|CheckPoint|Firewall|R81|102|XSS_DETECTED|Critical|src=198.51.100.42 dst=10.0.0.10 spt=54122 dpt=443 act=drop msg="<script>alert(1)</script>"'),
-            ("Perimeter-Router", '%ASA-4-106023: Deny ip src 198.51.100.99 dst 10.0.0.5 by access-group "BLOCKED_IP_FILTER" [0x0, 0x0]')
-        ]
-        count = 0
-        for dev, raw in incident_logs:
-            ir = pipeline.process(raw, source=dev)
-            ir.status = "blocked"
-            store_and_broadcast(ir, source_name=dev)
-            count += 1
-
-        return {
-            "status": "success",
-            "scenario": "Security Incident (Simulated)",
-            "generated_events": count,
-            "description": f"Generated {count} simulated security attack events (Repeated Login Failures, SQLi, XSS, Blocked IP)."
-        }
-
-    else:
-        raise HTTPException(status_code=400, detail=f"Unknown scenario ID '{scenario_id}'. Available: normal_enterprise, network_security, unknown_vendor, security_incident.")
 
 
 
@@ -2506,7 +2248,6 @@ def get_system_readiness():
             "opensearch": {"status": "READY" if ("healthy" in os_stat or "fallback" in os_stat) else "DEGRADED", "detail": f"OpenSearch 2.11 Sink ({os_stat})"},
             "redpanda": {"status": "READY" if redpanda_collector.check_broker_connectivity()[0] or settings.redpanda_enabled else "STANDALONE_FALLBACK", "detail": f"Redpanda Streaming Bus ({settings.redpanda_brokers})"},
             "ai": {"status": "READY" if settings.ai_enabled else "OPTIONAL / OFFLINE", "detail": f"{settings.ai_model_name} Local SLM ({settings.ai_provider})"},
-            "demo_server": {"status": "READY", "detail": "Multi-Vendor Ingestion & Synthetic Traffic Engine"},
             "sse": {"status": "CONNECTED", "detail": "Real-time Event Stream Subscriber Hub"}
         },
         "storage": storage_health,
@@ -2564,26 +2305,174 @@ def get_redpanda_messages(limit: int = Query(default=20, ge=1, le=100)):
 
 
 @router.post("/api/v1/redpanda/benchmark")
-def benchmark_redpanda(burst_count: int = Query(default=100, ge=10, le=5000)):
+@router.post("/redpanda/benchmark")
+def redpanda_benchmark(burst_count: int = Query(default=50, ge=1, le=10000)):
     """
-    Execute a high-throughput streaming benchmark through the Redpanda collector.
+    Execute high-speed burst production benchmark directly onto the streaming bus.
     """
-    start_time = time.time()
+    start_t = time.perf_counter()
+    sample_log = "CEF:0|BenchmarkVendor|LoadTester|1.0|100|StreamingBurst|Low|src=10.0.0.1 dst=10.0.0.2 proto=tcp act=allow"
+    published = 0
     for i in range(burst_count):
-        raw_msg = f"CEF:0|Benchmark|RedpandaStream|1.0|100|Event{i}|Low|src=10.0.0.{i % 250 + 1} dst=192.168.1.1 spt={10000+i} dpt=443 act=allow"
-        redpanda_collector.produce(raw_message=raw_msg, source="redpanda-benchmark")
+        redpanda_collector.produce(
+            raw_message=f"{sample_log} id={i}",
+            source="benchmark_runner"
+        )
+        published += 1
 
-    elapsed = time.time() - start_time
-    eps = burst_count / elapsed if elapsed > 0 else burst_count * 1000
+    elapsed = max(0.0001, time.perf_counter() - start_t)
+    estimated_eps = int(published / elapsed)
 
     return {
         "status": "success",
-        "burst_count": burst_count,
-        "elapsed_seconds": round(elapsed, 4),
-        "estimated_eps": round(eps, 2),
-        "messages_produced": redpanda_collector.messages_produced,
-        "bytes_produced": redpanda_collector.bytes_produced,
+        "burst_count": published,
+        "duration_ms": round(elapsed * 1000, 2),
+        "estimated_eps": estimated_eps,
+        "topic": settings.redpanda_input_topic,
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
+
+
+# ----------------------------------------------------------------------------
+# Demonstration & Synthetic Traffic Generation Endpoints
+# ----------------------------------------------------------------------------
+@router.post("/api/v1/demo/reset")
+@router.post("/demo/reset")
+def demo_reset():
+    """
+    One-click reset of demo state, statistics, and in-memory event buffers to a clean baseline.
+    """
+    global EVENT_STORE, UNKNOWN_LOGS_QUEUE
+    EVENT_STORE.clear()
+    try:
+        UNKNOWN_LOGS_QUEUE.clear()
+    except Exception:
+        pass
+    try:
+        persistence_manager.db.clear_all_events()
+    except Exception:
+        pass
+    return {
+        "status": "success",
+        "message": "Demo state reset to clean baseline",
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+
+
+@router.post("/api/v1/demo/traffic/multivendor")
+@router.post("/demo/traffic/multivendor")
+def demo_multivendor_traffic(body: Optional[Dict[str, Any]] = None):
+    """
+    Inject synthetic multi-vendor traffic to demonstrate vendor log normalization.
+    """
+    req_body = body or {}
+    burst = int(req_body.get("burst_count", 6))
+    
+    vendors = [
+        ("CheckPoint", "cef", "CEF:0|CheckPoint|VPN-1|R81|100|Accept|Low|src=10.0.1.5 dst=8.8.8.8 spt=45231 dpt=443 proto=tcp act=accept"),
+        ("PaloAlto", "cef", "CEF:0|PaloAlto|PAN-OS|10.1|THREAT|vulnerability|9|src=198.51.100.42 dst=10.0.1.15 spt=49152 dpt=445 proto=tcp act=drop"),
+        ("Cisco", "syslog", "<163>Sep 15 10:00:00 cisco-asa %ASA-4-106023: Deny tcp src 198.51.100.25 dst 10.0.0.1 spt 5000 dpt 80"),
+        ("Fortinet", "kv", "src=192.168.1.10 dst=1.1.1.1 spt=5432 dpt=443 act=deny vendor=Fortinet devname=FGT-HQ"),
+        ("AWS_WAF", "json", json.dumps({"timestamp": datetime.now(timezone.utc).isoformat(), "action": "BLOCK", "src_ip": "203.0.113.50", "dst_ip": "10.0.0.5", "vendor": "AWS_WAF", "threat": "SQLi"})),
+        ("Suricata", "json", json.dumps({"timestamp": datetime.now(timezone.utc).isoformat(), "event_type": "alert", "src_ip": "192.168.1.99", "dest_ip": "10.0.0.1", "proto": "TCP", "alert": {"signature": "ET SCAN Portscan"}})),
+    ]
+
+    processed_events = []
+    for v_name, fmt, raw_log in vendors[:burst]:
+        ir = pipeline.process(raw_log, source=f"demo-{v_name.lower()}")
+        persistence_manager.persist_event(ir, source=f"demo-{v_name.lower()}")
+        processed_events.append(ir.ulpf.event_id)
+
+    return {
+        "status": "success",
+        "tested_vendors_count": len(processed_events),
+        "events_generated": len(processed_events),
+        "events": processed_events,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+
+
+@router.post("/api/v1/demo/traffic/generate")
+@router.post("/demo/traffic/generate")
+def demo_traffic_generate(
+    events: int = Query(default=10, ge=1, le=1000),
+    source: str = Query(default="firewall"),
+    format: str = Query(default="cef")
+):
+    from app.api.generator import generate_log
+    created = []
+    for _ in range(events):
+        log_str = generate_log(source=source, fmt=format)
+        ir = pipeline.process(log_str, source=f"demo-{source}")
+        persistence_manager.persist_event(ir, source=f"demo-{source}")
+        created.append(ir.ulpf.event_id)
+    return {
+        "status": "success",
+        "generated_count": len(created),
+        "event_ids": created,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+
+
+@router.post("/api/v1/demo/scenarios/{scenario_id}")
+@router.post("/demo/scenarios/{scenario_id}")
+def demo_run_scenario(scenario_id: str):
+    """
+    Inject predefined threat and unknown vendor log scenarios.
+    """
+    scen_lower = scenario_id.lower()
+    injected_ids = []
+
+    if "unknown" in scen_lower or scen_lower in ("scenario_4",):
+        novel_raw = f"0x89504E47 NOVEL_PROTOCOL header_flag=0x01 checksum=0x99A4 src=172.31.0.5 target=10.10.10.10 time={int(time.time())}"
+        ir = pipeline.process(novel_raw, source="unknown-proprietary-device")
+        persistence_manager.persist_event(ir, source="unknown-proprietary-device")
+        return {
+            "status": "success",
+            "scenario": "Unknown Vendor Format",
+            "scenario_id": scenario_id,
+            "new_unknown_id": ir.ulpf.event_id,
+            "description": "Injected proprietary novel telemetry for AI synthesis",
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+    elif "sql" in scen_lower or "attack" in scen_lower or scen_lower in ("scenario_1", "security"):
+        sqli_raw = "WAF: src=203.0.113.88 msg='SQLi attempt detected' query='SELECT * FROM users WHERE id=1 OR 1=1' act=block"
+        ir = pipeline.process(sqli_raw, source="waf-perimeter")
+        persistence_manager.persist_event(ir, source="waf-perimeter")
+        injected_ids.append(ir.ulpf.event_id)
+        scen_name = "SQL Injection Attack Scenario"
+    elif "brute" in scen_lower or scen_lower in ("scenario_2",):
+        for i in range(5):
+            auth_fail = f"<134>Sep 15 10:00:{i:02d} auth_gateway sshd: Failed password for invalid user admin from 198.51.100.42 port {5000+i} ssh2"
+            ir = pipeline.process(auth_fail, source="auth-gateway")
+            persistence_manager.persist_event(ir, source="auth-gateway")
+            injected_ids.append(ir.ulpf.event_id)
+        scen_name = "Brute Force Authentication Scenario"
+    elif "scan" in scen_lower or "ddos" in scen_lower or scen_lower in ("scenario_3",):
+        for i in range(5):
+            scan_log = f"CEF:0|Suricata|NIDS|6.0|SCAN|Portscan|High|src=198.51.100.99 dst=10.0.0.1 spt={10000+i} dpt={80+i} proto=tcp act=drop"
+            ir = pipeline.process(scan_log, source="suricata-nids")
+            persistence_manager.persist_event(ir, source="suricata-nids")
+            injected_ids.append(ir.ulpf.event_id)
+        scen_name = "Port Scan & Threat Hunting Scenario"
+    else:
+        norm_log = "CEF:0|Cisco|ASA|9.2|106015|Deny|6|src=198.51.100.22 dst=10.0.0.1 spt=443 dpt=80 proto=tcp act=allow"
+        ir = pipeline.process(norm_log, source="cisco-edge")
+        persistence_manager.persist_event(ir, source="cisco-edge")
+        injected_ids.append(ir.ulpf.event_id)
+        scen_name = "Normal Operational Traffic"
+
+    return {
+        "status": "success",
+        "scenario": scen_name,
+        "scenario_id": scenario_id,
+        "logs_injected": len(injected_ids),
+        "injected_event_ids": injected_ids,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+
+
+
 
 
 # ----------------------------------------------------------------------------
@@ -2749,16 +2638,16 @@ def get_database_status():
 
 
 @router.post("/api/v1/database/test-connection")
-def test_database_connection(body: Dict[str, Any]):
+async def test_database_connection(body: Dict[str, Any]):
     """
     Test connectivity to an external target database URL (sqlite:// or postgresql://)
-    without disrupting active persistence backend.
+    without disrupting active persistence backend. (Non-blocking I/O via ThreadPool)
     """
     target_url = body.get("url") or body.get("database_url")
     if not target_url:
         raise HTTPException(status_code=400, detail="Missing required 'url' parameter.")
 
-    result = persistence_manager.db.test_connection_target(target_url)
+    result = await run_in_threadpool(persistence_manager.db.test_connection_target, target_url)
     return result
 
 
@@ -3063,9 +2952,17 @@ def test_burst_traffic(body: Dict[str, Any]):
     else:
         for m in samples:
             try:
-                ir = pipeline.process(m, source="burst-tester")
-                store_and_broadcast(ir, source_name="burst-tester")
-                success_count += 1
+                ingress = RawIngress(
+                    raw_text=m,
+                    source="burst-tester",
+                    connector_type="HTTP_BURST",
+                    transport_metadata={"client_ip": host}
+                )
+                success, _ = ingestion_queue.enqueue(ingress)
+                if success:
+                    success_count += 1
+                else:
+                    errors.append("Queue full or rate limited")
             except Exception as e:
                 errors.append(str(e))
 
@@ -3083,92 +2980,359 @@ def test_burst_traffic(body: Dict[str, Any]):
         "sustained_eps": eps,
         "errors": errors[:3],
     }
+from pydantic import BaseModel
+class TamperRequest(BaseModel):
+    event_id: str = ""
+    tampered_value: str = "TAMPERED_PAYLOAD_SIMULATION"
+
+@router.post("/api/v1/test/tamper")
+def test_tamper_event(req: TamperRequest):
+    """Simulate a cryptographic tamper of a stored database event."""
+    from datetime import datetime, timezone
+    import time
+    
+    # 1. Fetch recent events if ID not provided
+    if not req.event_id:
+        db_records = persistence_manager.db.get_events(limit=5)
+        if not db_records:
+            return {"status": "error", "detail": "No events available to tamper."}
+        req.event_id = db_records[0]["event_id"]
+        
+    # 2. Tamper with the raw message in SQLite without updating the SHA-256 hash
+    new_message = req.tampered_value
+    try:
+        with persistence_manager.db.get_connection() as conn:
+            cursor = conn.cursor()
+            persistence_manager.db._execute_sql(
+                cursor,
+                "UPDATE events SET raw_message = ? WHERE event_id = ?",
+                (new_message, req.event_id)
+            )
+            conn.commit()
+    except Exception as e:
+        return {"status": "error", "detail": f"Database error: {str(e)}"}
+    
+    # 3. Trigger integrity check to detect it
+    integrity_result = persistence_manager.verify_event_integrity(req.event_id)
+    
+    # 4. If tampering is detected, inject an alert to the human review queue
+    if not integrity_result.get("is_valid", True):
+        alert_id = f"TAMPER-{int(time.time())}"
+        alert_entry = {
+            "id": alert_id,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "raw_message": f"CRITICAL INTEGRITY FAILURE: Event {req.event_id} has been cryptographically altered! Hash mismatch detected.",
+            "is_tamper_alert": True,
+            "event_id": req.event_id,
+            "sha256": "TAMPERED",
+            "format": "System Integrity Alert"
+        }
+        UNKNOWN_LOGS_QUEUE.insert(0, alert_entry)
+        broadcast_event({"type": "TAMPER_DETECTED", "data": alert_entry, "total_unknown": len(UNKNOWN_LOGS_QUEUE)})
+        
+        return {"status": "success", "event_id": req.event_id, "alert": alert_entry}
+        
+    return {"status": "failed_to_tamper"}
 
 
 @router.post("/api/v1/test/verify-stack")
-def test_verify_stack():
-    """Run an automated 10-step stack verification suite and report status."""
-    steps = []
+async def test_verify_stack():
+    """Run an automated 10-step stack verification suite and report status. (Non-blocking I/O)"""
+    
+    def run_sync_suite():
+        steps = []
 
-    def check_step(name: str, fn):
-        t0 = time.perf_counter()
-        try:
-            ok, detail = fn()
-            ms = round((time.perf_counter() - t0) * 1000, 2)
-            steps.append({"name": name, "status": "PASS" if ok else "FAIL", "latency_ms": ms, "detail": detail})
-        except Exception as e:
-            ms = round((time.perf_counter() - t0) * 1000, 2)
-            steps.append({"name": name, "status": "FAIL", "latency_ms": ms, "detail": str(e)})
+        def check_step(name: str, fn):
+            t0 = time.perf_counter()
+            try:
+                ok, detail = fn()
+                ms = round((time.perf_counter() - t0) * 1000, 2)
+                steps.append({"name": name, "status": "PASS" if ok else "FAIL", "latency_ms": ms, "detail": detail})
+            except Exception as e:
+                ms = round((time.perf_counter() - t0) * 1000, 2)
+                steps.append({"name": name, "status": "FAIL", "latency_ms": ms, "detail": str(e)})
 
-    # Step 1: FastAPI Health
-    check_step("1. FastAPI Core Liveness Probe", lambda: (True, "HTTP 200 OK (Core server active)"))
+        # Step 1: FastAPI Health
+        check_step("1. FastAPI Core Liveness Probe", lambda: (True, "HTTP 200 OK (Core server active)"))
 
-    # Step 2: System Readiness
-    check_step("2. Subsystem Readiness & Health", lambda: (
-        True,
-        f"Verified {len(persistence_manager.get_storage_health())} storage tiers + {len(pipeline.registry.list_parsers())} active parsers"
-    ))
+        # Step 2: System Readiness
+        check_step("2. Subsystem Readiness & Health", lambda: (
+            True,
+            f"Verified {len(persistence_manager.get_storage_health())} storage tiers + {len(pipeline.registry.list_parsers())} active parsers"
+        ))
 
-    # Step 3: Pipeline Parser Ingestion (CEF)
-    def test_cef():
-        ir = pipeline.process("CEF:0|CheckPoint|VPN-1|R80|100|Accept|High|src=10.0.1.5 dst=192.168.1.1 spt=51421 dpt=443 act=allow")
-        return (ir.original.format.lower() == "cef", f"Parsed format: {ir.original.format} | SHA-256: {ir.original.sha256[:12]}...")
-    check_step("3. Deterministic Parser Engine (CEF)", test_cef)
+        # Step 3: Pipeline Parser Ingestion (CEF)
+        def test_cef():
+            ir = pipeline.process("CEF:0|CheckPoint|VPN-1|R80|100|Accept|High|src=10.0.1.5 dst=192.168.1.1 spt=51421 dpt=443 act=allow")
+            return (ir.original.format.lower() == "cef", f"Parsed format: {ir.original.format} | SHA-256: {ir.original.sha256[:12]}...")
+        check_step("3. Deterministic Parser Engine (CEF)", test_cef)
 
-    # Step 4: Cryptographic Provenance & Tamper-Check
-    def test_provenance():
-        ir = pipeline.process("CEF:0|Cisco|ASA|9.2|106015|Deny|6|src=198.51.100.22 dst=10.0.0.1")
-        return (len(ir.provenance) > 0 and ir.original.sha256, f"{len(ir.provenance)} field offsets verified against SHA-256 hash")
-    check_step("4. Cryptographic Provenance Integrity", test_provenance)
+        # Step 4: Cryptographic Provenance & Tamper-Check
+        def test_provenance():
+            ir = pipeline.process("CEF:0|Cisco|ASA|9.2|106015|Deny|6|src=198.51.100.22 dst=10.0.0.1")
+            return (len(ir.provenance) > 0 and ir.original.sha256, f"{len(ir.provenance)} field offsets verified against SHA-256 hash")
+        check_step("4. Cryptographic Provenance Integrity", test_provenance)
 
-    # Step 5: AI Onboarding Parser Synthesis
-    def test_ai_onboard():
-        prop = ai_engine.analyze_samples(["src=10.0.1.5 dst=192.168.1.1 action=deny proto=tcp app=ssh"])
-        return (bool(prop.yaml_spec), f"Synthesized schema '{prop.format}' (Confidence: {prop.confidence})")
-    check_step("5. AI Schema & Parser Synthesis", test_ai_onboard)
+        # Step 5: AI Onboarding Parser Synthesis
+        def test_ai_onboard():
+            prop = ai_engine.analyze_samples(["src=10.0.1.5 dst=192.168.1.1 action=deny proto=tcp app=ssh"])
+            return (bool(prop.yaml_spec), f"Synthesized schema '{prop.format}' (Confidence: {prop.confidence})")
+        check_step("5. AI Schema & Parser Synthesis", test_ai_onboard)
 
-    # Step 6: AI Threat Reasoning & MITRE ATT&CK Mapping
-    def test_ai_threat():
-        exp = ai_engine.explain_incident("WAF: src=203.0.113.88 msg='SQLi attempt detected' query='SELECT * FROM users WHERE id=1 OR 1=1'")
-        return (exp.mitre_attack_id == "T1190", f"Mapped to MITRE {exp.mitre_attack_id} ({exp.threat_type})")
-    check_step("6. AI Incident & MITRE ATT&CK Reasoning", test_ai_threat)
+        # Step 6: AI Threat Reasoning & MITRE ATT&CK Mapping
+        def test_ai_threat():
+            exp = ai_engine.explain_incident("WAF: src=203.0.113.88 msg='SQLi attempt detected' query='SELECT * FROM users WHERE id=1 OR 1=1'")
+            return (exp.mitre_attack_id == "T1190", f"Mapped to MITRE {exp.mitre_attack_id} ({exp.threat_type})")
+        check_step("6. AI Incident & MITRE ATT&CK Reasoning", test_ai_threat)
 
-    # Step 7: AI Natural Language Query Translation
-    def test_ai_nl():
-        res = ai_engine.nl_to_query("Find critical failed logins from external IPs")
-        return (bool(res.query_dsl), "Translated to OpenSearch Query DSL")
-    check_step("7. AI Natural Language Query DSL", test_ai_nl)
+        # Step 7: AI Natural Language Query Translation
+        def test_ai_nl():
+            res = ai_engine.nl_to_query("Find critical failed logins from external IPs")
+            return (bool(res.query_dsl), "Translated to OpenSearch Query DSL")
+        check_step("7. AI Natural Language Query DSL", test_ai_nl)
 
-    # Step 8: AI Sigma Rule Generation
-    def test_ai_sigma():
-        rule = ai_engine.synthesize_detection_rule({"threat_type": "Brute Force Authentication", "severity": "high", "mitre_attack_id": "T1110"})
-        return (bool(rule.sigma_yaml), f"Generated Sigma Rule (ID: {rule.rule_id})")
-    check_step("8. AI Sigma Rule Generation", test_ai_sigma)
+        # Step 8: AI Sigma Rule Generation
+        def test_ai_sigma():
+            rule = ai_engine.synthesize_detection_rule({"threat_type": "Brute Force Authentication", "severity": "high", "mitre_attack_id": "T1110"})
+            return (bool(rule.sigma_yaml), f"Generated Sigma Rule (ID: {rule.rule_id})")
+        check_step("8. AI Sigma Rule Generation", test_ai_sigma)
 
-    # Step 9: Redpanda Streaming Exporter
-    def test_exporter():
-        exporter = RedpandaExporter()
-        ir = pipeline.process("CEF:0|Cisco|ASA|9.2|106015|Deny|6|src=198.51.100.22 dst=10.0.0.1")
-        exp = exporter.export(ir)
-        return ("ocsf" in exp and "ecs" in exp, f"Stream: {exp.get('stream_id')} (OCSF v1.1.0 + ECS v8.x)")
-    check_step("9. Dual Canonical Exporter (OCSF & ECS)", test_exporter)
+        # Step 9: Redpanda Streaming Exporter
+        def test_exporter():
+            exporter = RedpandaExporter()
+            ir = pipeline.process("CEF:0|Cisco|ASA|9.2|106015|Deny|6|src=198.51.100.22 dst=10.0.0.1")
+            exp = exporter.export(ir)
+            return ("ocsf" in exp and "ecs" in exp, f"Stream: {exp.get('stream_id')} (OCSF v1.1.0 + ECS v8.x)")
+        check_step("9. Dual Canonical Exporter (OCSF & ECS)", test_exporter)
 
-    # Step 10: Ingress Queue Health
-    check_step("10. Ingress Queue & Rate Limiter", lambda: (
-        True,
-        f"Queue depth: {ingestion_queue.queue.qsize()} / {settings.ingress_queue_max_size} | Cap: {settings.max_events_per_second} EPS"
-    ))
+        # Step 10: Ingress Queue Health
+        check_step("10. Ingress Queue & Rate Limiter", lambda: (
+            True,
+            f"Queue depth: {ingestion_queue.get_metrics()['queue_depth']} / {settings.ingress_queue_max_size} | Cap: {settings.max_events_per_second} EPS"
+        ))
 
-    passed = sum(1 for s in steps if s["status"] == "PASS")
+        passed = sum(1 for s in steps if s["status"] == "PASS")
+        return {
+            "overall_status": "PASSED" if passed == len(steps) else "WARNING",
+            "passed": passed,
+            "total": len(steps),
+            "steps": steps,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+    return await run_in_threadpool(run_sync_suite)
+
+@router.get("/api/v1/analytics/summary")
+def get_analytics_summary():
+    """Return aggregated analytics data for the Analytics Studio dashboard."""
+    severity_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0, "informational": 0}
+    source_counts = {}
+    format_counts = {}
+    threats_by_format = {}
+    
+    # Analyze the last 1000 unique events in memory
+    recent_events = []
+    seen_ids = set()
+    for ev in EVENT_LIST[:1000]:
+        eid = ev.get("event_id", ev.get("id")) if isinstance(ev, dict) else getattr(ev, "event_id", getattr(ev, "id", None))
+        if not eid or eid not in seen_ids:
+            if eid:
+                seen_ids.add(eid)
+            recent_events.append(ev)
+            
+    for ev in recent_events:
+        if isinstance(ev, dict):
+            # Severity
+            sev = str(ev.get("severity", "informational")).lower()
+            
+            # Action and Threat
+            action = str(ev.get("action", "allow")).lower()
+            has_threat = ev.get("threat") is not None
+            
+            # Source IPs
+            src_val = ev.get("source")
+            if isinstance(src_val, dict):
+                src = src_val.get("ip", "Unknown")
+            elif isinstance(src_val, str):
+                src = src_val
+            else:
+                src = ev.get("source_device", "Unknown")
+            
+            if not src:
+                src = "Unknown"
+            
+            # Formats
+            fmt = ev.get("format")
+            if not fmt:
+                orig_dict = ev.get("original", {})
+                if isinstance(orig_dict, dict):
+                    fmt = orig_dict.get("format", "Unknown")
+                else:
+                    fmt = "Unknown"
+                
+        else:
+            # Severity
+            sev = str(getattr(ev, "severity", "informational")).lower()
+            
+            # Action and Threat
+            action = str(getattr(ev, "action", "allow")).lower()
+            has_threat = getattr(ev, "threat", None) is not None
+            
+            # Source IPs
+            src_val = getattr(ev, "source", None)
+            if hasattr(src_val, "ip"):
+                src = getattr(src_val, "ip", "Unknown")
+            elif isinstance(src_val, str):
+                src = src_val
+            else:
+                src = getattr(ev, "source_device", "Unknown")
+            if not src:
+                src = "Unknown"
+            
+            # Formats
+            fmt = getattr(ev, "format", None)
+            if not fmt:
+                orig_obj = getattr(ev, "original", None)
+                fmt = getattr(orig_obj, "format", "Unknown") if orig_obj else "Unknown"
+
+        # Update counts
+        if sev in severity_counts:
+            severity_counts[sev] += 1
+        else:
+            severity_counts["informational"] += 1
+            
+        if not src:
+            src = "Unknown"
+        source_counts[src] = source_counts.get(src, 0) + 1
+        
+        if not fmt:
+            fmt = "Unknown"
+        format_counts[fmt] = format_counts.get(fmt, 0) + 1
+        
+        if fmt not in threats_by_format:
+            threats_by_format[fmt] = 0
+        
+        # Threat logs by format (matches frontend filtering logic)
+        if has_threat or action in ["deny", "block"] or sev in ["high", "critical"]:
+            threats_by_format[fmt] += 1
+            
+    top_sources = sorted([{"ip": k, "count": v} for k, v in source_counts.items()], key=lambda x: x["count"], reverse=True)[:5]
+    top_formats = sorted([{"format": k, "count": v} for k, v in format_counts.items()], key=lambda x: x["count"], reverse=True)[:5]
+    top_threat_formats = sorted(
+        [{"format": k, "count": v} for k, v in threats_by_format.items()], 
+        key=lambda x: (x["count"], format_counts.get(x["format"], 0)), 
+        reverse=True
+    )[:5]
+    
+    # Extract real EPS from the global throughput monitor
+    base_eps = 0
+    try:
+        base_eps = float(global_throughput_monitor.get_stats().get("avg_eps_10s", 0))
+    except:
+        pass
+        
     return {
-        "overall_status": "PASSED" if passed == len(steps) else "WARNING",
-        "passed": passed,
-        "total": len(steps),
-        "steps": steps,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "severity_distribution": severity_counts,
+        "top_sources": top_sources,
+        "top_formats": top_formats,
+        "top_threat_formats": top_threat_formats,
+        "live_eps": base_eps,
+        "processing_rate": f"{base_eps} logs/sec",
+        "total_analyzed": len(recent_events)
     }
 
+@router.get("/api/v1/analytics/minio-stats")
+def get_minio_stats():
+    """Return health and storage insights for the MinIO raw evidence bucket."""
+    return persistence_manager.minio.check_health()
 
+@router.get("/api/v1/analytics/evidence/{event_id}")
+def get_raw_evidence(event_id: str):
+    """Retrieve raw byte-for-byte evidence and SHA-256 hash from MinIO."""
+    ev = EVENT_STORE.get(event_id)
+    if not ev:
+        raise HTTPException(status_code=404, detail="Event not found in memory")
+    
+    if isinstance(ev, dict):
+        storage_uri = ev.get("storage_uri", "")
+        original = ev.get("original", {})
+    else:
+        storage_uri = getattr(ev, "storage_uri", "")
+        original = getattr(ev, "original", {})
+        
+    content, sha256 = persistence_manager.minio.get_raw_log(storage_uri, event_id=event_id)
+    
+    if not content:
+        if isinstance(original, dict):
+            content = original.get("raw_text", original.get("message", original.get("raw", "RAW CONTENT UNAVAILABLE")))
+            sha256 = original.get("sha256", "HASH UNAVAILABLE")
+        elif hasattr(original, "raw_text") or hasattr(original, "message") or hasattr(original, "raw"):
+            content = getattr(original, "raw_text", getattr(original, "message", getattr(original, "raw", "RAW CONTENT UNAVAILABLE")))
+            sha256 = getattr(original, "sha256", "HASH UNAVAILABLE")
+        else:
+            content = "RAW CONTENT UNAVAILABLE"
+            sha256 = "HASH UNAVAILABLE"
+            
+    return {
+        "event_id": event_id,
+        "raw_content": content,
+        "sha256_hash": sha256,
+        "tamper_verified": True if content and "UNAVAILABLE" not in sha256 else False,
+        "parsed_event": ev if isinstance(ev, dict) else (getattr(ev, "model_dump", lambda: vars(ev))())
+    }
 
+@router.post("/api/v1/ai/reanalyze-threat/{event_id}")
+def ai_reanalyze_threat(event_id: str):
+    """
+    Verify if a flagged threat is a true positive or a benign false positive.
+    Downgrades the threat if verified as benign.
+    """
+    ev = EVENT_STORE.get(event_id)
+    if not ev:
+        # Try database
+        ev = persistence_manager.db.get_event(event_id)
+        if not ev:
+            raise HTTPException(status_code=404, detail="Event not found.")
+            
+    if isinstance(ev, dict):
+        threat = ev.get("threat")
+        raw_msg = ev.get("original", {}).get("raw") or ev.get("raw_message") or str(ev)
+    else:
+        threat = getattr(ev, "threat", None)
+        if not threat and hasattr(ev, "unmapped"):
+            threat = ev.unmapped.get("threat")
+            
+        orig = getattr(ev, "original", None)
+        raw_msg = getattr(orig, "message", getattr(orig, "raw_text", getattr(orig, "raw", None))) or getattr(ev, "raw_message", None) or str(ev)
 
-
+    if not threat:
+        threat_type = "Traffic Dropped / Blocked Connection"
+    else:
+        threat_type = threat.get("threat_type", "Unknown Threat") if isinstance(threat, dict) else getattr(threat, "threat_type", "Unknown Threat")
+    
+    result = ai_engine.reanalyze_threat(raw_message=raw_msg, parsed_threat=threat_type)
+    
+    if not result.get("is_threat", True):
+        # Downgrade in memory
+        if isinstance(ev, dict):
+            ev.pop("threat", None)
+            if "ulpf" in ev and isinstance(ev["ulpf"], dict):
+                ev["ulpf"].pop("threat", None)
+            ev["severity"] = "info"
+            if ev.get("action") in ("deny", "block"):
+                ev["action"] = "allow"
+        else:
+            if hasattr(ev, "threat"):
+                try: delattr(ev, "threat") 
+                except: ev.threat = None
+            if hasattr(ev, "unmapped") and "threat" in ev.unmapped:
+                ev.unmapped.pop("threat", None)
+            if hasattr(ev, "severity"):
+                ev.severity = "info"
+            if hasattr(ev, "action") and getattr(ev, "action") in ("deny", "block"):
+                ev.action = "allow"
+        
+        # Downgrade in database
+        persistence_manager.db.downgrade_event(event_id)
+        
+    return {"status": "success", "result": result, "event_id": event_id}

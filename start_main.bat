@@ -9,5 +9,5 @@ echo  [ULPF CORE 1] Starting Main Worker Platform...
 echo  Dashboard ^& API: http://localhost:8000/dashboard/index.html#/overview
 echo ======================================================================
 
-python main\run_main.py
+python .\main\run_main.py
 pause

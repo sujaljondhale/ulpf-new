@@ -72,7 +72,7 @@ Users and applications can send logs directly to ULPF via HTTP POST requests.
 
 **Single Log Submission:**
 ```bash
-curl -X POST http://ulpf-server:8000/api/v1/ingest \
+curl -X POST http://localhost:8000/api/v1/ingest \
   -H "Content-Type: application/json" \
   -d '{
     "source": "web-server-01",
@@ -82,7 +82,7 @@ curl -X POST http://ulpf-server:8000/api/v1/ingest \
 
 **Batch Log Submission:**
 ```bash
-curl -X POST http://ulpf-server:8000/api/v1/ingest/batch \
+curl -X POST http://localhost:8000/api/v1/ingest/batch \
   -H "Content-Type: application/json" \
   -d '{
     "source": "security-scanner",
@@ -96,7 +96,7 @@ curl -X POST http://ulpf-server:8000/api/v1/ingest/batch \
 
 **File Upload:**
 ```bash
-curl -X POST http://ulpf-server:8000/api/v1/upload \
+curl -X POST http://localhost:8000/api/v1/upload \
   -F "file=@/var/log/auth.log"
 ```
 
@@ -111,7 +111,7 @@ log_data = {
     "message": "1725619200.123456789 AP-Office-3F events type=association radio=1 vap=0 channel=36 rssi=42 aid=1234 mac=AA:BB:CC:DD:EE:FF"
 }
 
-response = requests.post("http://ulpf-server:8000/api/v1/ingest", json=log_data)
+response = requests.post("http://localhost:8000/api/v1/ingest", json=log_data)
 result = response.json()
 
 print(f"Event ID: {result['event_id']}")
@@ -127,10 +127,10 @@ ULPF monitors the `storage/logs/` directory for `.log` files. Any new lines appe
 
 ```bash
 # Drop a log file into the watched directory — ULPF picks it up automatically
-cp /var/log/nginx/access.log /path/to/ulpf/main/storage/logs/
+cp /var/log/nginx/access.log /path/to/ulpf/storage/logs/
 
 # Or pipe logs directly
-echo '<134>Sep 11 14:30:00 fw01 Connection blocked src=10.0.0.1 dst=192.168.1.1' >> /path/to/ulpf/main/storage/logs/firewall.log
+echo '<134>Sep 11 14:30:00 fw01 Connection blocked src=10.0.0.1 dst=192.168.1.1' >> /path/to/ulpf/storage/logs/firewall.log
 ```
 
 ---
@@ -144,7 +144,7 @@ from kafka import KafkaProducer
 import json
 
 producer = KafkaProducer(
-    bootstrap_servers='redpanda:9092',
+    bootstrap_servers='localhost:19092',
     value_serializer=lambda v: json.dumps(v).encode('utf-8')
 )
 
@@ -358,6 +358,39 @@ sequenceDiagram
 
 ---
 
+## AI Onboarding & Cascading Fallback Architecture
+
+A core innovation of ULPF is its ability to handle completely unknown or proprietary log formats dynamically. Instead of failing, ULPF triggers its **AI Onboarding Engine** to synthesize a parser on the fly. 
+
+To ensure 100% uptime and resilience against outages (e.g. rate limits, disconnected local instances), ULPF utilizes a **Cascading 3-Step Model Fallback**:
+
+1. **Step 1: Local Model (Ollama)**
+   - The engine first attempts to use a local, air-gapped Small Language Model (SLM) such as `qwen2.5:7b` running on the internal network. This ensures data sovereignty and zero API costs.
+   - If the local daemon is unreachable or the model is unloaded, it safely proceeds to Step 2.
+
+2. **Step 2: API Key Model (Hugging Face)**
+   - The system falls back to an external serverless Inference API using an injected `HF_TOKEN`. It queries `Qwen/Qwen2.5-7B-Instruct` on Hugging Face to generate the parser schema. 
+   - If the API call times out, encounters a rate limit, or the API key is missing/invalid, it proceeds to Step 3.
+
+3. **Step 3: Default (Pydantic / Heuristic Logic)**
+   - The ultimate fallback is a completely deterministic, non-LLM heuristic provider. It uses fast regex and structured Pydantic models to construct a basic, valid schema, ensuring the log is processed, categorized, and stored securely without dropping data.
+
+```mermaid
+flowchart TD
+    UnknownLog[Unknown Log Ingested] --> Check1{Is Ollama Ready?}
+    Check1 -- Yes --> M1[Parse via Local Model]
+    Check1 -- No/Fail --> Check2{Is HF_TOKEN Valid?}
+    
+    Check2 -- Yes --> M2[Parse via Hugging Face API]
+    Check2 -- No/Fail --> M3[Parse via Heuristic/Pydantic]
+    
+    M1 --> Normalized(Normalized ULPF Event)
+    M2 --> Normalized
+    M3 --> Normalized
+```
+
+---
+
 ## What Logs the User Sends
 
 Users can send **any text-based log** to ULPF. Common categories include:
@@ -390,12 +423,12 @@ The only required field is the **raw log message itself**. ULPF will auto-detect
 
 Or simply send raw text:
 ```bash
-curl -X POST http://ulpf-server:8000/api/v1/ingest \
+curl -X POST http://localhost:8000/api/v1/ingest \
   -H "Content-Type: text/plain" \
   -d '<134>Sep 11 14:30:00 fw01 %ASA-6-302013: Built inbound TCP connection'
 ```
 
 ---
 
-*ULPF v1.0 — Universal Log Pre-processing Framework*
+*ULPF v1.0.0 — Universal Log Pre-processing Framework*
 *SIH Problem SIH 26156 — Smart India Hackathon 2026*

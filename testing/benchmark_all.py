@@ -124,8 +124,12 @@ def run_benchmarks(iterations=5000):
 
         ops = iterations / max(0.00001, elapsed)
         lat_us = (elapsed / iterations) * 1_000_000
-        parser_results[name] = {"ops": ops, "lat": lat_us, "status": res.status}
-        print(f"{name:<28} | {ops:>14,.0f} EPS | {lat_us:>10.2f} µs | {res.status.upper()}", flush=True)
+        try:
+            parser_results[name] = {"ops": ops, "lat": lat_us, "status": res.status}
+            print(f"{name:<28} | {ops:>14,.0f} EPS | {lat_us:>10.2f} µs | {res.status.upper()}", flush=True)
+        except Exception as e:
+            print(f"ERROR on line 127 for {name}! res type: {type(res)}, res value: {res}, exception: {e}")
+            parser_results[name] = {"ops": ops, "lat": lat_us, "status": "ERROR"}
 
     # 3. Full End-to-End Pipeline Ingestion Benchmark
     print("\n[3] Full End-to-End Pipeline Ingestion (Ingest -> Detect -> Parse -> Normalize -> Provenance):", flush=True)
@@ -155,6 +159,63 @@ def run_benchmarks(iterations=5000):
     print(f"    E2E Average Latency: {pipeline_lat_us:.2f} µs per event", flush=True)
     print(f"    Throughput Bandwidth: {mon_stats['throughput_mb_s']:.3f} MB/sec", flush=True)
     print(f"    Pipeline Result Status: {ir.status.upper()} (Canonical OCSF/ECS Formed: {ir.event.action})", flush=True)
+
+    # 4. Multi-Core Async Queue Ingestion Benchmark
+    import asyncio
+    import os
+    from app.collectors.queue import AsyncIngestionQueue
+    from app.collectors.ingress import RawIngress
+
+    print("\n[4] Hybrid Multi-Core Async Queue Benchmark (ProcessPoolExecutor):", flush=True)
+    async def async_benchmark():
+        cores = os.cpu_count() or 4
+        print(f"    Initializing AsyncIngestionQueue with {cores} process workers...")
+        
+        loop = asyncio.get_running_loop()
+        finished_future = loop.create_future()
+        processed_count = 0
+        total_async_iterations = e2e_iterations * 2
+
+        def callback(event, source_name):
+            nonlocal processed_count
+            processed_count += 1
+            if processed_count >= total_async_iterations and not finished_future.done():
+                finished_future.set_result(True)
+
+        async_queue = AsyncIngestionQueue(
+            worker_count=cores,
+            max_size=total_async_iterations + 100,
+            max_eps=1_000_000,
+            event_callback=callback
+        )
+        
+        async_queue.start()
+        
+        # Give executor workers time to spawn
+        await asyncio.sleep(1.0)
+        
+        print(f"    Dispatching {total_async_iterations:,} raw payloads asynchronously...")
+        ingress_item = RawIngress(raw_text=raw_event_sample, source="benchmark", connector_type="http", transport_metadata={})
+        
+        start_time = time.perf_counter()
+        
+        for _ in range(total_async_iterations):
+            async_queue.enqueue(ingress_item)
+            
+        await finished_future
+        total_async_time = time.perf_counter() - start_time
+        
+        async_queue.stop()
+        
+        async_eps = total_async_iterations / max(0.00001, total_async_time)
+        print(f"    Multi-Core Async Ingestion Rate : {async_eps:,.0f} logs/sec (EPS)", flush=True)
+        print(f"    Time Elapsed : {total_async_time:.3f} s", flush=True)
+        print(f"    Scaling Factor vs Sync : {async_eps / pipeline_eps:.2f}x", flush=True)
+
+    try:
+        asyncio.run(async_benchmark())
+    except Exception as e:
+        print(f"    Async benchmark failed: {e}")
 
     print("\n" + "=" * 80, flush=True)
     print("                      BENCHMARK COMPLETE", flush=True)

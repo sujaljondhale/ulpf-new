@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ULPF — Universal Log Pre-processing Framework</title>
   <link rel="stylesheet" href="style.css?v=1.0.0_phase8">
-  <!-- Google Fonts Inter & JetBrains Mono -->
+  <!-- Google Fonts Merriweather & Libre Baskerville -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400;1,700;1,900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script>
     (function() {
       try {
@@ -17,6 +17,8 @@
       } catch (e) {}
     })();
   </script>
+  <!-- Chart.js for continuous telemetry graph -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
   <!-- TOAST NOTIFICATION CONTAINER -->
@@ -68,6 +70,13 @@
           <span class="nav-label">Reports & Audits</span>
         </a>
 
+        <a href="#/analytics" class="nav-item" data-route="analytics">
+          <span class="nav-icon">
+            <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>
+          </span>
+          <span class="nav-label">Analytics Studio</span>
+        </a>
+
         <a href="#/human-verification" class="nav-item" data-route="human-verification">
           <span class="nav-icon">
             <svg class="svg-icon" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
@@ -76,13 +85,13 @@
           <span class="nav-badge" id="sidebarUnknownCountBadge" style="font-size: 10px; padding: 1px 6px; background: rgba(245, 158, 11, 0.2); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 4px; color: #f59e0b; margin-left: auto; font-family: var(--font-mono); font-weight: 700;">4</span>
         </a>
 
-        <a href="#/testing" class="nav-item" data-route="testing">
+        <a href="#/settings" class="nav-item" data-route="settings">
           <span class="nav-icon">
-            <svg class="svg-icon" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+            <svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
           </span>
-          <span class="nav-label">Device Test Suite</span>
-          <span class="nav-badge" style="font-size: 10px; padding: 1px 6px; background: rgba(56, 189, 248, 0.2); border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 4px; color: #38bdf8; margin-left: auto; font-family: var(--font-mono); font-weight: 700;">TEST</span>
+          <span class="nav-label">Server Settings & System</span>
         </a>
+
       </nav>
 
       <div class="sidebar-footer">
@@ -92,7 +101,7 @@
         </div>
         <div class="sidebar-info">
           <div>Version: 1.0.0 Enterprise (Phase 8)</div>
-          <div>Environment: Local / Sovereign Demo</div>
+          <div>Environment: Production</div>
         </div>
       </div>
     </aside>
@@ -113,11 +122,12 @@
               <option value="nord" selected>Nordic Frost (Dark)</option>
               <option value="midnight">Midnight Slate (Deep Dark)</option>
               <option value="catppuccin">Catppuccin Mocha (Warm Dark)</option>
+              <option value="light">Clean Light (Bright)</option>
             </select>
           </div>
           <a href="#/human-verification" class="btn btn-sm btn-secondary" style="text-decoration: none; border-color: rgba(56, 189, 248, 0.35); color: var(--amber-main);" title="Human Verification Review Queue">
             <span>Human Review</span>
-            <span id="topBarUnknownBadge" style="background: rgba(56, 189, 248, 0.2); color: #F1F5F9; padding: 1px 6px; border-radius: 4px; font-weight: 700; font-family: var(--font-mono); font-size: 11px;">4</span>
+            <span id="topBarUnknownBadge" style="background: rgba(56, 189, 248, 0.2); color: var(--primary-main); padding: 1px 6px; border-radius: 4px; font-weight: 700; font-family: var(--font-mono); font-size: 11px;">4</span>
           </a>
           <div class="stream-status" id="streamStatusBadge">
             <span class="pulse-dot teal"></span> SSE LIVE
@@ -273,6 +283,6 @@
   <!-- DEDICATED HIGH-RESOLUTION PRINTABLE REPORT CONTAINER FOR PDF DOWNLOAD -->
   <div id="printableReportContainer"></div>
 
-  <script src="app.js?v=1.0.0_phase8"></script>
+  <script src="app.js?v=1.0.5_phase11"></script>
 </body>
 </html>
