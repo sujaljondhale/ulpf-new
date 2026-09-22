@@ -309,6 +309,19 @@ document.addEventListener("DOMContentLoaded", () => {
     showToast(`Selected virtual device: ${getActiveDevice().name}`);
   };
 
+  // Helper to proxy virtual device source notifications through the backend to avoid Mixed Content / CORS
+  function forwardSourcesApi(method, subpath = "", body = null) {
+    const host = testbedSettings.host || document.getElementById("targetHostInput")?.value.trim() || "127.0.0.1";
+    const apiPort = document.getElementById("modalApiPort")?.value || testbedSettings.apiPort || 8000;
+    const scheme = testbedSettings.scheme || "http";
+    const query = `host=${encodeURIComponent(host)}&port=${apiPort}&scheme=${encodeURIComponent(scheme)}&subpath=${encodeURIComponent(subpath)}`;
+    return fetch(`/api/test/sources-proxy?${query}`, {
+      method: method,
+      headers: { "Content-Type": "application/json" },
+      body: body ? JSON.stringify(body) : undefined
+    }).catch(() => {});
+  }
+
   window.toggleSimDeviceConnection = function (id) {
     const dev = virtualDevices.find(d => d.id === id);
     if (!dev) return;
@@ -316,15 +329,9 @@ document.addEventListener("DOMContentLoaded", () => {
     dev.connected = !dev.connected;
     
     if (dev.connected) {
-       fetch(`http://${hostInput.value}:${document.getElementById("modalApiPort")?.value || 8000}/api/v1/sources`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ source_id: dev.ip, name: dev.name, vendor: dev.vendor, protocol: dev.protocol, address: dev.ip, format: dev.format })
-       }).catch(()=>{});
+       forwardSourcesApi("POST", "", { source_id: dev.ip, name: dev.name, vendor: dev.vendor, protocol: dev.protocol, address: dev.ip, format: dev.format });
     } else {
-       fetch(`http://${hostInput.value}:${document.getElementById("modalApiPort")?.value || 8000}/api/v1/sources/${encodeURIComponent(dev.ip)}`, {
-          method: "DELETE"
-       }).catch(()=>{});
+       forwardSourcesApi("DELETE", dev.ip);
 
        if (dev.streamTimer) {
            clearInterval(dev.streamTimer);
@@ -340,9 +347,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const dev = virtualDevices.find(d => d.id === id);
     if (dev) {
        // Notify server to remove source
-       fetch(`http://${hostInput.value}:${document.getElementById("modalApiPort")?.value || 8000}/api/v1/sources/${encodeURIComponent(dev.ip)}`, {
-          method: "DELETE"
-       }).catch(()=>{});
+       forwardSourcesApi("DELETE", dev.ip);
     }
 
     virtualDevices = virtualDevices.filter(d => d.id !== id);
@@ -421,12 +426,8 @@ document.addEventListener("DOMContentLoaded", () => {
     dev.interval_ms = Math.max(1, Math.floor(1000 / eps));
     dev.custom_template = template;
 
-    // Sync with backend simulator or main API
-    fetch(`http://${document.getElementById("targetHostInput").value}:${document.getElementById("modalApiPort")?.value || 8000}/api/v1/sources/${encodeURIComponent(dev.ip)}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ source_id: dev.ip, name: dev.name, vendor: dev.vendor, protocol: dev.protocol, address: dev.ip, format: dev.format })
-    }).catch(() => {});
+    // Sync with backend simulator or main API via proxy
+    forwardSourcesApi("PUT", dev.ip, { source_id: dev.ip, name: dev.name, vendor: dev.vendor, protocol: dev.protocol, address: dev.ip, format: dev.format });
 
     renderDevicesList();
     window.closeEditDevModal();
@@ -465,12 +466,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
       virtualDevices.push(newDev);
 
-      // Auto-register to main server
-      fetch(`http://${hostInput.value}:${document.getElementById("modalApiPort")?.value || 8000}/api/v1/sources`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ source_id: newDev.ip, name: newDev.name, vendor: newDev.vendor, protocol: newDev.protocol, address: newDev.ip, format: newDev.format })
-      }).catch(() => {});
+      // Auto-register to main server via proxy
+      forwardSourcesApi("POST", "", { source_id: newDev.ip, name: newDev.name, vendor: newDev.vendor, protocol: newDev.protocol, address: newDev.ip, format: newDev.format });
 
       activeDeviceId = newId;
       renderDevicesList();
@@ -676,13 +673,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const t0 = performance.now();
 
     try {
-      const res = await fetch(`http://${host}:${document.getElementById("modalApiPort")?.value || 8000}/api/v1/test/transmit`, {
+      const res = await fetch("/api/test/transmit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           protocol: dev.protocol,
           host: host,
           port: targetPort,
+          api_port: parseInt(document.getElementById("modalApiPort")?.value || testbedSettings.apiPort || 8000, 10),
           message: payload,
           source: dev.name,
           vendor: dev.vendor,
@@ -755,13 +753,14 @@ document.addEventListener("DOMContentLoaded", () => {
     else if (dev.protocol === "TCP" && (!dev.port || dev.port === 5141)) targetPort = testbedSettings.tcpPort || 5141;
 
     try {
-      const res = await fetch(`http://${host}:${document.getElementById("modalApiPort")?.value || 8000}/api/v1/test/transmit`, {
+      const res = await fetch("/api/test/transmit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           protocol: dev.protocol,
           host: host,
           port: targetPort,
+          api_port: parseInt(document.getElementById("modalApiPort")?.value || testbedSettings.apiPort || 8000, 10),
           message: payload,
           source: dev.name,
           vendor: dev.vendor,
@@ -910,7 +909,9 @@ document.addEventListener("DOMContentLoaded", () => {
       } else if (scenarioKey === "tamper") {
         appendAttackLog("INFO", "Initiating database cryptographic payload modification (Simulated Insider Threat)...");
         try {
-          const tRes = await fetch(APP_CONFIG.apiUrl + '/test/tamper', {
+          const apiUrl = (typeof APP_CONFIG !== 'undefined' && APP_CONFIG && APP_CONFIG.apiUrl) ? APP_CONFIG.apiUrl : '';
+          if (!apiUrl) throw new Error("Tamper endpoint not configured");
+          const tRes = await fetch(apiUrl + '/test/tamper', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ tampered_value: "ATTACKER_MODIFIED_PAYLOAD_1337" })
@@ -1082,13 +1083,14 @@ document.addEventListener("DOMContentLoaded", () => {
       for (let i = 0; i < burstCount; i++) {
         try {
           const sample = `<134>Jan 10 14:32:01 StressHost app[${i}]: Transaction benchmark payload count=${i} ok`;
-          await fetch(`http://${host}:${testbedSettings.apiPort || 8000}/api/v1/test/transmit`, {
+          await fetch("/api/test/transmit", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               protocol: protocol,
               host: host,
               port: protocol === "UDP" ? 5140 : 5141,
+              api_port: parseInt(testbedSettings.apiPort || 8000, 10),
               message: sample,
               source: `StressClient-${i}`
             })
@@ -1723,8 +1725,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const host = testbedSettings.host || "127.0.0.1";
     const apiPort = testbedSettings.apiPort || 8000;
     const scheme = testbedSettings.scheme || "http";
-    const url = `${scheme}://${host}:${apiPort}/api/v1/system/readiness`;
-    appendDiagnosticLog("INFO", `Running deep subsystem readiness diagnostic (${url})...`);
+    const url = `/api/test/readiness?host=${encodeURIComponent(host)}&port=${apiPort}&scheme=${encodeURIComponent(scheme)}`;
+    appendDiagnosticLog("INFO", `Running deep subsystem readiness diagnostic via backend (${scheme}://${host}:${apiPort}/api/v1/system/readiness)...`);
 
     try {
       const res = await fetch(url);
