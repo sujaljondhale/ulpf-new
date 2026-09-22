@@ -7,12 +7,15 @@ custom log addition, and serves the dedicated Testing Website.
 import sys
 import os
 import time
+import json
+import urllib.request
+import urllib.error
 import threading
 import subprocess
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 from pydantic import BaseModel, Field
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse, JSONResponse
@@ -97,6 +100,21 @@ class SendLogRequest(BaseModel):
     file_dir: Optional[str] = None
     scheme: str = "http"
     timeout: float = 3.0
+
+
+class TransmitProxyRequest(BaseModel):
+    protocol: Optional[str] = "HTTP"
+    host: Optional[str] = "127.0.0.1"
+    port: Optional[int] = 5140
+    api_port: Optional[int] = 8000
+    message: Optional[str] = None
+    log: Optional[str] = None
+    log_message: Optional[str] = None
+    raw_message: Optional[str] = None
+    source: Optional[str] = "Testing-Client"
+    vendor: Optional[str] = None
+    scheme: Optional[str] = "http"
+    timeout: Optional[float] = 4.0
 
 
 class ScenarioRequest(BaseModel):
@@ -262,6 +280,158 @@ def send_log(req: SendLogRequest):
         TRANSMISSION_HISTORY.pop()
 
     return receipt
+
+
+@app.post("/api/test/transmit")
+def transmit_proxy(req: TransmitProxyRequest):
+    """
+    Reverse proxy endpoint for log transmission.
+    Forwards transmission requests server-side to the target ULPF core worker,
+    eliminating browser Mixed Content errors and CORS issues when hosted over HTTPS.
+    """
+    t0 = time.perf_counter()
+    payload = req.message or req.log_message or req.log or req.raw_message or ""
+    if not payload or not payload.strip():
+        raise HTTPException(status_code=400, detail="Log message payload cannot be empty.")
+
+    target_host = req.host or "127.0.0.1"
+    if target_host in ("127.0.0.1", "localhost"):
+        default_internal = "host.docker.internal" if os.path.exists("/.dockerenv") else "127.0.0.1"
+        target_host = os.environ.get("ULPF_INTERNAL_API_HOST", default_internal)
+
+    scheme = (req.scheme or "http").lower()
+    api_port = req.api_port or 8000
+    worker_transmit_url = f"{scheme}://{target_host}:{api_port}/api/v1/test/transmit"
+
+    body_data = {
+        "protocol": req.protocol or "HTTP",
+        "host": target_host,
+        "port": req.port,
+        "message": payload,
+        "source": req.source,
+        "vendor": req.vendor,
+        "scheme": scheme,
+        "timeout": req.timeout,
+    }
+
+    receipt: Dict[str, Any] = {}
+    try:
+        data_bytes = json.dumps(body_data).encode("utf-8")
+        forward_req = urllib.request.Request(
+            worker_transmit_url,
+            data=data_bytes,
+            headers={
+                "Content-Type": "application/json",
+                "User-Agent": "ULPF-Simulator-Proxy/1.0",
+            },
+            method="POST",
+        )
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        with opener.open(forward_req, timeout=req.timeout or 4.0) as resp:
+            content = resp.read().decode("utf-8")
+            receipt = json.loads(content) if content.startswith("{") else {"raw": content}
+            latency_ms = round((time.perf_counter() - t0) * 1000, 2)
+            if "latency_ms" not in receipt:
+                receipt["latency_ms"] = latency_ms
+            if "success" not in receipt:
+                receipt["success"] = True
+    except urllib.error.HTTPError as e:
+        err_body = e.read().decode("utf-8", errors="ignore")
+        latency_ms = round((time.perf_counter() - t0) * 1000, 2)
+        try:
+            receipt = json.loads(err_body)
+        except Exception:
+            receipt = {"success": False, "error": f"HTTP {e.code}: {err_body}", "status_code": e.code}
+        receipt["latency_ms"] = latency_ms
+    except Exception as e:
+        proto = (req.protocol or "").upper()
+        if proto == "UDP":
+            receipt = send_udp_log(target_host, req.port or 5140, payload, timeout=req.timeout or 3.0)
+        elif proto == "TCP":
+            receipt = send_tcp_log(target_host, req.port or 5141, payload, timeout=req.timeout or 3.0)
+        else:
+            latency_ms = round((time.perf_counter() - t0) * 1000, 2)
+            receipt = {
+                "success": False,
+                "error": f"Target worker {target_host}:{api_port} unreachable: {str(e)}",
+                "latency_ms": latency_ms,
+            }
+
+    # Record in audit history
+    proto_rec = (req.protocol or "HTTP").upper()
+    record = {
+        "id": len(TRANSMISSION_HISTORY) + 1,
+        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "protocol": proto_rec,
+        "host": target_host,
+        "port": req.port,
+        "source": req.source,
+        "payload": payload,
+        **receipt,
+    }
+    TRANSMISSION_HISTORY.insert(0, record)
+    if len(TRANSMISSION_HISTORY) > MAX_HISTORY:
+        del TRANSMISSION_HISTORY[MAX_HISTORY:]
+
+    return receipt
+
+
+@app.get("/api/test/readiness")
+def proxy_readiness(host: str = "127.0.0.1", port: int = 8000, scheme: str = "http", timeout: float = 3.5):
+    """
+    Proxy readiness diagnostic check to target host server-side.
+    """
+    if host in ("127.0.0.1", "localhost"):
+        default_internal = "host.docker.internal" if os.path.exists("/.dockerenv") else "127.0.0.1"
+        host = os.environ.get("ULPF_INTERNAL_API_HOST", default_internal)
+
+    url = f"{scheme}://{host}:{port}/api/v1/system/readiness"
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "ULPF-Simulator-Proxy/1.0"})
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        with opener.open(req, timeout=timeout) as resp:
+            content = resp.read().decode("utf-8")
+            return json.loads(content) if content.startswith("{") else {"raw": content}
+    except Exception as e:
+        return JSONResponse(
+            status_code=502,
+            content={"status": "offline", "readiness_score": 0, "error": str(e), "subsystems": {}}
+        )
+
+
+@app.api_route("/api/test/sources-proxy", methods=["GET", "POST", "PUT", "DELETE"])
+async def proxy_sources_route(
+    request: Request,
+    host: str = "127.0.0.1",
+    port: int = 8000,
+    scheme: str = "http",
+    subpath: str = "",
+):
+    """
+    Proxy virtual device source registrations to target host server-side.
+    """
+    if host in ("127.0.0.1", "localhost"):
+        default_internal = "host.docker.internal" if os.path.exists("/.dockerenv") else "127.0.0.1"
+        host = os.environ.get("ULPF_INTERNAL_API_HOST", default_internal)
+
+    url_path = f"/api/v1/sources/{subpath}".rstrip("/") if subpath else "/api/v1/sources"
+    target_url = f"{scheme}://{host}:{port}{url_path}"
+
+    body = await request.body()
+    try:
+        req = urllib.request.Request(
+            target_url,
+            data=body if body else None,
+            headers={"Content-Type": "application/json", "User-Agent": "ULPF-Simulator-Proxy/1.0"},
+            method=request.method,
+        )
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        with opener.open(req, timeout=3.0) as resp:
+            content = resp.read().decode("utf-8")
+            return json.loads(content) if content.startswith("{") else {"raw": content}
+    except Exception as e:
+        return {"status": "proxied_error", "error": str(e)}
+
 
 
 @app.post("/api/test/stream-scenario")
