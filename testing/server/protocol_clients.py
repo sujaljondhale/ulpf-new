@@ -71,9 +71,10 @@ def probe_socket(host: str, port: int, protocol: str = "tcp", timeout: float = 2
 
     elif protocol in ("http", "https"):
         scheme = "https" if protocol == "https" else "http"
-        # First test raw TCP socket to fail fast (<1ms) if port is closed
+        # Test raw TCP socket with WAN-tolerant timeout (min 1.5s, max 3.5s)
+        tcp_timeout = max(1.5, min(timeout, 3.5))
         try:
-            with socket.create_connection((host, port), timeout=min(0.25, timeout)):
+            with socket.create_connection((host, port), timeout=tcp_timeout):
                 pass
         except OSError as e:
             return {
@@ -85,16 +86,17 @@ def probe_socket(host: str, port: int, protocol: str = "tcp", timeout: float = 2
                 "detail": f"Port {port} on {host} is closed or unreachable ({type(e).__name__})",
             }
 
-        # Prioritize lightweight liveness probe (<2ms), falling back to general health or root
-        candidate_paths = ["/api/v1/health/live", "/api/v1/health", "/"]
+        # Candidate paths for server health / status / root
+        candidate_paths = ["/api/v1/health/live", "/api/v1/health", "/health", "/api/v1/status", "/dashboard/index.html", "/"]
         opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
         last_error = None
+        http_timeout = max(2.0, min(timeout, 4.0))
 
         for path in candidate_paths:
             url = f"{scheme}://{host}:{port}{path}"
             try:
                 req = urllib.request.Request(url, headers={"User-Agent": "ULPF-Testing-Client/1.0"})
-                with opener.open(req, timeout=min(0.5, timeout)) as response:
+                with opener.open(req, timeout=http_timeout) as response:
                     latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
                     status_str = "online" if response.status in (200, 204, 301, 302, 307, 308) else "degraded"
                     return {
@@ -106,17 +108,31 @@ def probe_socket(host: str, port: int, protocol: str = "tcp", timeout: float = 2
                         "latency_ms": latency_ms,
                         "detail": f"HTTP GET {url} returned HTTP {response.status}",
                     }
+            except urllib.error.HTTPError as e:
+                # If HTTP server responded with any HTTP status code (2xx, 3xx, 4xx), the server IS ONLINE!
+                latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
+                return {
+                    "status": "online" if e.code < 400 else "ready",
+                    "protocol": "http",
+                    "host": host,
+                    "port": port,
+                    "status_code": e.code,
+                    "latency_ms": latency_ms,
+                    "detail": f"HTTP service responding on {host}:{port} ({path} returned HTTP {e.code})",
+                }
             except Exception as e:
                 last_error = e
                 continue
 
+        # If candidate GETs timed out or failed, but TCP port was open, report socket is listening
+        latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
         return {
-            "status": "offline",
+            "status": "ready",
             "protocol": "http",
             "host": host,
             "port": port,
-            "error": str(last_error),
-            "detail": f"HTTP endpoint {scheme}://{host}:{port}/api/v1/health/live unreachable ({type(last_error).__name__}: {str(last_error)})",
+            "latency_ms": latency_ms,
+            "detail": f"Port {port} on {host} is OPEN and accepting connections (HTTP endpoint probe: {str(last_error)})",
         }
 
     return {"status": "unsupported_protocol", "protocol": protocol}

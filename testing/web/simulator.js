@@ -1260,6 +1260,31 @@ document.addEventListener("DOMContentLoaded", () => {
     return { scheme, host: str.trim(), port };
   }
 
+  // Dynamically update server redirect links (e.g. Nav and Inspect on Server buttons)
+  // to match the exact protocol, host, and port configured in target-server-banner
+  function updateServerRedirectLinks() {
+    const protoEl = document.getElementById("targetProtocolSelect");
+    const hostEl = document.getElementById("targetHostInput");
+    const portEl = document.getElementById("targetPortInput");
+
+    const scheme = (protoEl?.value || testbedSettings.scheme || "http").toLowerCase();
+    const host = (hostEl?.value.trim() || testbedSettings.host || "127.0.0.1");
+    const port = portEl?.value || testbedSettings.apiPort || 8000;
+    const serverBaseUrl = `${scheme}://${host}:${port}`;
+
+    const navDashboardLink = document.getElementById("linkNavMainDashboard") || document.querySelector(".nav-link-server");
+    if (navDashboardLink) {
+      navDashboardLink.href = `${serverBaseUrl}/dashboard/index.html#/overview`;
+      navDashboardLink.title = `Open Main Server SOC Dashboard at ${serverBaseUrl}`;
+    }
+
+    const inspectServerLink = document.getElementById("linkInspectOnServer") || document.querySelector('a[href*="/dashboard/index.html#/logs"]');
+    if (inspectServerLink) {
+      inspectServerLink.href = `${serverBaseUrl}/dashboard/index.html#/logs`;
+      inspectServerLink.title = `Inspect on Server at ${serverBaseUrl}`;
+    }
+  }
+
   // Centralized function to synchronize all UI inputs and settings across tabs
   function applyTargetSettings(updates = {}, autoSave = true, triggerProbe = false) {
     if (updates.scheme !== undefined) testbedSettings.scheme = updates.scheme;
@@ -1341,7 +1366,10 @@ document.addEventListener("DOMContentLoaded", () => {
       } catch (e) { }
     }
 
-    // 7. Restart auto-probe timer & trigger health check if requested
+    // 7. Dynamically synchronize redirect links to target-server-banner address
+    updateServerRedirectLinks();
+
+    // 8. Restart auto-probe timer & trigger health check if requested
     restartAutoProbeTimer();
     if (triggerProbe) {
       window.checkServerHealth(false);
@@ -1396,12 +1424,14 @@ document.addEventListener("DOMContentLoaded", () => {
   if (topProtocolSelect) {
     topProtocolSelect.addEventListener("change", () => {
       applyTargetSettings({ scheme: topProtocolSelect.value }, true, true);
+      updateServerRedirectLinks();
       showToast(`Protocol changed to ${topProtocolSelect.value.toUpperCase()}://`);
     });
   }
 
   const topHostInput = document.getElementById("targetHostInput");
   if (topHostInput) {
+    topHostInput.addEventListener("input", updateServerRedirectLinks);
     const handleHostInputCommit = () => {
       const raw = topHostInput.value.trim();
       if (!raw) return;
@@ -1412,6 +1442,7 @@ document.addEventListener("DOMContentLoaded", () => {
           scheme: parsed.scheme || testbedSettings.scheme,
           apiPort: parsed.port || testbedSettings.apiPort
         }, true, true);
+        updateServerRedirectLinks();
         showToast(`Target updated: ${testbedSettings.scheme}://${testbedSettings.host}:${testbedSettings.apiPort}`);
       }
     };
@@ -1426,10 +1457,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const topPortInput = document.getElementById("targetPortInput");
   if (topPortInput) {
+    topPortInput.addEventListener("input", updateServerRedirectLinks);
     topPortInput.addEventListener("change", () => {
       const p = parseInt(topPortInput.value, 10);
       if (!isNaN(p) && p > 0 && p <= 65535) {
         applyTargetSettings({ apiPort: p }, true, true);
+        updateServerRedirectLinks();
         showToast(`API Port set to :${p}`);
       }
     });

@@ -168,11 +168,11 @@ def get_target_status(
         default_internal = "host.docker.internal" if os.path.exists("/.dockerenv") else "127.0.0.1"
         internal_target_host = os.environ.get("ULPF_INTERNAL_API_HOST", default_internal)
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-        f_http = executor.submit(probe_socket, internal_target_host, api_port, scheme, 1.0)
-        f_tcp = executor.submit(probe_socket, internal_target_host, tcp_port, "tcp", 0.5)
-        f_udp = executor.submit(probe_socket, internal_target_host, udp_port, "udp", 0.5)
-        f_ai = executor.submit(probe_socket, internal_target_host, ollama_port, "tcp", 0.25)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+        f_http = executor.submit(probe_socket, internal_target_host, api_port, scheme, 3.5)
+        f_tcp = executor.submit(probe_socket, internal_target_host, tcp_port, "tcp", 2.5)
+        f_udp = executor.submit(probe_socket, internal_target_host, udp_port, "udp", 2.0)
+        f_ai = executor.submit(probe_socket, internal_target_host, ollama_port, "tcp", 1.5)
 
         http_probe = f_http.result()
         tcp_probe = f_tcp.result()
