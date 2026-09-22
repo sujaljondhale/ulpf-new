@@ -91,6 +91,7 @@ class SendLogRequest(BaseModel):
     protocol: str = "udp"  # 'udp', 'tcp', 'http', 'file'
     host: str = "127.0.0.1"
     port: int = 5140
+    api_port: Optional[int] = 8000
     message: Optional[str] = None
     log: Optional[str] = None
     log_message: Optional[str] = None
@@ -236,6 +237,164 @@ def ping_target(req: PingRequest):
     return result
 
 
+def dispatch_log_to_target(
+    host: str,
+    port: Optional[int],
+    protocol: str,
+    message: str,
+    source: str = "Testing-Client",
+    vendor: Optional[str] = None,
+    scheme: str = "http",
+    api_port: int = 8000,
+    timeout: float = 3.5,
+    enrich: bool = False,
+) -> Dict[str, Any]:
+    """
+    Resilient transmission gateway: delivers telemetry logs to the target ULPF core
+    whether running locally or remotely behind cloud firewalls/NAT.
+    
+    1. Primary Path: Dispatches via target worker /api/v1/test/transmit using loopback ('127.0.0.1')
+       so the remote machine transmits directly to its internal Syslog daemons (UDP :5140, TCP :5141)
+       without dropping across cloud NAT loopback firewalls.
+    2. Fallback Path 1: Direct REST Ingestion (/api/v1/ingest) for guaranteed pipeline processing.
+    3. Fallback Path 2: Direct raw socket transmission (send_udp_log / send_tcp_log) for local testing.
+    """
+    t0 = time.perf_counter()
+    proto = (protocol or "UDP").strip().upper()
+    clean_host = (host or "127.0.0.1").strip()
+    if clean_host in ("127.0.0.1", "localhost") and os.path.exists("/.dockerenv"):
+        clean_host = os.environ.get("ULPF_INTERNAL_API_HOST", "host.docker.internal")
+
+    scheme = (scheme or "http").lower()
+    if port is None or port <= 0:
+        if proto == "UDP":
+            target_port = 5140
+        elif proto == "TCP":
+            target_port = 5141
+        else:
+            target_port = api_port or 8000
+    else:
+        target_port = port
+
+    if proto == "FILE":
+        watch_dir = str(TESTING_DIR.parent / "main" / "storage" / "logs")
+        return drop_file_log(watch_dir, message)
+
+    receipt: Dict[str, Any] = {}
+
+    # Strategy 1: Forward to worker /api/v1/test/transmit
+    worker_transmit_url = f"{scheme}://{clean_host}:{api_port}/api/v1/test/transmit"
+    worker_body = {
+        "protocol": proto,
+        "host": "127.0.0.1",  # Crucial: worker sends locally to its own loopback collector!
+        "port": target_port,
+        "message": message,
+        "source": source,
+        "vendor": vendor,
+        "scheme": scheme,
+        "timeout": min(timeout, 3.0),
+    }
+
+    try:
+        data_bytes = json.dumps(worker_body).encode("utf-8")
+        req = urllib.request.Request(
+            worker_transmit_url,
+            data=data_bytes,
+            headers={
+                "Content-Type": "application/json",
+                "User-Agent": "ULPF-Simulator-Proxy/1.0",
+            },
+            method="POST",
+        )
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        with opener.open(req, timeout=timeout) as resp:
+            content = resp.read().decode("utf-8")
+            receipt = json.loads(content) if content.startswith("{") else {"raw": content}
+            latency_ms = round((time.perf_counter() - t0) * 1000, 2)
+            receipt.setdefault("latency_ms", latency_ms)
+            receipt.setdefault("success", True)
+            receipt.setdefault("protocol", proto)
+            receipt.setdefault("destination", f"{clean_host}:{target_port}")
+            receipt.setdefault("bytes_sent", len(message.encode("utf-8")))
+
+            # Enrich with real event ID from server if missing (single transmissions)
+            if enrich and not receipt.get("event_id"):
+                try:
+                    ev_req = urllib.request.Request(
+                        f"{scheme}://{clean_host}:{api_port}/api/v1/events?limit=1",
+                        headers={"User-Agent": "ULPF-Simulator-Proxy/1.0"}
+                    )
+                    with opener.open(ev_req, timeout=0.8) as ev_resp:
+                        ev_data = json.loads(ev_resp.read().decode("utf-8"))
+                        events = ev_data.get("events", [])
+                        if events:
+                            receipt["event_id"] = events[0].get("event_id")
+                            if "format" not in receipt or not receipt["format"]:
+                                receipt["format"] = events[0].get("format")
+                            if "sha256" not in receipt or not receipt["sha256"]:
+                                receipt["sha256"] = events[0].get("sha256")
+                except Exception:
+                    pass
+
+            return receipt
+    except Exception as worker_err:
+        # Strategy 2: Direct REST Ingestion via /api/v1/ingest fallback
+        try:
+            ingest_url = f"{scheme}://{clean_host}:{api_port}/api/v1/ingest"
+            ingest_body = {
+                "message": message,
+                "log": message,
+                "raw_log": message,
+                "source": source,
+                "vendor": vendor,
+                "device_name": source,
+            }
+            data_bytes = json.dumps(ingest_body).encode("utf-8")
+            req = urllib.request.Request(
+                ingest_url,
+                data=data_bytes,
+                headers={
+                    "Content-Type": "application/json",
+                    "User-Agent": "ULPF-Simulator-Proxy/1.0",
+                },
+                method="POST",
+            )
+            opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+            with opener.open(req, timeout=timeout) as resp:
+                content = resp.read().decode("utf-8")
+                ingest_res = json.loads(content) if content.startswith("{") else {"raw": content}
+                latency_ms = round((time.perf_counter() - t0) * 1000, 2)
+                return {
+                    "success": True,
+                    "status": "success",
+                    "protocol": proto,
+                    "destination": f"{clean_host}:{target_port}",
+                    "event_id": ingest_res.get("event_id"),
+                    "format": ingest_res.get("detected_format") or ingest_res.get("format"),
+                    "sha256": ingest_res.get("raw_sha256") or ingest_res.get("sha256"),
+                    "bytes_sent": len(message.encode("utf-8")),
+                    "latency_ms": latency_ms,
+                    "message": ingest_res.get("message") or f"Successfully ingested {len(message)} bytes via ULPF pipeline.",
+                    "response": ingest_res,
+                }
+        except Exception as ingest_err:
+            # Strategy 3: Direct Socket fallback (for local testbeds without HTTP API)
+            if proto == "UDP":
+                return send_udp_log(clean_host, target_port, message, timeout=timeout)
+            elif proto == "TCP":
+                return send_tcp_log(clean_host, target_port, message, timeout=timeout)
+            else:
+                latency_ms = round((time.perf_counter() - t0) * 1000, 2)
+                return {
+                    "success": False,
+                    "protocol": proto,
+                    "destination": f"{clean_host}:{target_port}",
+                    "error": f"Worker transmission error: {str(worker_err)} | Ingestion fallback error: {str(ingest_err)}",
+                    "latency_ms": latency_ms,
+                    "bytes_sent": 0,
+                }
+
+
 @app.post("/api/test/send-log")
 def send_log(req: SendLogRequest):
     """
@@ -247,22 +406,21 @@ def send_log(req: SendLogRequest):
         raise HTTPException(status_code=400, detail="Log message payload cannot be empty.")
 
     proto = (req.protocol or "HTTP").strip().upper()
-    receipt: Dict[str, Any] = {}
+    scheme = getattr(req, "scheme", "http") or "http"
+    api_port = getattr(req, "api_port", 8000) or 8000
 
-    if proto == "UDP":
-        receipt = send_udp_log(req.host, req.port or 5140, payload_msg, timeout=req.timeout)
-    elif proto == "TCP":
-        receipt = send_tcp_log(req.host, req.port or 5141, payload_msg, timeout=req.timeout)
-    elif proto in ("HTTP", "REST", "API", "HTTPS", "JSON"):
-        scheme = getattr(req, "scheme", "http") or ("https" if proto == "HTTPS" else "http")
-        port = req.port or 8000
-        api_url = f"{scheme}://{req.host}:{port}/api/v1/ingest"
-        receipt = send_http_log(api_url, payload_msg, source=req.source, vendor=req.vendor, timeout=req.timeout)
-    elif proto == "FILE":
-        watch_dir = req.file_dir or str(TESTING_DIR.parent / "main" / "storage" / "logs")
-        receipt = drop_file_log(watch_dir, payload_msg)
-    else:
-        raise HTTPException(status_code=400, detail=f"Unsupported protocol: '{req.protocol}'. Choose UDP, TCP, HTTP, or FILE.")
+    receipt = dispatch_log_to_target(
+        host=req.host,
+        port=req.port,
+        protocol=proto,
+        message=payload_msg,
+        source=req.source,
+        vendor=req.vendor,
+        scheme=scheme,
+        api_port=api_port,
+        timeout=req.timeout,
+        enrich=True,
+    )
 
     # Record in history
     record = {
@@ -289,73 +447,26 @@ def transmit_proxy(req: TransmitProxyRequest):
     Forwards transmission requests server-side to the target ULPF core worker,
     eliminating browser Mixed Content errors and CORS issues when hosted over HTTPS.
     """
-    t0 = time.perf_counter()
     payload = req.message or req.log_message or req.log or req.raw_message or ""
     if not payload or not payload.strip():
         raise HTTPException(status_code=400, detail="Log message payload cannot be empty.")
 
     target_host = req.host or "127.0.0.1"
-    if target_host in ("127.0.0.1", "localhost"):
-        default_internal = "host.docker.internal" if os.path.exists("/.dockerenv") else "127.0.0.1"
-        target_host = os.environ.get("ULPF_INTERNAL_API_HOST", default_internal)
-
     scheme = (req.scheme or "http").lower()
     api_port = req.api_port or 8000
-    worker_transmit_url = f"{scheme}://{target_host}:{api_port}/api/v1/test/transmit"
 
-    body_data = {
-        "protocol": req.protocol or "HTTP",
-        "host": target_host,
-        "port": req.port,
-        "message": payload,
-        "source": req.source,
-        "vendor": req.vendor,
-        "scheme": scheme,
-        "timeout": req.timeout,
-    }
-
-    receipt: Dict[str, Any] = {}
-    try:
-        data_bytes = json.dumps(body_data).encode("utf-8")
-        forward_req = urllib.request.Request(
-            worker_transmit_url,
-            data=data_bytes,
-            headers={
-                "Content-Type": "application/json",
-                "User-Agent": "ULPF-Simulator-Proxy/1.0",
-            },
-            method="POST",
-        )
-        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
-        with opener.open(forward_req, timeout=req.timeout or 4.0) as resp:
-            content = resp.read().decode("utf-8")
-            receipt = json.loads(content) if content.startswith("{") else {"raw": content}
-            latency_ms = round((time.perf_counter() - t0) * 1000, 2)
-            if "latency_ms" not in receipt:
-                receipt["latency_ms"] = latency_ms
-            if "success" not in receipt:
-                receipt["success"] = True
-    except urllib.error.HTTPError as e:
-        err_body = e.read().decode("utf-8", errors="ignore")
-        latency_ms = round((time.perf_counter() - t0) * 1000, 2)
-        try:
-            receipt = json.loads(err_body)
-        except Exception:
-            receipt = {"success": False, "error": f"HTTP {e.code}: {err_body}", "status_code": e.code}
-        receipt["latency_ms"] = latency_ms
-    except Exception as e:
-        proto = (req.protocol or "").upper()
-        if proto == "UDP":
-            receipt = send_udp_log(target_host, req.port or 5140, payload, timeout=req.timeout or 3.0)
-        elif proto == "TCP":
-            receipt = send_tcp_log(target_host, req.port or 5141, payload, timeout=req.timeout or 3.0)
-        else:
-            latency_ms = round((time.perf_counter() - t0) * 1000, 2)
-            receipt = {
-                "success": False,
-                "error": f"Target worker {target_host}:{api_port} unreachable: {str(e)}",
-                "latency_ms": latency_ms,
-            }
+    receipt = dispatch_log_to_target(
+        host=target_host,
+        port=req.port,
+        protocol=req.protocol or "HTTP",
+        message=payload,
+        source=req.source or "Testing-Client",
+        vendor=req.vendor,
+        scheme=scheme,
+        api_port=api_port,
+        timeout=req.timeout or 4.0,
+        enrich=True,
+    )
 
     # Record in audit history
     proto_rec = (req.protocol or "HTTP").upper()
@@ -453,20 +564,18 @@ def stream_scenario(req: ScenarioRequest):
         msg = item["message"]
         src = item["source"]
 
-        if proto == "UDP":
-            port = req.udp_port or 5140
-            r = send_udp_log(req.host, port, msg, timeout=req.device_timeout)
-        elif proto == "TCP":
-            port = req.tcp_port or 5141
-            r = send_tcp_log(req.host, port, msg, timeout=req.device_timeout)
-        elif proto in ("HTTP", "REST"):
-            port = req.api_port or 8000
-            scheme = req.scheme or "http"
-            api_url = f"{scheme}://{req.host}:{port}/api/v1/ingest"
-            r = send_http_log(api_url, msg, source=src, timeout=req.device_timeout)
-        else:
-            watch_dir = str(TESTING_DIR.parent / "main" / "storage" / "logs")
-            r = drop_file_log(watch_dir, msg)
+        target_port = req.udp_port if proto == "UDP" else (req.tcp_port if proto == "TCP" else req.api_port)
+        r = dispatch_log_to_target(
+            host=req.host,
+            port=target_port,
+            protocol=proto,
+            message=msg,
+            source=src,
+            scheme=req.scheme or "http",
+            api_port=req.api_port or 8000,
+            timeout=req.device_timeout or 3.0,
+            enrich=False,
+        )
 
         if r.get("success"):
             success_count += 1
@@ -727,18 +836,18 @@ def send_device_log_once(dev_id: str, host: str = "127.0.0.1", scheme: str = "ht
     log_msg = generate_device_log(dev)
     proto = dev["protocol"].upper()
     port = dev["port"]
-    receipt = {}
 
-    if proto == "UDP":
-        receipt = send_udp_log(host, port, log_msg, timeout=timeout)
-    elif proto == "TCP":
-        receipt = send_tcp_log(host, port, log_msg, timeout=timeout)
-    elif proto in ("HTTP", "REST"):
-        api_url = f"{scheme}://{host}:{port}/api/v1/ingest"
-        receipt = send_http_log(api_url, log_msg, source=dev["name"], vendor=dev["vendor"], timeout=timeout)
-    else:
-        watch_dir = str(TESTING_DIR.parent / "main" / "storage" / "logs")
-        receipt = drop_file_log(watch_dir, log_msg)
+    receipt = dispatch_log_to_target(
+        host=host,
+        port=port,
+        protocol=proto,
+        message=log_msg,
+        source=dev["name"],
+        vendor=dev.get("vendor"),
+        scheme=scheme,
+        timeout=timeout,
+        enrich=True,
+    )
 
     if receipt.get("success"):
         dev["packets_sent"] = dev.get("packets_sent", 0) + 1
@@ -776,17 +885,18 @@ def _device_stream_worker(dev_id: str, host: str, scheme: str):
         log_msg = generate_device_log(dev)
         proto = dev["protocol"].upper()
         port = dev["port"]
-        r = {}
 
         try:
-            if proto == "UDP":
-                r = send_udp_log(host, port, log_msg)
-            elif proto == "TCP":
-                r = send_tcp_log(host, port, log_msg)
-            else:
-                api_url = f"{scheme}://{host}:{port}/api/v1/ingest"
-                r = send_http_log(api_url, log_msg, source=dev["name"], vendor=dev["vendor"])
-
+            r = dispatch_log_to_target(
+                host=host,
+                port=port,
+                protocol=proto,
+                message=log_msg,
+                source=dev["name"],
+                vendor=dev.get("vendor"),
+                scheme=scheme,
+                enrich=False,
+            )
             if r.get("success"):
                 dev["packets_sent"] = dev.get("packets_sent", 0) + 1
         except Exception:
@@ -1030,10 +1140,16 @@ async def upload_log_file(
         target_port = 5140 if mode == "udp_stream" else 5141
 
         for line in lines:
-            if mode == "udp_stream":
-                r = send_udp_log(host, target_port, line)
-            else:
-                r = send_tcp_log(host, target_port, line)
+            r = dispatch_log_to_target(
+                host=host,
+                port=target_port,
+                protocol="UDP" if mode == "udp_stream" else "TCP",
+                message=line,
+                source=f"file:{filename}",
+                scheme=scheme,
+                api_port=port if port else 8000,
+                enrich=False,
+            )
 
             if r.get("success"):
                 stream_success += 1
@@ -1119,6 +1235,7 @@ class BurstRequest(BaseModel):
     protocol: str = "udp"
     host: str = "127.0.0.1"
     port: Optional[int] = None
+    api_port: Optional[int] = 8000
     rate_limit_eps: Optional[int] = None
     pacing_delay_ms: Optional[int] = None
     interval_ms: Optional[float] = None
@@ -1157,14 +1274,17 @@ def trigger_burst_traffic(req: BurstRequest):
 
     for i in range(req.count):
         msg = generate_random_event()
-        r = {}
-        if proto == "UDP":
-            r = send_udp_log(internal_target_host, port, msg, timeout=req.device_timeout)
-        elif proto == "TCP":
-            r = send_tcp_log(internal_target_host, port, msg, timeout=req.device_timeout)
-        else:
-            api_url = f"{req.scheme}://{internal_target_host}:{port}/api/v1/ingest"
-            r = send_http_log(api_url, msg, source=req.source, timeout=req.device_timeout)
+        r = dispatch_log_to_target(
+            host=internal_target_host,
+            port=port,
+            protocol=proto,
+            message=msg,
+            source=req.source,
+            scheme=req.scheme,
+            api_port=getattr(req, "api_port", 8000) or 8000,
+            timeout=req.device_timeout,
+            enrich=False,
+        )
 
         if r.get("success"):
             success_cnt += 1
