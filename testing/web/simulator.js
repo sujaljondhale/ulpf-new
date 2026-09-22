@@ -2036,6 +2036,7 @@ print("Ingestion Ack:", resp.json())`,
           protocol: proto,
           host: host,
           port: port,
+          api_port: parseInt(document.getElementById("modalApiPort")?.value || testbedSettings.apiPort || 8000, 10),
           message: g.testPayload,
           source: `RealDev-${key.toUpperCase()}`,
           scheme: testbedSettings.scheme || "http"
