@@ -1025,97 +1025,98 @@ document.addEventListener("DOMContentLoaded", () => {
     const t0 = performance.now();
 
     try {
-      const res = await fetch("/api/test/burst", {
+      const burstPayload = {
+        host: host,
+        port: targetPort,
+        protocol: protocol,
+        count: burstCount,
+        pacing_delay_ms: pacingDelayMs,
+        interval_ms: pacingDelayMs !== undefined ? pacingDelayMs : (testbedSettings.logsInterval !== undefined ? testbedSettings.logsInterval : 0),
+        device_timeout: (testbedSettings.timeout || 3000) / 1000.0,
+        scheme: testbedSettings.scheme || "http",
+        api_port: parseInt(testbedSettings.apiPort || 8000, 10)
+      };
+
+      // Try /api/v1/test/burst first, fallback to /api/test/burst
+      let res = await fetch("/api/v1/test/burst", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          host: host,
-          port: targetPort,
-          protocol: protocol,
-          count: burstCount,
-          pacing_delay_ms: pacingDelayMs,
-          interval_ms: pacingDelayMs !== undefined ? pacingDelayMs : (testbedSettings.logsInterval !== undefined ? testbedSettings.logsInterval : 0),
-          device_timeout: (testbedSettings.timeout || 3000) / 1000.0,
-          scheme: testbedSettings.scheme || "http"
-        })
+        body: JSON.stringify(burstPayload)
       });
+
+      if (!res.ok && res.status === 404) {
+        res = await fetch("/api/test/burst", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(burstPayload)
+        });
+      }
 
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}: Failed to execute burst storm`);
       }
 
       const data = await res.json();
-      const elapsed = data.elapsed_seconds || ((performance.now() - t0) / 1000).toFixed(2);
-      const delivered = data.delivered !== undefined ? data.delivered : burstCount;
-      const effectiveEps = data.effective_eps || Math.round(delivered / (parseFloat(elapsed) || 0.01));
+      const elapsed = data.elapsed_seconds || (data.elapsed_sec ? String(data.elapsed_sec) : ((performance.now() - t0) / 1000).toFixed(3));
+      const delivered = data.delivered !== undefined ? data.delivered : (data.success_count !== undefined ? data.success_count : (data.burst_count || burstCount));
+      const effectiveEps = data.effective_eps || (data.sustained_eps ? Math.round(data.sustained_eps) : Math.round(delivered / (parseFloat(elapsed) || 0.001)));
       const totalBytes = data.total_bytes || (delivered * 210);
+
+      if (data.notice) {
+        appendLoadgenLog(`[INFO] ${data.notice}`);
+      }
 
       if (loadgenProgressFill) {
         loadgenProgressFill.style.width = "100%";
       }
 
       if (statBurstDelivered) statBurstDelivered.textContent = delivered;
-      if (statBurstEps) statBurstEps.textContent = `${effectiveEps} EPS`;
+      if (statBurstEps) statBurstEps.textContent = `${effectiveEps.toLocaleString()} EPS`;
       if (statBurstElapsed) statBurstElapsed.textContent = `${elapsed}s`;
       if (statBurstBytes) statBurstBytes.textContent = `${(totalBytes / 1024).toFixed(1)} KB`;
 
-      appendLoadgenLog(`[OK] Stress storm complete: ${delivered}/${burstCount} delivered in ${elapsed}s (Throughput: ${effectiveEps} events/sec, ${totalBytes} bytes).`);
+      appendLoadgenLog(`[OK] Stress storm complete: ${delivered}/${burstCount} delivered in ${elapsed}s (Throughput: ${effectiveEps.toLocaleString()} events/sec, ${totalBytes} bytes).`);
 
       // Record to audit ledger
       recordAuditEntry({
         protocol: protocol,
-        target: `${host}:${protocol === 'UDP' ? 5140 : (protocol === 'TCP' ? 5141 : 8000)}`,
+        target: `${host}:${targetPort}`,
         source: "Burst-Stress-Generator",
         status: "SUCCESS",
         bytes: totalBytes,
         rtt: `${Math.round((parseFloat(elapsed) * 1000) / delivered)} ms/pkt`,
-        payload: `[BURST-TEST] ${delivered} packets transmitted at ${effectiveEps} EPS`
+        payload: `[BURST-TEST] ${delivered} packets transmitted via ${protocol} at ${effectiveEps.toLocaleString()} EPS`
       });
 
-      showToast(`Burst test complete: ${delivered} packets delivered at ${effectiveEps} EPS!`);
+      showToast(`Burst test complete: ${delivered} packets delivered at ${effectiveEps.toLocaleString()} EPS!`);
     } catch (err) {
-      appendLoadgenLog(`[WARN] Burst API error: ${err.message}. Attempting browser direct ingestion loop...`);
+      appendLoadgenLog(`[WARN] Burst API error: ${err.message}. Attempting batch fallback...`);
 
-      // Browser direct fallback ingestion loop
-      let delivered = 0;
-      let totalBytes = 0;
-
-      for (let i = 0; i < burstCount; i++) {
-        try {
-          const sample = `<134>Jan 10 14:32:01 StressHost app[${i}]: Transaction benchmark payload count=${i} ok`;
-          await fetch("/api/test/transmit", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              protocol: protocol,
-              host: host,
-              port: protocol === "UDP" ? 5140 : 5141,
-              api_port: parseInt(testbedSettings.apiPort || 8000, 10),
-              message: sample,
-              source: `StressClient-${i}`
-            })
-          });
-          delivered++;
-          totalBytes += sample.length;
-        } catch (e) {
-          delivered++; // count mock for offline visual
+      // High-speed batch fallback instead of slow 500-iteration individual HTTP requests
+      try {
+        const batchLogs = [];
+        for (let i = 0; i < burstCount; i++) {
+          batchLogs.push(`<134>Jan 10 14:32:01 StressHost app[${i}]: Transaction benchmark payload count=${i} ok`);
         }
+        await fetch("/api/v1/ingest/batch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ logs: batchLogs, source: "StressClient-Batch" })
+        });
+        const elapsed = ((performance.now() - t0) / 1000).toFixed(2);
+        const effectiveEps = Math.round(burstCount / (parseFloat(elapsed) || 0.01));
+        const totalBytes = burstCount * 95;
 
-        if (loadgenProgressFill && i % 5 === 0) {
-          loadgenProgressFill.style.width = `${Math.round(((i + 1) / burstCount) * 100)}%`;
-        }
+        if (loadgenProgressFill) loadgenProgressFill.style.width = "100%";
+        if (statBurstDelivered) statBurstDelivered.textContent = burstCount;
+        if (statBurstEps) statBurstEps.textContent = `${effectiveEps.toLocaleString()} EPS`;
+        if (statBurstElapsed) statBurstElapsed.textContent = `${elapsed}s`;
+        if (statBurstBytes) statBurstBytes.textContent = `${(totalBytes / 1024).toFixed(1)} KB`;
+
+        appendLoadgenLog(`[OK] Completed batch stream: ${burstCount}/${burstCount} packets in ${elapsed}s at ${effectiveEps.toLocaleString()} EPS.`);
+      } catch (batchErr) {
+        appendLoadgenLog(`[ERROR] Transmission stream failed: ${batchErr.message}`);
       }
-
-      const elapsed = ((performance.now() - t0) / 1000).toFixed(2);
-      const effectiveEps = Math.round(delivered / (parseFloat(elapsed) || 0.01));
-
-      if (loadgenProgressFill) loadgenProgressFill.style.width = "100%";
-      if (statBurstDelivered) statBurstDelivered.textContent = delivered;
-      if (statBurstEps) statBurstEps.textContent = `${effectiveEps} EPS`;
-      if (statBurstElapsed) statBurstElapsed.textContent = `${elapsed}s`;
-      if (statBurstBytes) statBurstBytes.textContent = `${(totalBytes / 1024).toFixed(1)} KB`;
-
-      appendLoadgenLog(`[OK] Completed fallback stream: ${delivered}/${burstCount} packets at ${effectiveEps} EPS.`);
     } finally {
       if (btnRunLoadTest) {
         btnRunLoadTest.disabled = false;
