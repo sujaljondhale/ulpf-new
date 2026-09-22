@@ -55,7 +55,7 @@ EXPOSE 8050
 
 # Healthcheck to monitor web interface and API availability
 HEALTHCHECK --interval=15s --timeout=5s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8050/ || exit 1
+    CMD curl -f http://localhost:${PORT:-8050}/ || exit 1
 
 # Launch the Simulator Hub on port 8050
 CMD ["python", "run_testing.py"]

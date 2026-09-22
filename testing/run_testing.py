@@ -39,7 +39,7 @@ if __name__ == "__main__":
     import uvicorn
 
     host = os.getenv("TESTING_HOST", "0.0.0.0")
-    port = int(os.getenv("TESTING_PORT", "8050"))
+    port = int(os.getenv("PORT") or os.getenv("TESTING_PORT") or 8050)
 
     print("=" * 70)
     print("  [ULPF CORE 2: PROTOCOL SIMULATOR & TESTING HUB]")
