@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 .git
 .gitignore
 __pycache__
@@ -21,3 +22,28 @@ testing/storage/*
 .DS_Store
 Thumbs.db
 ULPF_SIH26156_Master_Report.pdf
+=======
+.git
+.gitignore
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.env
+node_modules
+.venv
+venv
+.pytest_cache
+coverage
+*.log
+storage/raw/*
+storage/*.db
+storage/*.db-journal
+main/storage/raw/*
+main/storage/*.db
+main/storage/*.db-journal
+testing/storage/*
+.DS_Store
+Thumbs.db
+ULPF_SIH26156_Master_Report.pdf
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0

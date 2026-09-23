@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 FROM ollama/ollama:latest
 
 # Expose Ollama local API port
@@ -11,3 +12,18 @@ RUN chmod +x /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]
 
+=======
+FROM ollama/ollama:latest
+
+# Expose Ollama local API port
+EXPOSE 11434
+
+ENV OLLAMA_HOST=0.0.0.0 \
+    OLLAMA_MODEL=qwen2.5-coder:3b
+
+COPY scripts/entrypoint_ai.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
+
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0

@@ -98,21 +98,36 @@
 
   // --- TOP BAR CONTROLS ---
   function initTopBarControls() {
+<<<<<<< HEAD
     // 3-Theme Switcher (Dark Emerald Glow, Light Crystal, and Luxury Champagne Gold)
     const themeSelect = document.getElementById("themeSelector");
 
     function applyTheme(theme) {
       let activeTheme = (theme === "light" || theme === "luxury") ? theme : "dark";
+=======
+    // SOC Dark Theme Switcher
+    const themeSelect = document.getElementById("themeSelector");
+
+    function applyTheme(theme) {
+      let activeTheme = theme;
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
       document.documentElement.setAttribute("data-theme", activeTheme);
       try {
         localStorage.setItem("ulpf_theme", activeTheme);
       } catch (e) { }
       if (themeSelect) themeSelect.value = activeTheme;
+<<<<<<< HEAD
       document.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: activeTheme } }));
     }
 
     let savedTheme = localStorage.getItem("ulpf_theme") || "dark";
     if (savedTheme !== "light" && savedTheme !== "luxury") savedTheme = "dark";
+=======
+      document.dispatchEvent(new CustomEvent('themeChanged'));
+    }
+
+    let savedTheme = localStorage.getItem("ulpf_theme") || "nord";
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
     applyTheme(savedTheme);
 
     if (themeSelect) {
@@ -382,8 +397,18 @@
               if (idx !== -1) state.events[idx] = rec;
             }
 
+<<<<<<< HEAD
             // Batched / Throttled UI update (Prevents browser thread freeze during high EPS)
             triggerThrottledUiUpdate();
+=======
+            // Refresh views dynamically
+            if (state.currentRoute === "overview") {
+              renderHomeLiveEventsTable();
+              renderHomeMetrics();
+            } else if (state.currentRoute === "events" || state.currentRoute === "logs") {
+              refreshEventsTable();
+            }
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
           }
 
           // 6. Stored Data Logs Cleared
@@ -426,6 +451,7 @@
     }
   }
 
+<<<<<<< HEAD
   // --- HIGH-THROUGHPUT UI RENDER SCHEDULER (ZERO LAG) ---
   let uiUpdateScheduled = false;
   let lastUiUpdateTime = 0;
@@ -477,6 +503,8 @@
     }
   }
 
+=======
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
   // --- REAL-TIME THROUGHPUT AND EPS TRACKER ---
   let liveEventTimestamps = [];
   function recordIncomingEventTimestamp() {
@@ -527,6 +555,7 @@
         renderHomeMetrics();
       }
 
+<<<<<<< HEAD
       // Only fetch initial events if empty (SSE handles incremental stream)
       if (!state.events || state.events.length === 0) {
         const evtRes = await fetch("/api/v1/events?limit=250");
@@ -535,6 +564,12 @@
           state.events = data.events || [];
           if (state.currentRoute === "overview") renderHomeLiveEventsTable();
         }
+=======
+      const evtRes = await fetch("/api/v1/events?limit=1000");
+      if (evtRes.ok) {
+        const data = await evtRes.json();
+        state.events = data.events || [];
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
       }
 
       const srcRes = await fetch("/api/v1/sources");
@@ -903,8 +938,11 @@
       window.closeConnectRealDeviceModal();
       window.closeInspectUnknownLogModal();
       window.closeScenarioModal();
+<<<<<<< HEAD
       const aiPopup = document.getElementById("aiReviewPopupModal");
       if (aiPopup) aiPopup.classList.add("hidden");
+=======
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
       const aiRep = document.getElementById("aiIncidentReportContainer");
       if (aiRep) aiRep.style.display = "none";
     }
@@ -1560,6 +1598,7 @@
   // ==========================================================================
 
   // --- HOME / OVERVIEW VIEW ---
+<<<<<<< HEAD
   let activeFormatFilter = "all";
 
   window.setHomeFormatFilter = function (fmt) {
@@ -1790,13 +1829,57 @@
           <div>
             <h2 class="card-title" style="font-size:14px; display:flex; align-items:center; gap:8px;">
               <span>Live Ingested Security Events Stream</span>
+=======
+  function renderHomeView(container) {
+    container.innerHTML = `
+      <div class="page-header">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
+          <div>
+            <h1 class="page-title">Enterprise SOC Overview</h1>
+            <p class="page-desc">Universal Log Pre-processing Framework · Real-Time Ingestion, Normalization & Provenance Engine</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- LIVE SYSTEM SUMMARY METRICS -->
+      <div class="grid grid-4 gap-md" id="homeMetricsGrid"></div>
+      
+      <!-- CONTINUOUS TELEMETRY GRAPH -->
+      <div class="card p-md mt-md telemetry-card" style="position: relative;">
+        <div class="card-header" style="border:none; padding:0 0 12px 0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+          <h2 class="card-title component-heading" style="font-size:14px; display:flex; align-items:center; gap:8px;">
+            <span>Live EPS & Parsing Telemetry</span>
+            <span class="badge badge-teal">REAL-TIME</span>
+          </h2>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:12px; color:var(--text-silver);">Workers/CPUs:</span>
+            <input type="number" id="workerCountInput" class="form-control" style="width:64px; height:26px; font-size:12px; padding:2px 8px; background:var(--bg-card); border:1px solid var(--border-color); color:var(--text-main); border-radius:4px;" value="4" min="1" max="128">
+            <button class="btn btn-xs btn-secondary" onclick="window.updateWorkerCount()">Scale</button>
+          </div>
+        </div>
+        <div class="chart-container" style="position: relative; height:240px; width:100%;">
+          <canvas id="liveEpsChart"></canvas>
+        </div>
+      </div>
+
+      <!-- LIVE INGESTED SECURITY EVENTS STREAM -->
+      <div class="card p-md mt-md">
+        <div class="card-header" style="border:none; padding:0 0 12px 0; display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <h2 class="card-title" style="font-size:14px; display:flex; align-items:center; gap:8px;">
+              <span>Real-Time Ingested Events Stream</span>
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
               <span class="badge badge-teal">LIVE INGRESS</span>
             </h2>
             <p class="text-muted font-sm" style="margin:2px 0 0 0;">Heterogeneous vendor events parsed into canonical ULPF-IR with cryptographic SHA-256 evidence</p>
           </div>
+<<<<<<< HEAD
           <div style="display:flex; gap:8px;">
             <a href="#/logs" class="btn btn-xs btn-secondary" style="text-decoration:none; white-space:nowrap;">Full Forensic Explorer →</a>
           </div>
+=======
+          <a href="#/logs" class="btn btn-xs btn-secondary" style="text-decoration:none; white-space:nowrap;">View All Events →</a>
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
         </div>
         <div class="table-responsive" style="overflow-x:auto;">
           <table class="table-dense" style="table-layout: fixed; width:100%; border-collapse: separate;">
@@ -1820,18 +1903,115 @@
           </table>
         </div>
       </div>
+<<<<<<< HEAD
+=======
+
+      <!-- ACTIVE COLLECTORS & TAXONOMY SUMMARY -->
+      <div class="grid grid-2 gap-md mt-md">
+        <div class="card p-md">
+          <div class="card-header" style="border:none; padding:0 0 12px 0; display:flex; justify-content:space-between; align-items:center;">
+            <h2 class="card-title" style="font-size:13.5px; margin:0;">Active Ingress Collectors</h2>
+            <span class="badge badge-teal">ACTIVE LISTENERS</span>
+          </div>
+          <table class="table-dense" style="table-layout: fixed; width:100%; border-collapse: separate;">
+            <thead>
+              <tr>
+                <th style="width:32%; text-align:left; vertical-align:middle; padding:10px 12px;">COLLECTOR / CHANNEL</th>
+                <th style="width:26%; text-align:left; vertical-align:middle; padding:10px 12px;">PORT / PROTOCOL</th>
+                <th style="width:18%; text-align:center; vertical-align:middle; padding:10px 12px;">STATUS</th>
+                <th style="width:24%; text-align:left; vertical-align:middle; padding:10px 12px;">TARGET TAXONOMY</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="vertical-align:middle; padding:10px 12px; font-weight:600; color:var(--text-main);">Syslog UDP Receiver</td>
+                <td style="vertical-align:middle; padding:10px 12px;"><code class="mono" style="font-size:11px;">UDP :514 &amp; :5140</code></td>
+                <td style="text-align:center; vertical-align:middle; padding:10px 12px;"><span class="badge badge-teal">LISTENING</span></td>
+                <td style="vertical-align:middle; padding:10px 12px; color:var(--text-silver); font-size:11.5px;">ULPF-IR / OCSF</td>
+              </tr>
+              <tr>
+                <td style="vertical-align:middle; padding:10px 12px; font-weight:600; color:var(--text-main);">Syslog TCP Streamer</td>
+                <td style="vertical-align:middle; padding:10px 12px;"><code class="mono" style="font-size:11px;">TCP :5141</code></td>
+                <td style="text-align:center; vertical-align:middle; padding:10px 12px;"><span class="badge badge-teal">LISTENING</span></td>
+                <td style="vertical-align:middle; padding:10px 12px; color:var(--text-silver); font-size:11.5px;">ULPF-IR / ECS</td>
+              </tr>
+              <tr>
+                <td style="vertical-align:middle; padding:10px 12px; font-weight:600; color:var(--text-main);">REST Ingestion Gateway</td>
+                <td style="vertical-align:middle; padding:10px 12px;"><code class="mono" style="font-size:11px;">HTTP :8000</code></td>
+                <td style="text-align:center; vertical-align:middle; padding:10px 12px;"><span class="badge badge-teal">ONLINE</span></td>
+                <td style="vertical-align:middle; padding:10px 12px; color:var(--text-silver); font-size:11.5px;">JSON / Batch</td>
+              </tr>
+              <tr>
+                <td style="vertical-align:middle; padding:10px 12px; font-weight:600; color:var(--text-main);">Raw Storage Persistence</td>
+                <td style="vertical-align:middle; padding:10px 12px;"><code class="mono" style="font-size:11px;">MinIO :9000</code></td>
+                <td style="text-align:center; vertical-align:middle; padding:10px 12px;"><span class="badge badge-teal">IMMUTABLE</span></td>
+                <td style="vertical-align:middle; padding:10px 12px; color:var(--text-silver); font-size:11.5px;">SHA-256 Vault</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card p-md">
+          <div class="card-header" style="border:none; padding:0 0 12px 0; display:flex; justify-content:space-between; align-items:center;">
+            <h2 class="card-title" style="font-size:13.5px; margin:0;">Supported Ingestion Formats</h2>
+            <span class="badge badge-neutral">ACTIVE PARSERS</span>
+          </div>
+          <table class="table-dense" style="table-layout: fixed; width:100%; border-collapse: separate;">
+            <thead>
+              <tr>
+                <th style="width:34%; text-align:left; vertical-align:middle; padding:10px 12px;">FORMAT STANDARD</th>
+                <th style="width:18%; text-align:center; vertical-align:middle; padding:10px 12px;">STATUS</th>
+                <th style="width:24%; text-align:left; vertical-align:middle; padding:10px 12px;">NORMALIZATION</th>
+                <th style="width:24%; text-align:left; vertical-align:middle; padding:10px 12px;">PROVENANCE</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="vertical-align:middle; padding:10px 12px;"><strong style="color:var(--text-main);">CEF</strong> <span class="text-muted font-sm">(ArcSight)</span></td>
+                <td style="text-align:center; vertical-align:middle; padding:10px 12px;"><span class="badge badge-teal">ACTIVE</span></td>
+                <td style="vertical-align:middle; padding:10px 12px; color:var(--text-main);">Deterministic v1.0</td>
+                <td style="vertical-align:middle; padding:10px 12px;"><span class="badge badge-neutral" style="font-size:10px;">Field-Level Offset</span></td>
+              </tr>
+              <tr>
+                <td style="vertical-align:middle; padding:10px 12px;"><strong style="color:var(--text-main);">Syslog</strong> <span class="text-muted font-sm">(RFC 3164 / 5424)</span></td>
+                <td style="text-align:center; vertical-align:middle; padding:10px 12px;"><span class="badge badge-teal">ACTIVE</span></td>
+                <td style="vertical-align:middle; padding:10px 12px; color:var(--text-main);">Deterministic v1.0</td>
+                <td style="vertical-align:middle; padding:10px 12px;"><span class="badge badge-neutral" style="font-size:10px;">Byte Accurate</span></td>
+              </tr>
+              <tr>
+                <td style="vertical-align:middle; padding:10px 12px;"><strong style="color:var(--text-main);">LEEF</strong> <span class="text-muted font-sm">(IBM QRadar)</span></td>
+                <td style="text-align:center; vertical-align:middle; padding:10px 12px;"><span class="badge badge-teal">ACTIVE</span></td>
+                <td style="vertical-align:middle; padding:10px 12px; color:var(--text-main);">Deterministic v1.0</td>
+                <td style="vertical-align:middle; padding:10px 12px;"><span class="badge badge-neutral" style="font-size:10px;">Field-Level Offset</span></td>
+              </tr>
+              <tr>
+                <td style="vertical-align:middle; padding:10px 12px;"><strong style="color:var(--text-main);">Key=Value / JSON</strong> <span class="text-muted font-sm">(Cloud / WAF)</span></td>
+                <td style="text-align:center; vertical-align:middle; padding:10px 12px;"><span class="badge badge-teal">ACTIVE</span></td>
+                <td style="vertical-align:middle; padding:10px 12px; color:var(--text-main);">Deterministic v1.0</td>
+                <td style="vertical-align:middle; padding:10px 12px;"><span class="badge badge-neutral" style="font-size:10px;">Attribute Mapped</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
     `;
 
     renderHomeMetrics();
     renderHomeLiveEventsTable();
+<<<<<<< HEAD
     renderHomeRecentStream();
     initTelemetryChart();
     initHomeDonutChart();
+=======
+    initTelemetryChart();
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
   }
 
   function renderHomeLiveEventsTable() {
     const tbody = document.getElementById("homeLiveEventsTableBody");
     if (!tbody) return;
+<<<<<<< HEAD
 
     let events = state.events || [];
     if (activeFormatFilter && activeFormatFilter !== "all") {
@@ -1848,14 +2028,28 @@
           <svg class="svg-icon" style="width:28px; height:28px; stroke:var(--primary-main); opacity:0.8;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
           <div style="font-weight:700; color:var(--text-main); font-size:13px;">No Stored Data Logs Matching Filter</div>
           <div style="font-size:12px; max-width:420px; line-height:1.4;">Send traffic to port 8000 (REST) or use the quick simulation buttons above.</div>
+=======
+    const events = (state.events || []).slice(0, 10);
+    if (events.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:36px 16px; color:var(--text-muted);">
+        <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+          <svg class="svg-icon" style="width:28px; height:28px; stroke:var(--primary-main); opacity:0.8;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+          <div style="font-weight:700; color:var(--text-main); font-size:13px;">No Stored Data Logs</div>
+          <div style="font-size:12px; max-width:420px; line-height:1.4;">Stored logs have been removed. Use external syslog/REST collectors to ingest new live traffic.</div>
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
         </div>
       </td></tr>`;
       return;
     }
 
+<<<<<<< HEAD
     tbody.innerHTML = displayEvents.map(e => {
       const eid = e.event_id || e.id || "EVT";
       const displayEid = eid.length > 20 ? `${eid.substring(0, 8)}...${eid.substring(eid.length - 4)}` : eid;
+=======
+    tbody.innerHTML = events.map(e => {
+      const eid = e.event_id || e.id || "EVT";
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
       const src = e.source || e.source_device || "Firewall-01";
       const rawFmt = String(e.format || "CEF");
       let fmtClean = rawFmt.toUpperCase().trim();
@@ -1877,6 +2071,7 @@
       const isBlock = act === "deny" || act === "block" || act === "drop";
 
       return `
+<<<<<<< HEAD
         <tr style="cursor:pointer;" onclick="window.openEventDetailModal('${eid}')" title="Click to view event details (${escapeHtml(eid)})">
           <td style="font-family:var(--font-mono); font-weight:700; color:var(--primary-main); text-align:left; vertical-align:middle; padding:10px 14px; white-space:nowrap; max-width:140px; overflow:hidden; text-overflow:ellipsis;">
             ${escapeHtml(displayEid)}
@@ -1884,6 +2079,11 @@
           <td style="font-weight:600; color:var(--text-main); text-align:left; vertical-align:middle; padding:10px 14px; white-space:nowrap; max-width:140px; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(src)}">
             ${escapeHtml(src)}
           </td>
+=======
+        <tr style="cursor:pointer;" onclick="window.openEventDetailModal('${eid}')" title="Click to view event details">
+          <td style="font-family:var(--font-mono); font-weight:700; color:var(--primary-main); text-align:left; vertical-align:middle; padding:10px 14px; white-space:nowrap;">${eid}</td>
+          <td style="font-weight:600; color:var(--text-main); text-align:left; vertical-align:middle; padding:10px 14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(src)}</td>
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
           <td style="text-align:center; vertical-align:middle; padding:10px 6px; overflow:hidden;">
             <span class="badge badge-violet" style="font-size:10px; text-transform:uppercase; max-width:76px; display:inline-block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; vertical-align:middle;" title="${escapeHtml(rawFmt)}">${fmtClean}</span>
           </td>
@@ -1892,7 +2092,11 @@
               ${act.toUpperCase()}
             </span>
           </td>
+<<<<<<< HEAD
           <td style="font-family:var(--font-mono); font-size:11.5px; color:var(--text-silver); text-align:left; vertical-align:middle; padding:10px 14px; white-space:nowrap;">${escapeHtml(ip)}</td>
+=======
+          <td style="font-family:var(--font-mono); font-size:11.5px; color:var(--silver-light); text-align:left; vertical-align:middle; padding:10px 14px; white-space:nowrap;">${escapeHtml(ip)}</td>
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
           <td style="font-family:var(--font-mono); font-size:11px; color:var(--text-muted); text-align:left; vertical-align:middle; padding:10px 14px; max-width:350px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
             ${raw}
           </td>
@@ -1901,6 +2105,7 @@
     }).join("");
   }
 
+<<<<<<< HEAD
   function renderHomeRecentStream() {
     const container = document.getElementById("homeRecentStreamContainer");
     if (!container) return;
@@ -2032,6 +2237,8 @@
     });
   }
 
+=======
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
   function renderHomeMetrics() {
     const grid = document.getElementById("homeMetricsGrid");
     if (!grid) return;
@@ -2062,6 +2269,7 @@
       rateBadgeText = "ACTIVE";
     }
 
+<<<<<<< HEAD
     const heroVal = document.getElementById("heroThroughputVal");
     if (heroVal) {
       heroVal.textContent = displayRate;
@@ -2070,16 +2278,26 @@
 
     if (m.worker_count !== undefined) {
       const input = document.getElementById("workerCountInput");
+=======
+    if (m.worker_count !== undefined) {
+      const input = document.getElementById("workerCountInput");
+      // Only update if not currently focused to avoid typing interruptions
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
       if (input && document.activeElement !== input) {
         input.value = m.worker_count;
       }
     }
 
+<<<<<<< HEAD
     const latencyText = m.avg_latency || "10.4 µs";
+=======
+    const latencyText = m.avg_latency || "0 µs";
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
 
     grid.innerHTML = `
       <div class="metric-card" onclick="window.location.hash='#/events'">
         <div class="metric-label">EVENTS RECEIVED</div>
+<<<<<<< HEAD
         <div class="metric-value">${window.formatLargeNumber(m.events_received || state.events.length)}</div>
         <div class="metric-sub" style="justify-content: flex-end;">
           <span class="badge badge-teal">LIVE INGRESS</span>
@@ -2095,23 +2313,51 @@
       <div class="metric-card" onclick="window.location.hash='#/analytics'">
         <div class="metric-label">PROCESSING THROUGHPUT</div>
         <div class="metric-value" style="color: ${isLiveActive ? '#00D084' : '#38bdf8'}; font-weight:800;">${displayRate}</div>
+=======
+        <div class="metric-value">${window.formatLargeNumber(m.events_received)}</div>
+        <div class="metric-sub" style="justify-content: flex-end;">
+          <span class="badge badge-teal">LIVE</span>
+        </div>
+      </div>
+      <div class="metric-card" onclick="window.location.hash='#/events'">
+        <div class="metric-label">EVENTS PROCESSED</div>
+        <div class="metric-value">${window.formatLargeNumber(m.events_processed)}</div>
+        <div class="metric-sub" style="justify-content: flex-end;">
+          <span class="badge badge-teal">NORMALIZED</span>
+        </div>
+      </div>
+      <div class="metric-card" onclick="window.location.hash='#/analytics/overview'">
+        <div class="metric-label">PROCESSING RATE</div>
+        <div class="metric-value" style="color: ${isLiveActive ? '#34d399' : '#38bdf8'}; font-weight:800;">${displayRate}</div>
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
         <div class="metric-sub">
           <span>Avg Latency: ${latencyText}</span>
           <span class="badge ${rateBadge}">${rateBadgeText}</span>
         </div>
       </div>
+<<<<<<< HEAD
       <div class="metric-card" onclick="window.location.hash='#/human-verification'">
         <div class="metric-label">PARSE SUCCESS RATE</div>
         <div class="metric-value">${m.parse_success_rate || "100%"}</div>
         <div class="metric-sub">
           <span>Deterministic Parsers: ${m.active_parsers || 6}</span>
+=======
+      <div class="metric-card" onclick="window.location.hash='#/intelligence/ai-onboarding'">
+        <div class="metric-label">PARSE SUCCESS RATE</div>
+        <div class="metric-value">${m.parse_success_rate || "100%"}</div>
+        <div class="metric-sub">
+          <span>Active Parsers: ${m.active_parsers || 0}</span>
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
           <span class="badge badge-teal">STABLE</span>
         </div>
       </div>
     `;
   }
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
   function updateLiveJourneyWidget() {
     const container = document.getElementById("liveJourneyWidget");
     if (!container) return;
@@ -3488,7 +3734,11 @@ New-NetFirewallRule -DisplayName "ULPF Ingress TCP" -Direction Inbound -LocalPor
                     <span class="badge badge-amber" style="font-size:9.5px;">Human Sign-Off</span>
                   </div>
                   <div class="text-muted mt-sm" style="font-size:11px;">
+<<<<<<< HEAD
                     <strong style="color: var(--primary-main);">Device:</strong> ${u.source}
+=======
+                    <strong style="color: #6457cdff;">Device:</strong> ${u.source}
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
                   </div>
                   <div class="mono text-muted mt-sm" style="font-size:10.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--text-main);">
                     ${u.raw_message}
@@ -3582,7 +3832,11 @@ New-NetFirewallRule -DisplayName "ULPF Ingress TCP" -Direction Inbound -LocalPor
             <!-- RAW LOG PREVIEW WITH CRYPTOGRAPHIC SHA-256 SEAL -->
             <div class="mt-md">
               <div class="code-box-header" style="background:var(--bg-card-subtle); padding:8px 12px; border-radius:6px 6px 0 0; display:flex; justify-content:space-between; align-items:center;">
+<<<<<<< HEAD
                 <span style="font-size:11.5px; font-weight:700; color: var(--text-muted); letter-spacing:0.03em;">Raw Log</span>
+=======
+                <span style="font-size:11.5px; font-weight:700; color: #45509fff; letter-spacing:0.03em;">Raw Log</span>
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
                 <span class="mono text-muted" style="font-size:11px;">SHA-256: <code class="text-teal" style="font-size:10.5px;">${(selectedLog.sha256 || '4b227777d4dd1fc61c6f884f48641d02b4d121d3fd328cb08b5531fcacdabf8a').substring(0, 24)}...</code></span>
               </div>
               <pre class="code-box" style="max-height:80px; margin-bottom:0; color:var(--text-main); font-size:12px; border-radius:0 0 6px 6px; overflow-x:auto;">${selectedLog.raw_message}</pre>
@@ -3598,7 +3852,11 @@ New-NetFirewallRule -DisplayName "ULPF Ingress TCP" -Direction Inbound -LocalPor
             <!-- STREAMLINED HUMAN DECISION ACTION BAR -->
             <div class="mt-md" style="padding-top:14px; border-top:1px solid var(--border-color); background:var(--bg-card-subtle); padding:12px; border-radius:6px;">
               <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px; flex-wrap:wrap;">
+<<<<<<< HEAD
                 <label style="font-size:12px; color: var(--primary-main); font-weight:700;">Custom Parser Name:</label>
+=======
+                <label style="font-size:12px; color: #4257b5ff; font-weight:700;">Custom Parser Name:</label>
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
                 <input type="text" id="aiParserCustomName" class="form-control" style="background: var(--bg-card); border:1px solid #334155; color:var(--primary-main); font-family:monospace; padding:6px 10px; border-radius:4px; min-width:260px;" value="parser_${selectedLog.source.toLowerCase().replace(/[^a-z0-9]/g, '_')}_v1" placeholder="e.g. parser_myvendor_custom_v1" />
                 <span class="text-muted text-xs">Assign a custom identifier to compile into server registry</span>
               </div>
@@ -5048,6 +5306,7 @@ normalization:
   };
 
   window.explainSpecificThreat = async (threatTitle, ip, mitreId) => {
+<<<<<<< HEAD
     const popupModal = document.getElementById("aiReviewPopupModal");
     const bodyEl = document.getElementById("aiReviewModalBody");
     const badgeEl = document.getElementById("aiReviewModalBadge");
@@ -5056,10 +5315,19 @@ normalization:
       popupModal.classList.remove("hidden");
     }
 
+=======
+    const containerEl = document.getElementById("aiIncidentReportContainer");
+    const bodyEl = document.getElementById("aiIncidentReportBody");
+    const badgeEl = document.getElementById("aiAuditBadge");
+    if (!containerEl || !bodyEl) return;
+
+    containerEl.style.display = "block";
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
     if (badgeEl) {
       badgeEl.className = "badge badge-amber";
       badgeEl.innerText = "REASONING...";
     }
+<<<<<<< HEAD
     
     if (bodyEl) {
       bodyEl.innerHTML = `
@@ -5073,6 +5341,9 @@ normalization:
         </div>
       `;
     }
+=======
+    bodyEl.innerHTML = `<div style="padding:15px; color:var(--primary-main); font-family:var(--font-mono); font-size:12px;"><span class="pulse-dot teal"></span> Consulting sovereign AI engine for incident reasoning on ${ip} (${threatTitle})...</div>`;
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
 
     try {
       const res = await fetch("/api/v1/ai/explain", {
@@ -5087,6 +5358,7 @@ normalization:
         badgeEl.innerText = `CONFIDENCE: ${Math.round((data.confidence || 0.95) * 100)}%`;
       }
 
+<<<<<<< HEAD
       if (bodyEl) {
         bodyEl.innerHTML = `
           <div style="display:flex; flex-direction:column; gap:16px;">
@@ -5148,14 +5420,49 @@ normalization:
           </div>
         `;
       }
+=======
+      bodyEl.innerHTML = `
+        <div class="grid grid-2 gap-md mt-sm" style="border-top:1px solid rgba(255,255,255,0.08); padding-top:12px;">
+          <div>
+            <div style="font-weight:700; color:var(--text-main); font-size:13px; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+              <span>Executive Threat Assessment:</span>
+              <span class="badge ${data.severity === 'critical' ? 'badge-red' : 'badge-amber'}">${(data.severity || 'HIGH').toUpperCase()}</span>
+            </div>
+            <div style="font-size:12px; color: #445697ff; line-height:1.5;">${escapeHtml(data.summary || 'Malicious security incident detected and quarantined by ULPF.')}</div>
+            <div class="mt-sm" style="font-size:11.5px;">
+              <span class="text-muted">MITRE:</span> <strong class="mono" style="color:var(--warning-main);">${data.mitre_attack_id} — ${data.mitre_attack_name}</strong>
+            </div>
+          </div>
+          <div>
+            <div style="font-weight:700; color:var(--text-main); font-size:13px; margin-bottom:4px;">Recommended SOC Remediation:</div>
+            <ul style="padding-left:18px; font-size:11.5px; color:var(--text-main); line-height:1.5;">
+              ${(data.recommended_actions || [
+          "Verify source IP against perimeter firewall blacklist.",
+          "Enforce automated connection drop at gateway.",
+          "Check legal raw SHA-256 evidence chain in MinIO vault."
+        ]).map(a => `<li>${escapeHtml(a)}</li>`).join('')}
+            </ul>
+            <div class="mt-sm">
+              <button class="btn btn-xs btn-danger" onclick="window.blockConnection('${ip}')">
+                Block Connection &amp; Blacklist ${ip}
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
     } catch (e) {
       if (badgeEl) {
         badgeEl.className = "badge badge-red";
         badgeEl.innerText = "OFFLINE";
       }
+<<<<<<< HEAD
       if (bodyEl) {
         bodyEl.innerHTML = `<div style="padding:20px; color:var(--danger-main); text-align:center;">Could not load AI explanation: ${escapeHtml(e.message)}</div>`;
       }
+=======
+      bodyEl.innerHTML = `<div style="padding:15px; color:var(--danger-main);">Could not load AI explanation: ${escapeHtml(e.message)}</div>`;
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
     }
   };
 
@@ -6325,7 +6632,11 @@ normalization:
     }
   };
 
+<<<<<<< HEAD
   // --- TELEMETRY CHART LOGIC (GLOWING AREA GRADIENT) ---
+=======
+  // --- TELEMETRY CHART LOGIC ---
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
   let telemetryChart = null;
   let telemetryInterval = null;
   const maxDataPoints = 60;
@@ -6333,10 +6644,17 @@ normalization:
   const parsedData = new Array(maxDataPoints).fill(0);
 
   function initTelemetryChart() {
+<<<<<<< HEAD
     const canvas = document.getElementById("liveEpsChart");
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx || typeof Chart === "undefined") return;
+=======
+    const ctx = document.getElementById("liveEpsChart");
+    if (!ctx) return;
+
+    if (typeof Chart === "undefined") return;
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
 
     if (telemetryChart) {
       telemetryChart.destroy();
@@ -6345,6 +6663,7 @@ normalization:
     const labels = new Array(maxDataPoints).fill("");
 
     const style = getComputedStyle(document.documentElement);
+<<<<<<< HEAD
     const isLight = document.documentElement.getAttribute("data-theme") === "light";
     const textColor = style.getPropertyValue('--text-muted').trim() || (isLight ? '#64748b' : '#94a3b8');
     const gridColor = isLight ? 'rgba(15, 23, 42, 0.06)' : 'rgba(255, 255, 255, 0.06)';
@@ -6361,6 +6680,35 @@ normalization:
     gradientParsed.addColorStop(1, 'rgba(139, 92, 246, 0.0)');
 
     Chart.defaults.font.family = "'Plus Jakarta Sans', 'Inter', sans-serif";
+=======
+    const textColor = style.getPropertyValue('--text-muted').trim() || '#94a3b8';
+    const gridColor = style.getPropertyValue('--border-color').trim() || 'rgba(255,255,255,0.05)';
+    const primaryColor = style.getPropertyValue('--primary-main').trim() || '#38bdf8';
+    const successColor = style.getPropertyValue('--success-main').trim() || '#34d399';
+
+    document.addEventListener('themeChanged', () => {
+      if (telemetryChart) {
+        const newStyle = getComputedStyle(document.documentElement);
+        const newTextColor = newStyle.getPropertyValue('--text-muted').trim() || '#94a3b8';
+        const newGridColor = newStyle.getPropertyValue('--border-color').trim() || 'rgba(255,255,255,0.05)';
+        
+        telemetryChart.data.datasets[0].borderColor = newStyle.getPropertyValue('--primary-main').trim() || '#38bdf8';
+        telemetryChart.data.datasets[1].borderColor = newStyle.getPropertyValue('--success-main').trim() || '#34d399';
+
+        telemetryChart.options.plugins.tooltip.backgroundColor = newStyle.getPropertyValue('--bg-dropdown').trim() || 'rgba(20, 6, 11, 0.9)';
+        telemetryChart.options.plugins.tooltip.titleColor = newStyle.getPropertyValue('--text-main').trim() || '#fff';
+        telemetryChart.options.plugins.tooltip.bodyColor = newTextColor;
+        telemetryChart.options.plugins.tooltip.borderColor = telemetryChart.data.datasets[0].borderColor;
+        
+        // Update axes and legend text color for theme switching
+        telemetryChart.options.scales.y.ticks.color = newTextColor;
+        telemetryChart.options.scales.y.grid.color = newGridColor;
+        telemetryChart.options.plugins.legend.labels.color = newTextColor;
+
+        telemetryChart.update();
+      }
+    });
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
 
     telemetryChart = new Chart(ctx, {
       type: 'line',
@@ -6371,6 +6719,7 @@ normalization:
             label: 'Events Received/sec',
             data: epsData,
             borderColor: primaryColor,
+<<<<<<< HEAD
             backgroundColor: gradientReceived,
             borderWidth: 2.5,
             pointRadius: 0,
@@ -6380,10 +6729,19 @@ normalization:
             pointHoverBorderWidth: 2,
             fill: true,
             tension: 0.42
+=======
+            backgroundColor: 'rgba(56, 189, 248, 0.15)',
+            borderWidth: 2,
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            fill: true,
+            tension: 0.4
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
           },
           {
             label: 'Events Parsed/sec',
             data: parsedData,
+<<<<<<< HEAD
             borderColor: accentPurple,
             backgroundColor: gradientParsed,
             borderWidth: 2.5,
@@ -6394,6 +6752,15 @@ normalization:
             pointHoverBorderWidth: 2,
             fill: true,
             tension: 0.42
+=======
+            borderColor: successColor,
+            backgroundColor: 'rgba(52, 211, 153, 0.15)',
+            borderWidth: 2,
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            fill: true,
+            tension: 0.4
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
           }
         ]
       },
@@ -6401,6 +6768,10 @@ normalization:
         responsive: true,
         maintainAspectRatio: false,
         animation: false,
+<<<<<<< HEAD
+=======
+        hover: { mode: null },
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
         interaction: {
           intersect: false,
           mode: 'index',
@@ -6408,11 +6779,19 @@ normalization:
         scales: {
           y: {
             beginAtZero: true,
+<<<<<<< HEAD
             grid: { color: gridColor, drawBorder: false },
             ticks: { color: textColor, maxTicksLimit: 5, font: { family: "'JetBrains Mono', monospace", size: 11 } }
           },
           x: {
             grid: { display: false, drawBorder: false },
+=======
+            grid: { color: gridColor },
+            ticks: { color: textColor, maxTicksLimit: 5 }
+          },
+          x: {
+            grid: { display: false },
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
             ticks: { display: false }
           }
         },
@@ -6420,6 +6799,7 @@ normalization:
           legend: {
             display: true,
             position: 'top',
+<<<<<<< HEAD
             align: 'end',
             labels: {
               color: textColor,
@@ -6429,11 +6809,15 @@ normalization:
               boxHeight: 8,
               font: { weight: '600', size: 11.5 }
             }
+=======
+            labels: { color: textColor }
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
           },
           tooltip: {
             enabled: true,
             mode: 'index',
             intersect: false,
+<<<<<<< HEAD
             backgroundColor: isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(15, 23, 42, 0.95)',
             titleColor: isLight ? '#0F172A' : '#FFFFFF',
             bodyColor: textColor,
@@ -6443,6 +6827,13 @@ normalization:
             padding: 10,
             boxPadding: 4,
             usePointStyle: true
+=======
+            backgroundColor: style.getPropertyValue('--bg-dropdown').trim() || 'rgba(20, 6, 11, 0.9)',
+            titleColor: style.getPropertyValue('--text-main').trim() || '#fff',
+            bodyColor: style.getPropertyValue('--text-muted').trim() || '#e2e8f0',
+            borderColor: primaryColor,
+            borderWidth: 1
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
           }
         }
       }
@@ -6452,6 +6843,11 @@ normalization:
     telemetryInterval = setInterval(() => {
       if (state.currentRoute !== "overview") return;
       const currentEps = calculateLiveClientEps();
+<<<<<<< HEAD
+=======
+      // Assume parsed rate is very close to received rate in normal conditions.
+      // Ideally this would be fetched from backend metric 'events_processed_rate'
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
       let parsedRate = currentEps;
 
       epsData.push(currentEps);
@@ -6459,6 +6855,7 @@ normalization:
       parsedData.push(parsedRate);
       parsedData.shift();
 
+<<<<<<< HEAD
       if (telemetryChart) telemetryChart.update('none');
     }, 1000);
   }
@@ -6470,6 +6867,12 @@ normalization:
     }
   });
 
+=======
+      if (telemetryChart) telemetryChart.update();
+    }, 1000);
+  }
+
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
   // --- ANALYTICS STUDIO VIEW ---
   function renderAnalyticsStudioView(container) {
     container.innerHTML = `
@@ -6481,6 +6884,7 @@ normalization:
       </div>
       
       <!-- S3 Storage Insights Widget -->
+<<<<<<< HEAD
       <div id="minioInsightsWidget" class="card" style="padding: 16px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid var(--primary-main);">
          <div>
             <h4 style="margin: 0; color: var(--text-main); font-size: 14px; font-weight:700;">S3 Storage Connectivity</h4>
@@ -6489,12 +6893,23 @@ normalization:
          <div style="text-align: right;">
             <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing:0.5px;">Bucket / Fallback</div>
             <div id="minioBucketText" style="font-weight: 700; color:var(--primary-main); font-family:var(--font-mono);">---</div>
+=======
+      <div id="minioInsightsWidget" class="card" style="padding: 16px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid #10b981;">
+         <div>
+            <h4 style="margin: 0; color: #f8fafc; font-size: 14px;">S3 Storage Connectivity</h4>
+            <div id="minioStatusText" style="font-size: 12px; color: #94a3b8; margin-top: 4px;">Checking status...</div>
+         </div>
+         <div style="text-align: right;">
+            <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase;">Bucket / Fallback</div>
+            <div id="minioBucketText" style="font-weight: 600; color:var(--primary-main);">---</div>
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
          </div>
       </div>
 
       <!-- Analytics Grid -->
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
         <div class="card" style="grid-column: 1 / -1; padding: 20px;">
+<<<<<<< HEAD
           <h3 style="font-size:14px; font-weight:700; margin-bottom:12px; color:var(--text-main);">Real-Time Throughput (EPS)</h3>
           <div style="height: 250px;"><canvas id="epsChart"></canvas></div>
         </div>
@@ -6508,11 +6923,27 @@ normalization:
         </div>
         <div class="card" style="grid-column: 1 / -1; padding: 20px;">
           <h3 style="font-size:14px; font-weight:700; margin-bottom:12px; color:var(--text-main);">Threat Logs</h3>
+=======
+          <h3>Real-Time Throughput (EPS)</h3>
+          <div style="height: 250px;"><canvas id="epsChart"></canvas></div>
+        </div>
+        <div class="card" style="padding: 20px;">
+          <h3>Severity Distribution</h3>
+          <div style="height: 250px;"><canvas id="severityChart"></canvas></div>
+        </div>
+        <div class="card" style="padding: 20px;">
+          <h3>Top Log Types / Formats</h3>
+          <div style="height: 250px;"><canvas id="sourceChart"></canvas></div>
+        </div>
+        <div class="card" style="grid-column: 1 / -1; padding: 20px;">
+          <h3>Threat Logs</h3>
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
           <div style="height: 250px;"><canvas id="threatChart"></canvas></div>
         </div>
       </div>
 
       <!-- MinIO Storage Insights & Forensics -->
+<<<<<<< HEAD
       <div class="card" style="padding: 20px; margin-bottom: 24px;">
         <h3 style="font-size:14px; font-weight:700; color:var(--text-main);">Raw Evidence & Parsed Telemetry Forensics</h3>
         <p class="text-secondary" style="font-size: 13px; margin: 4px 0 16px 0; color:var(--text-muted);">Retrieve exact, unmodified byte-for-byte original logs directly from immutable MinIO storage and inspect cryptographic verification.</p>
@@ -6520,11 +6951,21 @@ normalization:
         <div style="display: flex; gap: 10px; margin-bottom: 16px;">
           <input type="text" id="forensicEventIdInput" class="form-control mono" placeholder="Enter Event ID (e.g. EVT-1002)..." style="flex: 1; height:38px;">
           <button class="btn btn-sm btn-primary" id="btnSearchForensics" style="height:38px; font-weight: 700;">Fetch Evidence</button>
+=======
+      <div class="card" style="padding: 20px;">
+        <h3>Raw Evidence & Parsed Telemetry Forensics</h3>
+        <p class="text-secondary" style="font-size: 13px; margin-bottom: 16px;">Retrieve exact, unmodified byte-for-byte original logs directly from the immutable MinIO storage and view their structured nested key-value pairs side-by-side.</p>
+        
+        <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+          <input type="text" id="forensicEventIdInput" class="input-modern" placeholder="Enter Event ID (e.g. EVT-1002)..." style="flex: 1; padding: 8px 12px; border: 1px solid var(--border-color); background: var(--bg-main); color: var(--text-main); border-radius: 4px;">
+          <button class="btn btn-sm btn-primary" id="btnSearchForensics" style="padding: 8px 16px; font-weight: 600;">Fetch Evidence</button>
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
         </div>
       </div>
 
       <!-- Cryptographic Evidence Ledger (Merkle Graph) -->
       <div class="card" style="padding: 20px; margin-bottom: 24px;">
+<<<<<<< HEAD
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap:wrap; gap:12px;">
            <div>
              <h3 style="display:flex; align-items:center; gap:8px; font-size:14px; font-weight:700; color:var(--text-main);">
@@ -6537,6 +6978,20 @@ normalization:
              <button class="btn btn-sm btn-secondary" id="btnPrevMerkleBlock" onclick="window.changeMerkleBlock(1)">← Older Block</button>
              <button class="btn btn-sm btn-secondary" id="btnNextMerkleBlock" onclick="window.changeMerkleBlock(-1)">Newer Block →</button>
              <button class="btn btn-sm btn-primary" id="btnRefreshMerkle" onclick="window.fetchAndDrawMerkleGraph()">Refresh</button>
+=======
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+           <div>
+             <h3 style="display:flex; align-items:center; gap:8px;">
+               Cryptographic Evidence Ledger (Merkle Forest)
+               <span id="merkleBlockLabel" class="badge badge-teal">Block 0</span>
+             </h3>
+             <p class="text-secondary" style="font-size: 13px;">Time-Series Pagination: Browse historical blocks of 1,000 logs.</p>
+           </div>
+           <div style="display: flex; gap: 8px;">
+             <button class="btn btn-sm btn-secondary" id="btnPrevMerkleBlock" style="padding: 6px 12px; font-weight: 600;" onclick="window.changeMerkleBlock(1)">← Older Block</button>
+             <button class="btn btn-sm btn-secondary" id="btnNextMerkleBlock" style="padding: 6px 12px; font-weight: 600;" onclick="window.changeMerkleBlock(-1)">Newer Block →</button>
+             <button class="btn btn-sm btn-primary" id="btnRefreshMerkle" style="padding: 6px 12px; font-weight: 600;" onclick="window.fetchAndDrawMerkleGraph()">Refresh</button>
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
            </div>
         </div>
         <div id="merkleGraphArea" class="merkle-graph-container">
@@ -6552,6 +7007,7 @@ normalization:
       const btext = document.getElementById('minioBucketText');
 
       if (data.status === 'healthy') {
+<<<<<<< HEAD
         if (widget) widget.style.borderLeftColor = 'var(--primary-main)';
         if (stext) stext.innerHTML = `<span style="color:var(--primary-main); font-weight:600;">${data.mode}</span> (${data.endpoint})`;
         if (btext) btext.textContent = data.bucket;
@@ -6583,6 +7039,26 @@ normalization:
       grad.addColorStop(1, 'rgba(0, 208, 132, 0.0)');
       epsGradient = grad;
     }
+=======
+        widget.style.borderLeftColor = '#10b981';
+        stext.innerHTML = `<span style="color:#10b981;">${data.mode}</span> (${data.endpoint})`;
+        btext.textContent = data.bucket;
+      } else {
+        widget.style.borderLeftColor = '#f59e0b';
+        stext.innerHTML = `<span style="color:var(--warning-main);">${data.mode}</span> (Fallback Active)`;
+        btext.textContent = 'local_fallback_dir';
+      }
+    }).catch(e => console.error("Failed to fetch MinIO stats"));
+
+    // Initialize Charts
+    const epsCtx = document.getElementById('epsChart').getContext('2d');
+    const sevCtx = document.getElementById('severityChart').getContext('2d');
+    const srcCtx = document.getElementById('sourceChart').getContext('2d');
+    const threatCtx = document.getElementById('threatChart').getContext('2d');
+
+    Chart.defaults.color = '#94a3b8';
+    Chart.defaults.font.family = "'Inter', sans-serif";
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
 
     let epsHistory = Array(60).fill(0);
     const epsChart = new Chart(epsCtx, {
@@ -6592,14 +7068,21 @@ normalization:
         datasets: [{
           label: 'Events Per Second',
           data: epsHistory,
+<<<<<<< HEAD
           borderColor: isLight ? '#0284C7' : '#00D084',
           backgroundColor: epsGradient,
           borderWidth: 2.5,
+=======
+          borderColor: '#38bdf8',
+          backgroundColor: 'rgba(56, 189, 248, 0.1)',
+          borderWidth: 2,
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
           fill: true,
           tension: 0.4,
           pointRadius: 0
         }]
       },
+<<<<<<< HEAD
       options: {
         responsive: true,
         maintainAspectRatio: false,
@@ -6610,12 +7093,16 @@ normalization:
         },
         plugins: { legend: { display: false } }
       }
+=======
+      options: { responsive: true, maintainAspectRatio: false, animation: { duration: 0 }, scales: { y: { beginAtZero: true, grid: { color: '#334155' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } }
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
     });
 
     const severityChart = new Chart(sevCtx, {
       type: 'doughnut',
       data: {
         labels: ['Critical', 'High', 'Medium', 'Low', 'Info'],
+<<<<<<< HEAD
         datasets: [{
           data: [0, 0, 0, 0, 0],
           backgroundColor: ['#EF4444', '#F59E0B', '#FBBF24', '#10B981', '#38BDF8'],
@@ -6640,12 +7127,18 @@ normalization:
           }
         }
       }
+=======
+        datasets: [{ data: [0, 0, 0, 0, 0], backgroundColor: ['#ef4444', '#f97316', '#eab308', '#3b82f6', '#64748b'], borderWidth: 0 }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'right' } } }
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
     });
 
     const sourceChart = new Chart(srcCtx, {
       type: 'bar',
       data: {
         labels: [],
+<<<<<<< HEAD
         datasets: [{
           label: 'Format Count',
           data: [],
@@ -6664,12 +7157,18 @@ normalization:
         },
         plugins: { legend: { display: false } }
       }
+=======
+        datasets: [{ label: 'Format Count', data: [], backgroundColor: '#38bdf8', borderRadius: 4 }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', scales: { x: { beginAtZero: true, grid: { color: '#334155' } }, y: { grid: { display: false } } }, plugins: { legend: { display: false } } }
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
     });
 
     const threatChart = new Chart(threatCtx, {
       type: 'bar',
       data: {
         labels: [],
+<<<<<<< HEAD
         datasets: [{
           label: 'Threat Count',
           data: [],
@@ -6685,6 +7184,14 @@ normalization:
           y: { beginAtZero: true, grid: { color: chartGridColor } },
           x: { grid: { display: false } }
         },
+=======
+        datasets: [{ label: 'Threat Count', data: [], backgroundColor: '#ef4444', borderRadius: 4 }]
+      },
+      options: { 
+        responsive: true, 
+        maintainAspectRatio: false, 
+        scales: { y: { beginAtZero: true, grid: { color: '#334155' } }, x: { grid: { display: false } } }, 
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
         plugins: { legend: { display: false } },
         onClick: (evt, activeElements) => {
           if (activeElements.length > 0) {
@@ -6815,6 +7322,7 @@ normalization:
          
          tree.reverse(); // Root at index 0
          
+<<<<<<< HEAD
          const activeTheme = document.documentElement.getAttribute("data-theme") || "dark";
          const isLuxury = (activeTheme === "luxury");
          const isLight = (activeTheme === "light");
@@ -6826,6 +7334,9 @@ normalization:
          const tooltipBorder = isLuxury ? "1px solid rgba(217, 119, 6, 0.4)" : (isLight ? "none" : "1px solid rgba(0, 208, 132, 0.4)");
 
          graphArea.innerHTML = `<div style="position:relative; width:100%; height:450px; background:${containerBg}; border-radius:12px; border: 1px solid ${containerBorder}; cursor: crosshair; overflow:hidden;" id="canvasContainer"><canvas id="merkleCanvas" style="display:block;"></canvas><div id="graphTooltip" style="position:absolute; display:none; background:${tooltipBg}; color:${tooltipColor}; border:${tooltipBorder}; padding:6px 12px; border-radius:6px; font-size:11px; pointer-events:none; z-index:10; font-family:var(--font-mono); white-space:nowrap; box-shadow:0 8px 24px rgba(0,0,0,0.4);"></div></div>`;
+=======
+         graphArea.innerHTML = '<div style="position:relative; width:100%; height:450px; background:#f8fafc; border-radius:8px; border: 1px solid #e2e8f0; cursor: crosshair;" id="canvasContainer"><canvas id="merkleCanvas" style="display:block;"></canvas><div id="graphTooltip" style="position:absolute; display:none; background:rgba(0,0,0,0.8); color:#fff; padding:6px 10px; border-radius:4px; font-size:11px; pointer-events:none; z-index:10; font-family:monospace; white-space:nowrap;"></div></div>';
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
          
          const container = document.getElementById('canvasContainer');
          const canvas = document.getElementById('merkleCanvas');
@@ -6858,6 +7369,7 @@ normalization:
              positions.push(levelPos);
          }
          
+<<<<<<< HEAD
          // Theme Palette Variables for Canvas
          const edgeColor = isLuxury ? "rgba(217, 119, 6, 0.25)" : (isLight ? "rgba(2, 132, 199, 0.22)" : "rgba(0, 208, 132, 0.20)");
          const rootColor = isLuxury ? "#B45309" : (isLight ? "#DC2626" : "#EF4444");
@@ -6867,6 +7379,8 @@ normalization:
          const lensBg = isLuxury ? "#FCFAF1" : (isLight ? "#F8FAFC" : "#080C14");
          const lensBorder = isLuxury ? "rgba(217, 119, 6, 0.85)" : (isLight ? "rgba(2, 132, 199, 0.85)" : "rgba(0, 208, 132, 0.85)");
 
+=======
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
          // 1. Main render loop (Vector Magnifier)
          let mouseX = -1000;
          let mouseY = -1000;
@@ -6876,7 +7390,11 @@ normalization:
          
          function drawGraphPaths(isMagnified = false) {
              // Draw Edges
+<<<<<<< HEAD
              ctx.strokeStyle = edgeColor;
+=======
+             ctx.strokeStyle = 'rgba(100, 116, 139, 0.2)';
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
              ctx.lineWidth = isMagnified ? 1.5 / zoom : 1; // Keep lines crisp
              
              ctx.beginPath();
@@ -6911,12 +7429,21 @@ normalization:
                      }
                      
                      ctx.beginPath();
+<<<<<<< HEAD
                      const radius = p.isRoot ? 4.5 : (p.isLeaf ? 2 : 2.5);
                      ctx.arc(p.x, p.y, radius, 0, 2 * Math.PI);
                      
                      if (p.isRoot) ctx.fillStyle = rootColor;
                      else if (p.isLeaf) ctx.fillStyle = p.hash === '0000000000000000000000000000000000000000000000000000000000000000' ? (isLuxury ? 'rgba(217,119,6,0.2)' : 'rgba(0,208,132,0.15)') : leafColor;
                      else ctx.fillStyle = innerColor;
+=======
+                     const radius = p.isRoot ? 4 : (p.isLeaf ? 1.5 : 2);
+                     ctx.arc(p.x, p.y, radius, 0, 2 * Math.PI);
+                     
+                     if (p.isRoot) ctx.fillStyle = '#ef4444';
+                     else if (p.isLeaf) ctx.fillStyle = p.hash === '0000000000000000000000000000000000000000000000000000000000000000' ? 'rgba(16, 185, 129, 0.1)' : '#10b981';
+                     else ctx.fillStyle = '#475569';
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
                      
                      ctx.fill();
                      
@@ -6924,7 +7451,11 @@ normalization:
                      if (isMagnified && activeNode && activeNode.x === p.x && activeNode.y === p.y) {
                          ctx.beginPath();
                          ctx.arc(p.x, p.y, radius + 2/zoom, 0, 2 * Math.PI);
+<<<<<<< HEAD
                          ctx.strokeStyle = activeHighlight;
+=======
+                         ctx.strokeStyle = '#3b82f6';
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
                          ctx.lineWidth = 2 / zoom;
                          ctx.stroke();
                      }
@@ -6948,7 +7479,11 @@ normalization:
                  ctx.clip();
                  
                  // 2. Fill background inside lens to hide base graph
+<<<<<<< HEAD
                  ctx.fillStyle = lensBg;
+=======
+                 ctx.fillStyle = '#f8fafc';
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
                  ctx.fill();
                  
                  // 3. Apply mathematical transformation for infinite resolution zooming
@@ -6961,11 +7496,22 @@ normalization:
                  
                  ctx.restore();
                  
+<<<<<<< HEAD
                  // Draw lens glass border
                  ctx.beginPath();
                  ctx.arc(mouseX, mouseY, lensRadius, 0, 2 * Math.PI);
                  ctx.lineWidth = 3;
                  ctx.strokeStyle = lensBorder;
+=======
+                 // Draw lens glass border & shadow
+                 ctx.beginPath();
+                 ctx.arc(mouseX, mouseY, lensRadius, 0, 2 * Math.PI);
+                 ctx.lineWidth = 4;
+                 ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+                 ctx.stroke();
+                 ctx.lineWidth = 1;
+                 ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+>>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
                  ctx.stroke();
              }
          }
