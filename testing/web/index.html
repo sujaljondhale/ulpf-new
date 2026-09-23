@@ -1,0 +1,2261 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ULPF Virtual Device Simulator & Testbed</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=1.0.0_phase12">
+  <script>
+    (function () {
+      try {
+        const saved = localStorage.getItem("ulpf_theme") || "dark";
+        const normalized = (saved === "light" || saved === "luxury") ? saved : "dark";
+        document.documentElement.setAttribute("data-theme", normalized);
+      } catch (e) { }
+    })();
+  </script>
+</head>
+
+<body>
+
+  <!-- Top Navigation Bar -->
+  <header class="top-navbar">
+    <div class="brand-section">
+      <div class="brand-icon"><svg class="svg-icon svg-icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2.5">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+        </svg></div>
+      <div class="brand-text-wrap">
+        <div class="brand-title">ULPF Virtual Device Simulator &amp; Testbed</div>
+        <div class="brand-subtitle-row">
+          <span class="brand-badge">CORE 2</span>
+          <span class="brand-badge"
+            style="background:rgba(52, 211, 153, 0.15); color:#10b981; border-color:rgba(52, 211, 153, 0.35);">v1.0.0
+            Enterprise</span>
+          <span class="brand-desc">Network Telemetry &amp; Validation Studio</span>
+          <span class="brand-live-dot" title="Testbed Engine Ready"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav-actions">
+      <!-- Clean Single Action Hub -->
+      <nav class="nav-hub" aria-label="Main Navigation">
+        <a href="http://localhost:8000/dashboard/index.html#/overview" target="_blank"
+          id="linkNavMainDashboard"
+          class="nav-link-btn nav-link-server" style="padding: 6px 14px; font-weight: 700; gap: 8px;"
+          title="Open Main Server SOC Dashboard (Core 1)">
+          <span class="nav-link-icon"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+            </svg></span>
+          <span>Open Main SOC Dashboard</span>
+          <span class="nav-link-arrow">↗</span>
+        </a>
+      </nav>
+
+      <div class="nav-divider"></div>
+
+      <!-- Theme Controls -->
+      <div class="theme-selector-wrap">
+        <select id="themeSelector" class="theme-select-dropdown" title="Switch SOC Theme Palette">
+          <option value="dark" selected>Dark (Emerald Glow)</option>
+          <option value="light">Light (Crystal Glass)</option>
+          <option value="luxury">Luxury (Champagne Gold)</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <!-- Page Title Header -->
+    <div class="section-header" style="margin-bottom:14px;">
+      <div>
+        <h1 class="section-title"
+          style="font-size:22px; color:var(--text-primary); display:flex; align-items:center; gap:8px;">
+          <span>Universal Log Testing & Verification Studio</span>
+        </h1>
+        <p class="section-subtitle" style="color:var(--text-secondary); font-size:13px;">
+          Easily test your log server, simulate office routers and firewalls, launch safe test cyberattacks, and check
+          live system health — designed to be completely visual and beginner-friendly.
+        </p>
+      </div>
+    </div>
+
+    <!-- TARGET SERVER & REMOTE API CONTROLLER BAR -->
+    <div class="target-server-banner">
+      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+        <div style="display:flex; align-items:center; gap:6px;">
+          <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="2" y1="12" x2="22" y2="12" />
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+          </svg>
+          <span style="font-size:11px; font-weight:800; color:var(--text-primary); letter-spacing:0.5px;">MAIN SERVER
+            DESTINATION:</span>
+        </div>
+
+        <!-- Protocol Scheme -->
+        <select id="targetProtocolSelect" class="input-field"
+          style="width:85px; padding:4px 6px; font-size:12px; font-family:var(--font-mono); height:32px;"
+          title="API Protocol Scheme">
+          <option value="http" selected>http://</option>
+          <option value="https">https://</option>
+        </select>
+
+        <!-- Host or IP -->
+        <input type="text" id="targetHostInput" class="input-field" value="127.0.0.1"
+          placeholder="IP / Host (e.g. 192.168.1.50)"
+          style="width:190px; padding:5px 8px; font-family:var(--font-mono); font-size:12px; height:32px;"
+          title="Server IP or hostname where logs will be sent">
+
+        <!-- API Port -->
+        <div style="display:flex; align-items:center; gap:2px;">
+          <span
+            style="color:var(--text-secondary); font-size:12px; font-family:var(--font-mono); font-weight:700;">:</span>
+          <input type="number" id="targetPortInput" class="input-field" value="8000" placeholder="Port"
+            style="width:72px; padding:5px 6px; font-family:var(--font-mono); font-size:12px; height:32px;"
+            title="HTTP REST Port (default 8000)">
+        </div>
+
+        <!-- Quick Machine Presets -->
+        <select id="targetMachinePresetSelect" class="input-field"
+          style="width:165px; padding:4px 6px; font-size:11px; height:32px;">
+          <option value="" disabled selected>Preset Machine...</option>
+          <option value="127.0.0.1:8000">Localhost (127.0.0.1:8000)</option>
+          <option value="lan_custom">Remote LAN Machine...</option>
+          <option value="cloud_custom">Remote Cloud / VPS...</option>
+        </select>
+      </div>
+
+      <div style="display:flex; align-items:center; gap:8px;">
+        <!-- Live Connection Status Pill -->
+        <div id="topServerStatusBadge" class="server-status-pill online" title="Main Server Live Health">
+          <span class="badge-status-dot online" id="topServerDot"></span>
+          <span id="topServerStatusText">ONLINE</span>
+          <span id="topServerPingText" style="font-family:var(--font-mono); font-size:10px; opacity:0.8;">(0ms)</span>
+        </div>
+
+        <!-- Ping Test Button -->
+        <button type="button" class="btn-teal" id="btnTestServerConnection"
+          style="font-size:11px; padding:5px 12px; height:32px;" title="Probe target server API connection">
+          <span>Test Connection</span>
+        </button>
+
+        <!-- Configure Ports Button -->
+        <button type="button" class="btn-secondary" id="btnOpenEndpointsModal"
+          style="font-size:11px; padding:5px 10px; height:32px;"
+          title="Configure network ports (API, Syslog UDP, TCP, Timeout)">
+          <span>Change Ports</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- WORKFLOW PROGRESS TIMELINE BAR (7 PHASES) -->
+    <div class="workflow-progress-bar" id="workflowProgressBar">
+      <button type="button" class="workflow-step-btn active" data-tab="tabSimulator"
+        title="Phase 1: Test Everyday Normal Logs">
+        <span class="workflow-step-phase">Phase 1</span>
+        <span class="workflow-step-title">Normal Logs</span>
+      </button>
+      <button type="button" class="workflow-step-btn" data-tab="tabArsenal" title="Phase 2: Test Cyber Attack Defense">
+        <span class="workflow-step-phase">Phase 2</span>
+        <span class="workflow-step-title">Cyber Attacks</span>
+      </button>
+      <button type="button" class="workflow-step-btn" data-tab="tabLoadGen"
+        title="Phase 3: Test High Velocity Speed & Stress">
+        <span class="workflow-step-phase">Phase 3</span>
+        <span class="workflow-step-title">Speed &amp; Stress</span>
+      </button>
+      <button type="button" class="workflow-step-btn" data-tab="tabConnectionCheck"
+        title="Phase 4: Check Live Port Radar">
+        <span class="workflow-step-phase">Phase 4</span>
+        <span class="workflow-step-title">Port Radar <span class="badge-status-dot online" id="serverStateDot"
+            title="Server Status"></span></span>
+      </button>
+      <button type="button" class="workflow-step-btn" data-tab="tabRealDevices"
+        title="Phase 5: Connect Real Office Hardware">
+        <span class="workflow-step-phase">Phase 5</span>
+        <span class="workflow-step-title">Hardware Guides</span>
+      </button>
+      <button type="button" class="workflow-step-btn" data-tab="tabPipeline"
+        title="Phase 6: Automated 5-Stage System Audit">
+        <span class="workflow-step-phase">Phase 6</span>
+        <span class="workflow-step-title">System Audit</span>
+      </button>
+      <button type="button" class="workflow-step-btn" data-tab="tabFileUploader"
+        title="Phase 7: Upload Historical Log Files">
+        <span class="workflow-step-phase">Phase 7</span>
+        <span class="workflow-step-title">File Lab</span>
+      </button>
+    </div>
+
+    <!-- ========================================================================
+         TAB 1: VIRTUAL DEVICES & INTERACTIVE TELEMETRY STREAMER
+         ======================================================================== -->
+    <div id="tabSimulator" class="tab-pane active">
+
+      <!-- Beginner Guide Banner for Phase 1 -->
+      <div class="beginner-guide-banner">
+        <div class="guide-banner-header">
+          <div class="guide-banner-title-group">
+            <span class="phase-pill-badge phase-pill-cyan">Phase 1 of 7</span>
+            <span class="guide-banner-heading">VIRTUAL DEVICES &amp; DAILY TELEMETRY STREAMER</span>
+          </div>
+          <span class="guide-banner-hint">Workflow Guide &amp; Instant Walkthrough</span>
+        </div>
+        <div class="guide-cards-grid">
+          <div class="guide-card">
+            <div class="guide-card-header">
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <circle cx="12" cy="12" r="6" />
+                  <circle cx="12" cy="12" r="2" />
+                </svg></span>
+              <h4 class="guide-card-title">What This Does</h4>
+            </div>
+            <p class="guide-card-text">
+              Simulates a live office network. It creates virtual routers, firewalls, Wi-Fi access points, and Linux
+              servers that send realistic everyday activity logs to the main server.
+            </p>
+          </div>
+          <div class="guide-card">
+            <div class="guide-card-header">
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg></span>
+              <h4 class="guide-card-title">When To Use This</h4>
+            </div>
+            <p class="guide-card-text">
+              Use this first! It proves that normal, everyday network traffic flows into the server smoothly across UDP,
+              TCP, and HTTP without dropping any packets.
+            </p>
+          </div>
+          <div class="guide-card">
+            <div class="guide-card-header">
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                </svg></span>
+              <h4 class="guide-card-title">3-Step Simple Test</h4>
+            </div>
+            <ul class="guide-steps-list">
+              <li><span class="guide-step-num">1</span> Pick an active device from the roster on the left.</li>
+              <li><span class="guide-step-num">2</span> Tweak fields on the right or click "Randomize".</li>
+              <li><span class="guide-step-num">3</span> Click <b>" Send 1 Test Log Now"</b> and watch the green receipt!
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2-Column Main Workbench Grid -->
+      <div class="workbench-grid">
+
+        <!-- LEFT COLUMN: VIRTUAL DEVICE ROSTER & CREATOR -->
+        <div style="display:flex; flex-direction:column; gap:20px;">
+
+          <!-- Configured Virtual Devices Roster -->
+          <div class="card" id="step1DeviceCard" style="display:flex; flex-direction:column;">
+            <div class="section-header" style="margin-bottom:14px;">
+              <div>
+                <h3 class="section-title">
+                  <svg class="svg-icon svg-icon-md" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2" style="color:var(--accent-cyan);">
+                    <rect x="2" y="2" width="20" height="8" rx="2" ry="2" />
+                    <rect x="2" y="14" width="20" height="8" rx="2" ry="2" />
+                    <line x1="6" y1="6" x2="6.01" y2="6" />
+                    <line x1="6" y1="18" x2="6.01" y2="18" />
+                  </svg>
+                  <span>Select a Device from List</span>
+                  <span id="devCountBadge" class="badge badge-cyan">0</span>
+                </h3>
+              </div>
+            </div>
+
+            <div id="virtualDevicesList"
+              style="display:flex; flex-direction:column; gap:10px; max-height:360px; overflow-y:auto; padding-right:4px;">
+              <!-- Populated dynamically via simulator.js -->
+            </div>
+          </div>
+
+          <!-- 2. Create Virtual Device Form -->
+          <div class="card" id="addDeviceCard">
+            <div class="section-header" style="margin-bottom:14px;">
+              <div class="section-header-left">
+                <h3 class="section-title">
+                  <svg class="svg-icon svg-icon-md" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="16" />
+                    <line x1="8" y1="12" x2="16" y2="12" />
+                  </svg>
+                  <span>Add a Virtual Device</span>
+                </h3>
+              </div>
+            </div>
+
+            <form id="createDeviceForm">
+              <div class="form-row" style="grid-template-columns: 1fr 1fr; margin-bottom:12px;">
+                <div class="input-group">
+                  <label class="input-label">Device Name</label>
+                  <input type="text" id="newDevName" class="input-field" value="Edge-Firewall-05"
+                    placeholder="e.g. Edge-Firewall-05" required>
+                </div>
+                <div class="input-group">
+                  <label class="input-label">Device IP Address</label>
+                  <input type="text" id="newDevIp" class="input-field" value="192.168.1.55"
+                    placeholder="e.g. 192.168.1.55" required>
+                </div>
+              </div>
+
+              <div class="form-row" style="grid-template-columns: 1fr 1fr; margin-bottom:12px;">
+                <div class="input-group">
+                  <label class="input-label">Device Brand &amp; Log Format</label>
+                  <select id="newDevVendor" class="input-field" style="height:42px;">
+                    <option value="Palo Alto Networks|palo_alto_panos">Palo Alto Networks PAN-OS (Traffic/Threat CSV/KV)
+                    </option>
+                    <option value="Cisco|cisco_asa">Cisco ASA / FTD (Security Syslog)</option>
+                    <option value="Fortinet|fortinet_fortigate">Fortinet FortiGate (FortiOS UTM &amp; NGFW)</option>
+                    <option value="Amazon Web Services|aws_cloudtrail">AWS CloudTrail &amp; VPC Flow (JSON)</option>
+                    <option value="OISF / Suricata|suricata_eve">Suricata EVE &amp; Snort (JSON IDS/IPS)</option>
+                    <option value="Linux|syslog">Linux Server (Syslog RFC 5424)</option>
+                    <option value="Cisco Meraki|syslog">Cisco Meraki AP (Syslog 802.11)</option>
+                    <option value="Aruba Networks|syslog">Aruba Instant AP (Syslog 802.11)</option>
+                    <option value="Multi-Vendor|cef">Common Event Format (CEF)</option>
+                    <option value="Generic|kv">Generic Key=Value Firewall</option>
+                  </select>
+                </div>
+                <div class="input-group">
+                  <label class="input-label">Delivery Protocol &amp; Port</label>
+                  <select id="newDevProto" class="input-field" style="height:42px;">
+                    <option value="UDP|5140">UDP Socket (:5140) - Fast Syslog</option>
+                    <option value="TCP|5141">TCP Stream (:5141) - Reliable Stream</option>
+                    <option value="HTTP|8000">HTTP REST Ingest (:8000) - Web API</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-row" style="grid-template-columns: 1fr 1fr; margin-bottom:16px;">
+                <div class="input-group">
+                  <label class="input-label">Logs per second (EPS)</label>
+                  <input type="number" id="newDevInterval" class="input-field" value="10" min="1" max="1000" step="1"
+                    placeholder="e.g. 10 EPS">
+                </div>
+                <div></div>
+              </div>
+
+              <button type="submit" class="btn-primary" style="width:100%; justify-content:center;">
+                <span>+ Add Virtual Device to List</span>
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- RIGHT COLUMN: INTERACTIVE LOG BUILDER & TRANSMITTER -->
+        <div style="display:flex; flex-direction:column; gap:20px;">
+
+          <div class="card">
+            <div class="section-header">
+              <div class="section-header-left">
+                <h3 class="section-title">
+                  <svg class="svg-icon svg-icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2">
+                    <circle cx="12" cy="12" r="2" />
+                    <path
+                      d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14" />
+                  </svg>
+                  Active/Selected Device Configurations
+                </h3>
+              </div>
+              <div class="section-header-actions">
+                <button type="button" class="btn-secondary btn-sm" id="btnQuickUploadNav"
+                  title="Switch to Log File Ingestion & Uploader">
+                  <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                  <span>Upload File</span>
+                </button>
+                <button type="button" class="btn-secondary btn-sm" id="btnRandomizeSession"
+                  title="Generate new random IP, Port, and Session ID">
+                  <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2">
+                    <polyline points="16 3 21 3 21 8" />
+                    <line x1="4" y1="20" x2="21" y2="3" />
+                    <polyline points="21 16 21 21 16 21" />
+                    <line x1="15" y1="15" x2="21" y2="21" />
+                    <line x1="4" y1="4" x2="9" y2="9" />
+                  </svg>
+                  <span>Randomize</span>
+                </button>
+                <div id="activeDevBadge" class="active-dev-badge">
+                  <!-- Active device summary badge -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Dynamic Field Customizer Grid -->
+            <div class="builder-grid"
+              style="background:var(--bg-card); padding:12px; border-radius:8px; border:1px solid var(--border-subtle); margin-bottom:14px;">
+              <div>
+                <label class="builder-field-label">From IP (Source)</label>
+                <input type="text" id="fieldSrcIp" class="builder-field-input" value="192.168.1.100">
+              </div>
+              <div>
+                <label class="builder-field-label">To IP (Destination)</label>
+                <input type="text" id="fieldDstIp" class="builder-field-input" value="8.8.8.8">
+              </div>
+              <div>
+                <label class="builder-field-label">To Port</label>
+                <input type="number" id="fieldDstPort" class="builder-field-input" value="443">
+              </div>
+              <div>
+                <label class="builder-field-label">Firewall Action</label>
+                <select id="fieldAction" class="builder-field-input" style="height:35px;">
+                  <option value="allow" selected>ALLOW (Permit)</option>
+                  <option value="deny">DENY (Reject)</option>
+                  <option value="drop">DROP (Silent Discard)</option>
+                  <option value="block">BLOCK (Security Action)</option>
+                </select>
+              </div>
+              <div>
+                <label class="builder-field-label">Threat Level</label>
+                <select id="fieldSeverity" class="builder-field-input" style="height:35px;">
+                  <option value="low">Low (1-3) - Routine</option>
+                  <option value="medium" selected>Medium (4-6) - Notice</option>
+                  <option value="high">High (7-8) - Warning</option>
+                  <option value="critical">Critical (9-10) - Urgent</option>
+                </select>
+              </div>
+              <div>
+                <label class="builder-field-label">Service Protocol</label>
+                <input type="text" id="fieldApp" class="builder-field-input" value="HTTPS">
+              </div>
+              <div>
+                <label class="builder-field-label">Attack Payload</label>
+                <select id="fieldAttack" class="builder-field-input" style="height:35px;">
+                  <option value="none" selected>None (Clean Traffic)</option>
+                  <option value="sqli">SQL Injection</option>
+                  <option value="xss">Cross-Site Scripting (XSS)</option>
+                  <option value="path">Path Traversal</option>
+                  <option value="log4j">Log4Shell (JNDI)</option>
+                  <option value="ssrf">Server-Side Request Forgery</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Monospaced Log Payload Wire Editor -->
+            <div class="editor-wrapper">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <label class="input-label" style="margin:0; font-weight:600;">Raw Wire Payload (Wire Stream Sent to
+                  Ingress Socket)</label>
+                <span class="badge badge-neutral badge-sm" id="wireByteLengthBadge">0 bytes</span>
+              </div>
+              <textarea id="simLogPayload" class="log-textarea" spellcheck="false" rows="5"
+                placeholder="Wire payload generated automatically..."></textarea>
+            </div>
+
+            <!-- Action Controls Toolbar -->
+            <div
+              style="background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:10px; padding:14px; margin-bottom:14px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                <!-- Single Log Button -->
+                <button id="btnSendSingleSimLog" class="btn-primary" style="padding:10px 20px; font-size:13px;">
+                  <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="22" y1="2" x2="11" y2="13" />
+                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                  </svg>
+                  <span>Send 1 Test Log Now</span>
+                </button>
+
+                <!-- Stream Controls -->
+                <button id="btnToggleSimStream" class="btn-teal" style="padding:10px 18px; font-size:13px;">
+                  <svg class="svg-icon" viewBox="0 0 24 24" fill="currentColor">
+                    <polygon points="5 3 19 12 5 21 5 3" />
+                  </svg>
+                  <span>Send Continuous Logs</span>
+                </button>
+
+                <!-- Clear Payload -->
+                <button id="btnClearPayload" class="btn-secondary" style="padding:8px 14px; font-size:12px;">
+                  <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2">
+                    <polyline points="23 4 23 10 17 10" />
+                    <polyline points="1 20 1 14 7 14" />
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                  </svg>
+                  <span>Reset to Default</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Two-Way Server Receipt Card -->
+            <div id="simFeedbackBox"
+              style="display:none; padding:14px 18px; background:rgba(45,212,191,0.15); border:1px solid var(--border-subtle); border-radius:8px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <span style="font-weight:700; font-size:13px; color:#a7f3d0;" id="simFeedbackTitle"> Ingested &
+                  Normalized by Server</span>
+                <span style="font-family:var(--font-mono); font-size:12px; color:#F1F5F9; font-weight:700;"
+                  id="simFeedbackLatency">0.42 ms RTT</span>
+              </div>
+              <div style="font-family:var(--font-mono); font-size:12px; color:var(--text-secondary); margin-bottom:6px;"
+                id="simFeedbackDetail">Assigned Event ID: ULPF-2026-1001</div>
+              <div style="display:flex; gap:10px; align-items:center;">
+                <span class="badge badge-teal" id="receiptFormatBadge">FORMAT: CEF</span>
+                <span class="badge badge-neutral badge-sm" id="receiptShaBadge">SHA-256: 4b2277...</span>
+                <a href="http://localhost:8000/dashboard/index.html#/logs" target="_blank"
+                  id="linkInspectOnServer"
+                  style="margin-left:auto; font-size:11px; color:#38BDF8; text-decoration:underline;">Inspect on Server
+                </a>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- BOTTOM ROW: LIVE VIRTUAL DEVICE TERMINAL FEED -->
+      <div class="card" style="margin-top:20px;">
+        <div class="section-header" style="margin-bottom:12px;">
+          <div>
+            <h3 class="section-title">
+              <span>Live Virtual Device Terminal Output</span>
+              <span id="terminalCountBadge" class="badge badge-cyan">0 Logs Transmitted</span>
+            </h3>
+            <p class="section-subtitle">Real-time wire delivery receipts and socket responses from simulated appliances
+            </p>
+          </div>
+          <button id="btnClearTerminal" class="btn-secondary" style="padding:6px 12px; font-size:12px;">
+            <span>Clear Terminal</span>
+          </button>
+        </div>
+
+        <div id="simTerminalFeed" class="terminal-feed">
+          <div style="color:var(--text-secondary); text-align:center; padding:30px;">Terminal idle. Click "Transmit
+            Single
+            Log" or "Start Live Stream" to simulate traffic.</div>
+        </div>
+      </div>
+
+    </div><!-- End tabSimulator -->
+
+    <!-- ========================================================================
+         TAB 2: CYBER THREAT & ATTACK ARSENAL
+         ======================================================================== -->
+    <div id="tabArsenal" class="tab-pane">
+
+      <!-- Beginner Guide Banner for Phase 2 -->
+      <div class="beginner-guide-banner">
+        <div class="guide-banner-header">
+          <div class="guide-banner-title-group">
+            <span class="phase-pill-badge phase-pill-rose">Phase 2 of 7</span>
+            <span class="guide-banner-heading">CYBER THREAT &amp; ATTACK ARSENAL</span>
+          </div>
+          <span class="guide-banner-hint">Workflow Guide &amp; Instant Walkthrough</span>
+        </div>
+        <div class="guide-cards-grid">
+          <div class="guide-card">
+            <div class="guide-card-header">
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <circle cx="12" cy="12" r="6" />
+                  <circle cx="12" cy="12" r="2" />
+                </svg></span>
+              <h4 class="guide-card-title">What This Does</h4>
+            </div>
+            <p class="guide-card-text">
+              Launches safe, simulated cyberattacks (such as password guessing, website database hacking, port scanner
+              sweeps, and unknown industrial telemetry) against the server to test its defense shields.
+            </p>
+          </div>
+          <div class="guide-card">
+            <div class="guide-card-header">
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg></span>
+              <h4 class="guide-card-title">What You Should Expect</h4>
+            </div>
+            <p class="guide-card-text">
+              The server automatically inspects incoming packets, classifies the threat, emits high-priority security
+              alerts on the SOC Dashboard, and immediately blocks the attacker IP.
+            </p>
+          </div>
+          <div class="guide-card">
+            <div class="guide-card-header">
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                </svg></span>
+              <h4 class="guide-card-title">3-Step Simple Test</h4>
+            </div>
+            <ul class="guide-steps-list">
+              <li><span class="guide-step-num">1</span> Choose any of the 6 attack cards below.</li>
+              <li><span class="guide-step-num">2</span> Click the <b>"Launch Attack"</b> button on that card.</li>
+              <li><span class="guide-step-num">3</span> Watch the defense console below trace the real-time block!</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- 6 Threat Cards Grid -->
+      <div class="attack-grid">
+
+        <!-- Attack 1: SSH Brute Force -->
+        <div class="attack-card">
+          <div>
+            <div class="attack-card-header">
+              <div class="attack-card-title">
+                <span>Password Guessing (Brute Force)</span>
+              </div>
+              <span class="badge badge-rose">HIGH THREAT</span>
+            </div>
+            <p class="attack-card-desc" style="margin-top:8px;">
+              Fires 10 rapid failed password attempts from attacker IP <code>198.51.100.44</code>. Tests if the server
+              detects repeated failed logins and blocks the attacker.
+            </p>
+          </div>
+          <div>
+            <div class="attack-card-meta" style="margin-bottom:12px;">
+              <span>Target: TCP :5141</span>
+              <span>Vector: Linux SSH Server</span>
+            </div>
+            <button type="button" class="btn-primary" style="width:100%; justify-content:center;"
+              onclick="window.runAttackScenario('brute_force')">
+              <span>Launch Brute Force Attack</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Attack 2: SQL Injection -->
+        <div class="attack-card">
+          <div>
+            <div class="attack-card-header">
+              <div class="attack-card-title">
+                <span>Web Database Exploit (SQLi)</span>
+              </div>
+              <span class="badge badge-rose">CRITICAL</span>
+            </div>
+            <p class="attack-card-desc" style="margin-top:8px;">
+              Injects classic <code>UNION SELECT</code> database extraction code into a web request. Tests if the server
+              flags web application exploits.
+            </p>
+          </div>
+          <div>
+            <div class="attack-card-meta" style="margin-bottom:12px;">
+              <span>Target: HTTP :8000 &amp; UDP :5140</span>
+              <span>Vector: Cloud WAF / Firewall</span>
+            </div>
+            <button type="button" class="btn-primary" style="width:100%; justify-content:center;"
+              onclick="window.runAttackScenario('sqli')">
+              <span>Launch SQLi Attack</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Attack 3: Port Scan Sweep -->
+        <div class="attack-card">
+          <div>
+            <div class="attack-card-header">
+              <div class="attack-card-title">
+                <span>Port Scanner Sweep (Recon)</span>
+              </div>
+              <span class="badge badge-cyan">RECONNAISSANCE</span>
+            </div>
+            <p class="attack-card-desc" style="margin-top:8px;">
+              Rapidly probes 12 common service doorways (ports 21, 22, 53, 80, 443, 3389) from attacker IP
+              <code>198.51.100.77</code> to test port sweep detection.
+            </p>
+          </div>
+          <div>
+            <div class="attack-card-meta" style="margin-bottom:12px;">
+              <span>Target: UDP :5140</span>
+              <span>Vector: Cisco ASA Router</span>
+            </div>
+            <button type="button" class="btn-primary" style="width:100%; justify-content:center;"
+              onclick="window.runAttackScenario('port_scan')">
+              <span>Launch Port Sweep</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Attack 4: Blacklisted IP Ingress -->
+        <div class="attack-card">
+          <div>
+            <div class="attack-card-header">
+              <div class="attack-card-title">
+                <span>Blacklisted Hacker IP Block Test</span>
+              </div>
+              <span class="badge badge-rose">AUTO-BLOCK</span>
+            </div>
+            <p class="attack-card-desc" style="margin-top:8px;">
+              Sends packets from known malicious botnet controller IP <code>198.51.100.99</code>. Confirms that
+              blacklisted IPs are immediately dropped.
+            </p>
+          </div>
+          <div>
+            <div class="attack-card-meta" style="margin-bottom:12px;">
+              <span>Target: UDP :5140 &amp; TCP :5141</span>
+              <span>Vector: Fortinet / Suricata</span>
+            </div>
+            <button type="button" class="btn-primary" style="width:100%; justify-content:center;"
+              onclick="window.runAttackScenario('blacklisted_ip')">
+              <span>Trigger Blacklist Drop</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Attack 5: Evidence Tamper -->
+        <div class="attack-card">
+          <div>
+            <div class="attack-card-header">
+              <div class="attack-card-title">
+                <span>Evidence Anti-Tamper Test</span>
+              </div>
+              <span class="badge badge-teal">CRYPTOGRAPHIC</span>
+            </div>
+            <p class="attack-card-desc" style="margin-top:8px;">
+              Transmits raw logs and verifies their SHA-256 cryptographic fingerprints. Proves that log records cannot
+              be altered or falsified in court or audit.
+            </p>
+          </div>
+          <div>
+            <div class="attack-card-meta" style="margin-bottom:12px;">
+              <span>Target: UDP :5140</span>
+              <span>Verification: SHA-256 Digest</span>
+            </div>
+            <button type="button" class="btn-teal" style="width:100%; justify-content:center;"
+              onclick="window.runAttackScenario('tamper')">
+              <span>Test Evidence Integrity</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Attack 6: SCADA / Industrial Telemetry -->
+        <div class="attack-card">
+          <div>
+            <div class="attack-card-header">
+              <div class="attack-card-title">
+                <span>Unknown SCADA &amp; Industrial Logs</span>
+              </div>
+              <span class="badge badge-purple">SOVEREIGN AI</span>
+            </div>
+            <p class="attack-card-desc" style="margin-top:8px;">
+              Sends proprietary SCADA hex and IoT sensor data. Proves that the local sovereign AI model (Qwen 7B)
+              automatically detects unknown formats, parses fields, and queues them for human review!
+            </p>
+          </div>
+          <div>
+            <div class="attack-card-meta" style="margin-bottom:12px;">
+              <span>Target: TCP :5141 &amp; HTTP :8000</span>
+              <span>Engine: Local Qwen 7B AI</span>
+            </div>
+            <button type="button" class="btn-secondary"
+              style="width:100%; justify-content:center; border-color:#38BDF8; color:#38BDF8; font-weight:700;"
+              onclick="window.runAttackScenario('unknown_scada')">
+              <span>Inject Unknown SCADA (Test AI)</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Live Attack Feedback Console -->
+      <div class="card p-md">
+        <div class="section-header" style="margin-bottom:10px;">
+          <h3 class="section-title">Live Attack Execution & Defense Verification Console</h3>
+          <button type="button" class="btn-secondary" style="font-size:11px; padding:4px 10px;"
+            onclick="document.getElementById('attackConsoleFeed').innerHTML='<div style=\'color:var(--text-secondary); padding:20px; text-align:center;\'>Console cleared. Ready for attack execution.</div>'">
+            <span>Clear Feed</span>
+          </button>
+        </div>
+        <div id="attackConsoleFeed" class="terminal-feed" style="height:200px; color:#7dd3fc;">
+          <div style="color:var(--text-secondary); padding:20px; text-align:center;">Select any scenario above to launch
+            an
+            attack simulation and trace server defense responses.</div>
+        </div>
+      </div>
+
+    </div><!-- End tabArsenal -->
+
+    <!-- ========================================================================
+         TAB 3: HIGH-THROUGHPUT LOAD & BURST GENERATOR
+         ======================================================================== -->
+    <div id="tabLoadGen" class="tab-pane">
+
+      <!-- Beginner Guide Banner for Phase 3 -->
+      <div class="beginner-guide-banner">
+        <div class="guide-banner-header">
+          <div class="guide-banner-title-group">
+            <span class="phase-pill-badge phase-pill-amber">Phase 3 of 7</span>
+            <span class="guide-banner-heading">HIGH-THROUGHPUT LOAD &amp; BURST STRESS GENERATOR</span>
+          </div>
+          <span class="guide-banner-hint">Workflow Guide &amp; Instant Walkthrough</span>
+        </div>
+        <div class="guide-cards-grid">
+          <div class="guide-card">
+            <div class="guide-card-header">
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <circle cx="12" cy="12" r="6" />
+                  <circle cx="12" cy="12" r="2" />
+                </svg></span>
+              <h4 class="guide-card-title">What This Does</h4>
+            </div>
+            <p class="guide-card-text">
+              Simulates a heavy network spike by blasting 50 to 500 log packets into the server in a few milliseconds to
+              measure how fast the server handles heavy load.
+            </p>
+          </div>
+          <div class="guide-card">
+            <div class="guide-card-header">
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg></span>
+              <h4 class="guide-card-title">When To Use This</h4>
+            </div>
+            <p class="guide-card-text">
+              Use this to ensure that during peak office hours or DDoS traffic storms, the server pipeline never
+              freezes, stalls, or drops incoming event logs.
+            </p>
+          </div>
+          <div class="guide-card">
+            <div class="guide-card-header">
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                </svg></span>
+              <h4 class="guide-card-title">3-Step Simple Test</h4>
+            </div>
+            <ul class="guide-steps-list">
+              <li><span class="guide-step-num">1</span> Select a packet count (e.g. 50, 100, or 250).</li>
+              <li><span class="guide-step-num">2</span> Click <b>"Execute Load Storm"</b>.</li>
+              <li><span class="guide-step-num">3</span> Watch the live speed meter and progress bar reach 100%!</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Configuration Banner -->
+      <div class="loadgen-banner">
+        <div
+          style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:16px;">
+          <div>
+            <h2 style="font-size:18px; font-weight:800; color:#F1F5F9; margin:0;"> Speed &amp; High-Volume Ingestion
+              Stress Tester</h2>
+            <p style="font-size:12.5px; color:#94a3b8; margin-top:4px;">
+              Simulate high-velocity packet storms across UDP, TCP, and HTTP sockets to test ingestion speed and system
+              resilience.
+            </p>
+          </div>
+          <button type="button" class="btn-primary" id="btnRunLoadTest" onclick="window.startBurstLoadTest()"
+            style="padding:10px 24px; font-size:14px;">
+            <span>Execute Load Storm</span>
+          </button>
+        </div>
+
+        <!-- Controls Row -->
+        <div
+          style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:16px; background:var(--bg-card); padding:16px; border-radius:8px; border:1px solid var(--border-subtle);">
+          <div>
+            <label class="input-label">Burst Packet Count</label>
+            <div style="display:flex; gap:6px; margin-top:4px;">
+              <button type="button" class="btn-secondary btn-burst-count active" data-count="50"
+                style="padding:6px 10px; font-size:11px;">50 Packets</button>
+              <button type="button" class="btn-secondary btn-burst-count" data-count="100"
+                style="padding:6px 10px; font-size:11px;">100 Packets</button>
+              <button type="button" class="btn-secondary btn-burst-count" data-count="250"
+                style="padding:6px 10px; font-size:11px;">250 Packets</button>
+              <button type="button" class="btn-secondary btn-burst-count" data-count="500"
+                style="padding:6px 10px; font-size:11px;">500 Packets</button>
+            </div>
+            <input type="hidden" id="selectedBurstCount" value="50">
+          </div>
+
+          <div>
+            <label class="input-label">Delivery Protocol</label>
+            <select id="loadgenProtocol" class="input-field" style="height:38px; margin-top:4px;">
+              <option value="UDP" selected>Syslog UDP (:5140) - Fast Datagrams</option>
+              <option value="TCP">Syslog TCP (:5141) - Reliable Stream</option>
+              <option value="HTTP">HTTP REST API (:8000) - Web Ingestion</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="input-label">Pacing / Delay</label>
+            <select id="loadgenPacing" class="input-field" style="height:38px; margin-top:4px;">
+              <option value="0" selected>Max Velocity (Instantaneous)</option>
+              <option value="100">100 Events / sec (Paced)</option>
+              <option value="50">50 Events / sec (Moderate)</option>
+              <option value="10">10 Events / sec (Steady)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Live Progress Track -->
+        <div class="loadgen-progress-track">
+          <div id="loadgenProgressFill" class="loadgen-progress-fill"></div>
+        </div>
+
+        <!-- Live Real-Time Telemetry Stats Row -->
+        <div class="loadgen-metrics-row">
+          <div class="loadgen-stat-card">
+            <div class="loadgen-stat-val" id="statBurstRequested">0</div>
+            <div class="loadgen-stat-lbl">Packets Sent</div>
+          </div>
+          <div class="loadgen-stat-card">
+            <div class="loadgen-stat-val" id="statBurstDelivered" style="color:#2DD4BF;">0</div>
+            <div class="loadgen-stat-lbl">Received OK</div>
+          </div>
+          <div class="loadgen-stat-card">
+            <div class="loadgen-stat-val" id="statBurstEps">0 EPS</div>
+            <div class="loadgen-stat-lbl">Speed (Events/sec)</div>
+          </div>
+          <div class="loadgen-stat-card">
+            <div class="loadgen-stat-val" id="statBurstElapsed">0.00s</div>
+            <div class="loadgen-stat-lbl">Time Taken</div>
+          </div>
+          <div class="loadgen-stat-card">
+            <div class="loadgen-stat-val" id="statBurstBytes">0 KB</div>
+            <div class="loadgen-stat-lbl">Data Transferred</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Load Gen Log Console -->
+      <div class="card p-md">
+        <div class="section-header" style="margin-bottom:10px;">
+          <h3 class="section-title">Live Stress Transmission Audit</h3>
+          <button type="button" class="btn-secondary" style="font-size:11px; padding:4px 10px;"
+            onclick="document.getElementById('loadgenConsoleFeed').innerHTML='<div style=\'color:var(--text-secondary); padding:20px; text-align:center;\'>Ready to execute load test.</div>'">
+            <span>Clear Log</span>
+          </button>
+        </div>
+        <div id="loadgenConsoleFeed" class="terminal-feed" style="height:220px; color:#a7f3d0;">
+          <div style="color:var(--text-secondary); padding:20px; text-align:center;">Configure packet count above and
+            click
+            "Execute Load Storm" to test high-throughput ingestion.</div>
+        </div>
+      </div>
+
+    </div><!-- End tabLoadGen -->
+
+    <!-- ========================================================================
+         TAB 4: SERVER HEALTH & PORT RADAR
+         ======================================================================== -->
+    <div id="tabConnectionCheck" class="tab-pane">
+
+      <!-- Beginner Guide Banner for Phase 4 -->
+      <div class="beginner-guide-banner">
+        <div class="guide-banner-header">
+          <div class="guide-banner-title-group">
+            <span class="phase-pill-badge phase-pill-emerald">Phase 4 of 7</span>
+            <span class="guide-banner-heading">SERVER HEALTH &amp; PORT RADAR</span>
+          </div>
+          <span class="guide-banner-hint">Workflow Guide &amp; Instant Walkthrough</span>
+        </div>
+        <div class="guide-cards-grid">
+          <div class="guide-card">
+            <div class="guide-card-header">
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <circle cx="12" cy="12" r="6" />
+                  <circle cx="12" cy="12" r="2" />
+                </svg></span>
+              <h4 class="guide-card-title">What This Does</h4>
+            </div>
+            <p class="guide-card-text">
+              Scans every doorway (network port) on the main server (Syslog UDP, TCP, REST API, and Local Sovereign AI)
+              to confirm they are actively listening and ready to receive traffic.
+            </p>
+          </div>
+          <div class="guide-card">
+            <div class="guide-card-header">
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg></span>
+              <h4 class="guide-card-title">When To Use This</h4>
+            </div>
+            <p class="guide-card-text">
+              Check this anytime you start the system or troubleshoot connectivity. Green cards mean the port is open
+              and accepting traffic from your devices.
+            </p>
+          </div>
+          <div class="guide-card">
+            <div class="guide-card-header">
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                </svg></span>
+              <h4 class="guide-card-title">3-Step Simple Test</h4>
+            </div>
+            <ul class="guide-steps-list">
+              <li><span class="guide-step-num">1</span> Click <b>"Test Connection Now"</b> or <b>"Run Full
+                  Diagnostic"</b>.</li>
+              <li><span class="guide-step-num">2</span> Confirm all cards display green badges (Online / Ready).</li>
+              <li><span class="guide-step-num">3</span> Turn on "Auto-Probe" for automatic background health monitoring.
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- HERO STATUS BANNER -->
+      <div class="card p-md"
+        style="margin-bottom:24px; background:var(--bg-secondary) 0%, rgba(36, 30, 28, 0.85) 100%; border:1px solid var(--border-subtle);">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+          <div>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span class="badge-status-dot online" id="heroStatusDot" style="width:12px; height:12px;"></span>
+              <h2 id="serverHeroStatus" style="font-size:18px; font-weight:800; color:#2DD4BF; margin:0;">ONLINE ·
+                SERVER READY FOR INGESTION</h2>
+            </div>
+            <div
+              style="font-size:12px; color:var(--text-secondary); margin-top:6px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+              <span>Target Host: <b id="serverHeroTarget"
+                  style="font-family:var(--font-mono); color:#38BDF8;">http://127.0.0.1:8000</b></span>
+              <span>Round-Trip Latency: <b id="serverHeroLatency"
+                  style="font-family:var(--font-mono); color:#a7f3d0;">&lt; 1 ms</b></span>
+              <span>Subsystems: <b id="serverHeroSubsystems" style="color:var(--text-primary);">8/8 Ready</b></span>
+            </div>
+          </div>
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <button type="button" class="btn-primary" id="btnHeroTestServerConnection"
+              onclick="window.checkServerHealth()">
+              <span>Test Connection Now</span>
+            </button>
+            <button type="button" class="btn-teal" id="btnDiagnosticCheck" onclick="window.runFullDiagnostics()">
+              <span>Run Full Diagnostic</span>
+            </button>
+            <button type="button" class="btn-secondary" id="btnToggleAutoProbe" onclick="window.toggleAutoProbe()">
+              <span id="autoProbeBtnLabel">Auto-Probe (5s)</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- PORT PROBE & PROTOCOL MATRIX -->
+      <div class="section-header" style="margin-bottom:14px;">
+        <div>
+          <h3 class="section-title">Ingress Sockets &amp; Subsystem Port Radar</h3>
+          <p class="section-subtitle">Live socket reachability, round-trip handshake latency, and service availability
+          </p>
+        </div>
+      </div>
+
+      <div class="grid grid-3 gap-md"
+        style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:14px; margin-bottom:24px;">
+        <!-- Card 1: HTTP API -->
+        <div class="card p-sm" style="background:var(--bg-card); border:1px solid var(--border-subtle);">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
+            <span style="font-weight:700; font-size:13px; color:#F1F5F9;">FastAPI REST Ingest &amp; Dashboard</span>
+            <span class="badge badge-teal" id="badge_http_api">ONLINE</span>
+          </div>
+          <div style="font-family:var(--font-mono); font-size:11px; color:#38BDF8; margin-bottom:4px;">TCP :8000 ·
+            /api/v1/health/live</div>
+          <p style="font-size:11.5px; color:var(--text-secondary); margin-bottom:8px;">Synchronous JSON, CEF &amp; Batch
+            Ingestion Endpoint</p>
+          <div style="font-size:11px; font-family:var(--font-mono); color:#94a3b8;" id="detail_http_api">RTT: 0.65 ms ·
+            HTTP 200 OK</div>
+        </div>
+
+        <!-- Card 2: Syslog UDP -->
+        <div class="card p-sm" style="background:var(--bg-card); border:1px solid var(--border-subtle);">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
+            <span style="font-weight:700; font-size:13px; color:#F1F5F9;">Syslog UDP Ingress Collector</span>
+            <span class="badge badge-teal" id="badge_syslog_udp">READY</span>
+          </div>
+          <div style="font-family:var(--font-mono); font-size:11px; color:#38BDF8; margin-bottom:4px;">UDP :5140 · RFC
+            3164 / 5424</div>
+          <p style="font-size:11.5px; color:var(--text-secondary); margin-bottom:8px;">High-speed stateless datagram
+            ingestion for network firewalls</p>
+          <div style="font-size:11px; font-family:var(--font-mono); color:#94a3b8;" id="detail_syslog_udp">Datagram
+            socket open &amp; accepting</div>
+        </div>
+
+        <!-- Card 3: Syslog TCP -->
+        <div class="card p-sm" style="background:var(--bg-card); border:1px solid var(--border-subtle);">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
+            <span style="font-weight:700; font-size:13px; color:#F1F5F9;">Syslog TCP Stream Collector</span>
+            <span class="badge badge-teal" id="badge_syslog_tcp">ONLINE</span>
+          </div>
+          <div style="font-family:var(--font-mono); font-size:11px; color:#38BDF8; margin-bottom:4px;">TCP :5141 ·
+            Multi-Threaded Acceptor</div>
+          <p style="font-size:11.5px; color:var(--text-secondary); margin-bottom:8px;">Connection-oriented streaming
+            with
+            newline &amp; octet framing</p>
+          <div style="font-size:11px; font-family:var(--font-mono); color:#94a3b8;" id="detail_syslog_tcp">TCP 3-way
+            handshake established</div>
+        </div>
+
+        <!-- Card 4: Local Sovereign AI Qwen 7B -->
+        <div class="card p-sm" style="background:var(--bg-card); border:1px solid var(--border-subtle);">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
+            <span style="font-weight:700; font-size:13px; color:#d8b4fe;">Sovereign AI Engine (Qwen 7B)</span>
+            <span class="badge badge-purple" id="badge_ai_engine">READY</span>
+          </div>
+          <div style="font-family:var(--font-mono); font-size:11px; color:#c084fc; margin-bottom:4px;">TCP :11434 ·
+            Ollama qwen2.5:7b</div>
+          <p style="font-size:11.5px; color:var(--text-secondary); margin-bottom:8px;">Air-gapped GPU-accelerated model
+            for
+            unknown log structure inference</p>
+          <div style="font-size:11px; font-family:var(--font-mono); color:#94a3b8;" id="detail_ai_engine">Local Model
+            Resident in VRAM (Ready)</div>
+        </div>
+
+        <!-- Card 5: Redpanda Kafka Bus -->
+        <div class="card p-sm" style="background:var(--bg-card); border:1px solid var(--border-subtle);">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
+            <span style="font-weight:700; font-size:13px; color:#F1F5F9;">Redpanda Streaming Message Bus</span>
+            <span class="badge badge-teal" id="badge_redpanda">ACTIVE</span>
+          </div>
+          <div style="font-family:var(--font-mono); font-size:11px; color:#38BDF8; margin-bottom:4px;">TCP :9092 · Kafka
+            Raft Engine</div>
+          <p style="font-size:11.5px; color:var(--text-secondary); margin-bottom:8px;">Sub-millisecond stream buffer
+            between
+            ingress &amp; workers</p>
+          <div style="font-size:11px; font-family:var(--font-mono); color:#94a3b8;" id="detail_redpanda">Topic:
+            ulpf-raw-ingress (Ready)</div>
+        </div>
+
+        <!-- Card 6: MinIO S3 -->
+        <div class="card p-sm" style="background:var(--bg-card); border:1px solid var(--border-subtle);">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
+            <span style="font-weight:700; font-size:13px; color:#F1F5F9;">MinIO Immutable S3 Storage</span>
+            <span class="badge badge-teal" id="badge_minio_s3">SECURE</span>
+          </div>
+          <div style="font-family:var(--font-mono); font-size:11px; color:#38BDF8; margin-bottom:4px;">TCP :9000 · S3
+            Object API</div>
+          <p style="font-size:11.5px; color:var(--text-secondary); margin-bottom:8px;">Forensically intact raw bit
+            storage
+            with SHA-256 evidence</p>
+          <div style="font-size:11px; font-family:var(--font-mono); color:#94a3b8;" id="detail_minio_s3">Bucket:
+            ulpf-raw · SHA-256 Verified</div>
+        </div>
+
+        <!-- Card 7: OpenSearch -->
+        <div class="card p-sm" style="background:var(--bg-card); border:1px solid var(--border-subtle);">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
+            <span style="font-weight:700; font-size:13px; color:#F1F5F9;">OpenSearch Normalized Index</span>
+            <span class="badge badge-teal" id="badge_opensearch">INDEXING</span>
+          </div>
+          <div style="font-family:var(--font-mono); font-size:11px; color:#38BDF8; margin-bottom:4px;">TCP :9200 · OCSF
+            &amp; ECS Schema</div>
+          <p style="font-size:11.5px; color:var(--text-secondary); margin-bottom:8px;">Fast query engine for SIEM
+            dashboards
+            &amp; threat hunting</p>
+          <div style="font-size:11px; font-family:var(--font-mono); color:#94a3b8;" id="detail_opensearch">Index:
+            ulpf-events (Cluster OK)</div>
+        </div>
+      </div>
+
+      <!-- Live Handshake Console -->
+      <div class="card p-md">
+        <div class="section-header" style="margin-bottom:12px;">
+          <div>
+            <h3 class="section-title">Live Protocol Handshake & Connection Diagnostic Log</h3>
+            <p class="section-subtitle">Real-time trace verifying how the server accepts connections and processes
+              incoming network packets</p>
+          </div>
+          <button type="button" class="btn-secondary" style="font-size:11px; padding:4px 10px;"
+            onclick="window.clearDiagnosticConsole()">
+            <span>Clear Log</span>
+          </button>
+        </div>
+        <div id="diagnosticConsoleFeed" class="terminal-feed" style="height:180px; color:#a7f3d0;">
+          <div>[INFO] Diagnostic engine initialized. Click "Test Connection Now" or "Run Full Diagnostic" to probe the
+            live server pipeline.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================================================
+         TAB 5: REAL DEVICE GUIDES & TESTBED SETTINGS & AUDIT HISTORY
+         ======================================================================== -->
+    <div id="tabRealDevices" class="tab-pane">
+
+      <!-- Beginner Guide Banner for Phase 5 -->
+      <div class="beginner-guide-banner">
+        <div class="guide-banner-header">
+          <div class="guide-banner-title-group">
+            <span class="phase-pill-badge phase-pill-purple">Phase 5 of 7</span>
+            <span class="guide-banner-heading">REAL HARDWARE GUIDES &amp; SYSTEM SETTINGS</span>
+          </div>
+          <span class="guide-banner-hint">Workflow Guide &amp; Instant Walkthrough</span>
+        </div>
+        <div class="guide-cards-grid">
+          <div class="guide-card">
+            <div class="guide-card-header">
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <circle cx="12" cy="12" r="6" />
+                  <circle cx="12" cy="12" r="2" />
+                </svg></span>
+              <h4 class="guide-card-title">What This Does</h4>
+            </div>
+            <p class="guide-card-text">
+              Provides ready-to-use configuration commands to connect real physical hardware in your office (Cisco
+              switches, Fortinet firewalls, Linux servers, MikroTik routers) directly to this system.
+            </p>
+          </div>
+          <div class="guide-card">
+            <div class="guide-card-header">
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg></span>
+              <h4 class="guide-card-title">When To Use This</h4>
+            </div>
+            <p class="guide-card-text">
+              When moving from simulation to production! Use these copy-paste commands to turn on remote syslog
+              forwarding from your real office hardware to port 5140 or 5141.
+            </p>
+          </div>
+          <div class="guide-card">
+            <div class="guide-card-header">
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                </svg></span>
+              <h4 class="guide-card-title">3-Step Simple Test</h4>
+            </div>
+            <ul class="guide-steps-list">
+              <li><span class="guide-step-num">1</span> Select your hardware brand from the category buttons below.</li>
+              <li><span class="guide-step-num">2</span> Click the copy button next to the configuration snippet.</li>
+              <li><span class="guide-step-num">3</span> Paste the snippet into your hardware's admin console or SSH
+                terminal!</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Guides & Settings Split -->
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:24px;">
+
+        <!-- LEFT: Real Device Guides -->
+        <div class="card p-md">
+          <div class="section-header" style="margin-bottom:12px;">
+            <div>
+              <h3 class="section-title">Real Hardware Setup Commands</h3>
+              <p class="section-subtitle">Copy-paste commands for physical routers, firewalls, and servers</p>
+            </div>
+          </div>
+
+          <!-- Category Pills -->
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px;" id="guidePillsContainer">
+            <button type="button" class="guide-pill-btn active" data-guide="linux">Linux</button>
+            <button type="button" class="guide-pill-btn" data-guide="windows">Windows</button>
+            <button type="button" class="guide-pill-btn" data-guide="cisco">Cisco</button>
+            <button type="button" class="guide-pill-btn" data-guide="fortinet">Fortinet</button>
+            <button type="button" class="guide-pill-btn" data-guide="paloalto">Palo Alto</button>
+            <button type="button" class="guide-pill-btn" data-guide="http">HTTP REST</button>
+          </div>
+
+          <!-- Guide Content Display -->
+          <div id="guideContentBox">
+            <!-- Populated via simulator.js -->
+          </div>
+        </div>
+
+        <!-- RIGHT: Testbed Settings -->
+        <div class="card p-md">
+          <div class="section-header" style="margin-bottom:12px;">
+            <div>
+              <h3 class="section-title">Testbed Network Configuration</h3>
+              <p class="section-subtitle">Target host, port overrides, and health check intervals</p>
+            </div>
+          </div>
+
+          <form id="testbedSettingsForm" onsubmit="window.saveTestbedSettings(event)">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
+              <div>
+                <label class="input-label">Target Server IP</label>
+                <input type="text" id="settingServerHost" class="input-field" value="127.0.0.1" required>
+              </div>
+              <div>
+                <label class="input-label">HTTP REST Port</label>
+                <input type="number" id="settingApiPort" class="input-field" value="8000" required>
+              </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
+              <div>
+                <label class="input-label">Syslog UDP Port</label>
+                <input type="number" id="settingUdpPort" class="input-field" value="5140" required>
+              </div>
+              <div>
+                <label class="input-label">Syslog TCP Port</label>
+                <input type="number" id="settingTcpPort" class="input-field" value="5141" required>
+              </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:18px;">
+              <div>
+                <label class="input-label">Timeout (ms)</label>
+                <input type="number" id="settingTimeout" class="input-field" value="3000" required>
+              </div>
+              <div>
+                <label class="input-label">Auto-Probe Interval</label>
+                <select id="settingAutoProbe" class="input-field" style="height:42px;">
+                  <option value="0">Disabled</option>
+                  <option value="5000" selected>Every 5s</option>
+                  <option value="10000">Every 10s</option>
+                </select>
+              </div>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+              <button type="submit" class="btn-primary">
+                <span>Save & Apply</span>
+              </button>
+              <button type="button" class="btn-secondary" onclick="window.resetTestbedSettings()">
+                <span>Defaults</span>
+              </button>
+              <button type="button" class="btn-teal" onclick="window.validateSettingsConnection()">
+                <span>Test Connect</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+      </div>
+
+      <!-- BOTTOM: Transmission Audit History Table -->
+      <div class="card p-md">
+        <div class="section-header" style="margin-bottom:12px; flex-wrap:wrap; gap:12px;">
+          <div>
+            <h3 class="section-title">
+              <span>Transmission Audit Ledger</span>
+              <span id="auditCountBadge"
+                style="font-size:11px; padding:2px 8px; background:rgba(56,189,248,0.2); border-radius:10px; color:#38BDF8; font-family:var(--font-mono); font-weight:700;">0
+                Entries</span>
+            </h3>
+            <p class="section-subtitle">Permanent record of synthetic logs transmitted during this session</p>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <select id="auditFilterProto" class="input-field" style="height:32px; padding:4px 8px; font-size:11px;"
+              onchange="window.renderAuditHistoryTable()">
+              <option value="ALL">All Protocols</option>
+              <option value="UDP">UDP Datagrams</option>
+              <option value="TCP">TCP Streams</option>
+              <option value="HTTP">HTTP Ingest</option>
+            </select>
+            <button type="button" class="btn-secondary" style="font-size:11px; padding:6px 10px;"
+              onclick="window.exportAuditData('csv')">
+              <span>Export CSV</span>
+            </button>
+            <button type="button" class="btn-secondary" style="font-size:11px; padding:6px 10px;"
+              onclick="window.exportAuditData('json')">
+              <span>Export JSON</span>
+            </button>
+            <button type="button" class="btn-secondary" style="font-size:11px; padding:6px 10px; color:#f87171;"
+              onclick="window.clearAuditHistory()">
+              <span>Clear</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="audit-table">
+            <thead>
+              <tr>
+                <th>TIME</th>
+                <th>PROTO</th>
+                <th>TARGET</th>
+                <th>SOURCE</th>
+                <th>STATUS</th>
+                <th>BYTES</th>
+                <th>RTT</th>
+                <th>PAYLOAD PREVIEW</th>
+              </tr>
+            </thead>
+            <tbody id="auditHistoryTableBody">
+              <tr>
+                <td colspan="8" style="text-align:center; padding:24px; color:var(--text-secondary);">
+                  No logs transmitted yet in this test session.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div><!-- End tabRealDevices -->
+
+    <!-- ========================================================================
+         TAB 6: AUTOMATED TEST PIPELINE & REGRESSION SUITES (run_pipeline.py)
+         ======================================================================== -->
+    <div id="tabPipeline" class="tab-pane">
+
+      <!-- Beginner Guide Banner for Phase 6 -->
+      <div class="beginner-guide-banner">
+        <div class="guide-banner-header">
+          <div class="guide-banner-title-group">
+            <span class="phase-pill-badge phase-pill-cyan">Phase 6 of 7</span>
+            <span class="guide-banner-heading">AUTOMATED 5-STAGE SYSTEM AUDIT &amp; REGRESSION PIPELINE</span>
+          </div>
+          <span class="guide-banner-hint">Workflow Guide &amp; Instant Walkthrough</span>
+        </div>
+        <div class="guide-cards-grid">
+          <div class="guide-card">
+            <div class="guide-card-header">
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <circle cx="12" cy="12" r="6" />
+                  <circle cx="12" cy="12" r="2" />
+                </svg></span>
+              <h4 class="guide-card-title">What This Does</h4>
+            </div>
+            <p class="guide-card-text">
+              Runs a complete, automated health and accuracy audit of the entire platform. In seconds, it verifies all
+              61 parser test cases, checks port connectivity, launches security defense tests, and measures raw log
+              throughput speed.
+            </p>
+          </div>
+          <div class="guide-card">
+            <div class="guide-card-header">
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg></span>
+              <h4 class="guide-card-title">When To Use This</h4>
+            </div>
+            <p class="guide-card-text">
+              Run this when you want 100% confidence that everything is working properly without having to manually test
+              each firewall, parser, and database port one by one.
+            </p>
+          </div>
+          <div class="guide-card">
+            <div class="guide-card-header">
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                </svg></span>
+              <h4 class="guide-card-title">3-Step Simple Test</h4>
+            </div>
+            <ul class="guide-steps-list">
+              <li><span class="guide-step-num">1</span> Click <b>" Fast Smoke Check"</b> for a quick 5-second health
+                check.</li>
+              <li><span class="guide-step-num">2</span> Watch each stage card below turn <b style="color:#2DD4BF;">GREEN
+                  (PASSED)</b>.</li>
+              <li><span class="guide-step-num">3</span> Check the summary report at the bottom for pass rates and
+                latency numbers.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pipeline Control Banner -->
+      <div class="pipeline-banner">
+        <div
+          style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:16px;">
+          <div>
+            <h2
+              style="font-size:18px; font-weight:800; color:#F1F5F9; margin:0; display:flex; align-items:center; gap:8px;">
+              <span>ULPF Automated Testing & Verification Pipeline</span>
+            </h2>
+            <p style="font-size:12.5px; color:#94a3b8; margin-top:4px;">
+              Direct integration of <code>test_pipeline.bat</code> / <code>testing/run_pipeline.py</code>. Run full
+              regression suites, unit tests, security resilience attacks, and throughput benchmarks directly from this
+              testing studio.
+            </p>
+          </div>
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <button type="button" class="btn-teal" id="btnRunPipelineAll" onclick="window.runTestPipeline('all')"
+              style="padding:10px 20px; font-size:13.5px;">
+              <span>Run Full Pipeline (All 5 Stages)</span>
+            </button>
+            <button type="button" class="btn-teal" id="btnRunPipelineFast" onclick="window.runTestPipeline('fast')"
+              style="padding:10px 18px; font-size:13px;">
+              <span>Fast Smoke Check (--fast)</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Pipeline Execution Configurations Strip -->
+        <div
+          style="display:flex; gap:16px; align-items:center; flex-wrap:wrap; margin-bottom:12px; background:var(--bg-secondary); padding:10px 14px; border-radius:8px; border:1px solid var(--border-subtle);">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <label style="font-size:11.5px; font-weight:700; color:#94a3b8;">Device Timeout (s):</label>
+            <input type="number" id="pipelineDeviceTimeout" class="input-field" value="3.0" step="0.5" min="0.1"
+              max="60" style="width:75px; height:30px; font-size:12px; padding:2px 8px;"
+              title="Network connection & datagram transmission timeout per device">
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <label style="font-size:11.5px; font-weight:700; color:#94a3b8;">Logs Sent Interval (ms):</label>
+            <input type="number" id="pipelineLogsInterval" class="input-field" value="10" step="5" min="0" max="5000"
+              style="width:80px; height:30px; font-size:12px; padding:2px 8px;"
+              title="Inter-log transmission delay pacing across batch streams">
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <label style="font-size:11.5px; font-weight:700; color:#94a3b8;">Benchmark Events:</label>
+            <input type="number" id="pipelineBenchEvents" class="input-field" value="1000" step="100" min="50"
+              max="50000" style="width:90px; height:30px; font-size:12px; padding:2px 8px;"
+              title="Number of events generated during throughput stage">
+          </div>
+          <span style="font-size:11px; color:#64748b; font-style:italic;">Propagated to ULPF_DEVICE_TIMEOUT &
+            ULPF_LOGS_INTERVAL_MS</span>
+        </div>
+
+        <!-- Stage Filter Buttons Strip -->
+        <div
+          style="display:flex; gap:8px; flex-wrap:wrap; background:var(--bg-card); padding:12px; border-radius:8px; border:1px solid var(--border-subtle);">
+          <span
+            style="font-size:11.5px; color:var(--text-secondary); font-weight:700; align-self:center; margin-right:4px;">TARGET
+            STAGE:</span>
+          <button type="button" class="btn-secondary" style="font-size:11px; padding:5px 12px;"
+            onclick="window.runTestPipeline('suites')">
+            Pytest Suites (13 Suites)
+          </button>
+          <button type="button" class="btn-secondary" style="font-size:11px; padding:5px 12px;"
+            onclick="window.runTestPipeline('smoke')">
+            End-to-End Smoke Test
+          </button>
+          <button type="button" class="btn-secondary" style="font-size:11px; padding:5px 12px;"
+            onclick="window.runTestPipeline('security')">
+            Security Resilience (8 Tests)
+          </button>
+          <button type="button" class="btn-secondary" style="font-size:11px; padding:5px 12px;"
+            onclick="window.runTestPipeline('stack')">
+            Stack Verification (10 Checks)
+          </button>
+          <button type="button" class="btn-secondary" style="font-size:11px; padding:5px 12px;"
+            onclick="window.runTestPipeline('bench')">
+            Throughput Benchmark (1,000 Pkts)
+          </button>
+          <button type="button" class="btn-teal" style="font-size:11px; padding:5px 12px; font-weight:700;"
+            onclick="window.runTestPipeline('bench_all')">
+            All Parsers Benchmark (C + 9 Vendors)
+          </button>
+        </div>
+      </div>
+
+      <!-- Execution Verdict & Summary Box -->
+      <div class="pipeline-verdict-box" id="pipelineVerdictBox">
+        <div>
+          <span
+            style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px; font-weight:700;">Overall
+            Verdict</span>
+          <div style="font-size:16px; font-weight:800; color:#38BDF8; margin-top:2px;" id="pipelineVerdictText">PIPELINE
+            IDLE · READY FOR EXECUTION</div>
+        </div>
+        <div style="display:flex; gap:20px; align-items:center; flex-wrap:wrap;">
+          <div>
+            <span style="font-size:11px; color:var(--text-secondary);">Stages Passed:</span>
+            <div style="font-family:var(--font-mono); font-weight:700; font-size:13px; color:#3d599a;"
+              id="pipelineStagesSummary">0/6 Stages</div>
+          </div>
+          <div>
+            <span style="font-size:11px; color:var(--text-secondary);">Total Duration:</span>
+            <div style="font-family:var(--font-mono); font-weight:700; font-size:13px; color:#a7f3d0;"
+              id="pipelineTotalDuration">0.00s</div>
+          </div>
+          <div>
+            <span style="font-size:11px; color:var(--text-secondary);">Active Filter:</span>
+            <div style="font-family:var(--font-mono); font-weight:700; font-size:13px; color:#7dd3fc;"
+              id="pipelineActiveFilter">ALL</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5 Stage Grid -->
+      <div class="pipeline-grid">
+        <!-- Stage 1: Pytest -->
+        <div class="pipeline-stage-card" id="stage_card_suites">
+          <div>
+            <div class="pipeline-stage-header">
+              <span class="pipeline-stage-name">1. Pytest Test Suites</span>
+              <span class="pipeline-status-badge idle" id="stage_badge_suites">IDLE</span>
+            </div>
+            <p class="pipeline-stage-desc">
+              Executes 13 automated test suites (61 unit & integration tests) testing all vendor parsers (CEF, LEEF,
+              Syslog, KV, JSON, CSV, XML), normalizer, taxonomy, and storage.
+            </p>
+          </div>
+          <div class="pipeline-stage-footer">
+            <span class="pipeline-duration" id="stage_dur_suites">0.00s</span>
+            <span
+              style="font-size:11px; font-family:var(--font-mono); color:var(--text-secondary);">testing/suites/</span>
+          </div>
+        </div>
+
+        <!-- Stage 2: Smoke Test -->
+        <div class="pipeline-stage-card" id="stage_card_smoke">
+          <div>
+            <div class="pipeline-stage-header">
+              <span class="pipeline-stage-name">2. End-to-End Smoke Test</span>
+              <span class="pipeline-status-badge idle" id="stage_badge_smoke">IDLE</span>
+            </div>
+            <p class="pipeline-stage-desc">
+              10-phase verification: API gateway reachability, 7 subsystems, format detection, normalization, event
+              ledger, SHA-256 evidence hashing, and unknown queue.
+            </p>
+          </div>
+          <div class="pipeline-stage-footer">
+            <span class="pipeline-duration" id="stage_dur_smoke">0.00s</span>
+            <span
+              style="font-size:11px; font-family:var(--font-mono); color:var(--text-secondary);">testing/smoke_test.py</span>
+          </div>
+        </div>
+
+        <!-- Stage 3: Security Smoke -->
+        <div class="pipeline-stage-card" id="stage_card_security">
+          <div>
+            <div class="pipeline-stage-header">
+              <span class="pipeline-stage-name">3. Security & Resilience</span>
+              <span class="pipeline-status-badge idle" id="stage_badge_security">IDLE</span>
+            </div>
+            <p class="pipeline-stage-desc">
+              8 cyberattack tests: SQL injection, XSS payloads, path traversal, oversized 10MB payloads, backpressure
+              rate limiting, and auto IP blocking.
+            </p>
+          </div>
+          <div class="pipeline-stage-footer">
+            <span class="pipeline-duration" id="stage_dur_security">0.00s</span>
+            <span
+              style="font-size:11px; font-family:var(--font-mono); color:var(--text-secondary);">security_smoke_test.py</span>
+          </div>
+        </div>
+
+        <!-- Stage 4: Stack Verification -->
+        <div class="pipeline-stage-card" id="stage_card_stack">
+          <div>
+            <div class="pipeline-stage-header">
+              <span class="pipeline-stage-name">4. Stack Subsystem Check</span>
+              <span class="pipeline-status-badge idle" id="stage_badge_stack">IDLE</span>
+            </div>
+            <p class="pipeline-stage-desc">
+              Probes live runtime subsystems: FastAPI REST (:8000), Syslog UDP (:5140), Syslog TCP (:5141), MinIO S3
+              (:9000), OpenSearch (:9200), and Redpanda Kafka (:9092).
+            </p>
+          </div>
+          <div class="pipeline-stage-footer">
+            <span class="pipeline-duration" id="stage_dur_stack">0.00s</span>
+            <span
+              style="font-size:11px; font-family:var(--font-mono); color:var(--text-secondary);">scripts/verify_stack.py</span>
+          </div>
+        </div>
+
+        <!-- Stage 5: Benchmark -->
+        <div class="pipeline-stage-card" id="stage_card_bench">
+          <div>
+            <div class="pipeline-stage-header">
+              <span class="pipeline-stage-name">5. Throughput Benchmark</span>
+              <span class="pipeline-status-badge idle" id="stage_badge_bench">IDLE</span>
+            </div>
+            <p class="pipeline-stage-desc">
+              Fires 1,000 synthetic log packets across the pipeline to measure effective ingestion speed (EPS), latency,
+              and memory consumption.
+            </p>
+          </div>
+          <div class="pipeline-stage-footer">
+            <span class="pipeline-duration" id="stage_dur_bench">0.00s</span>
+            <span
+              style="font-size:11px; font-family:var(--font-mono); color:var(--text-secondary);">benchmarks/benchmark.py</span>
+          </div>
+        </div>
+
+        <!-- Stage 6: All-Parsers & C-Acceleration Benchmark -->
+        <div class="pipeline-stage-card" id="stage_card_bench_all">
+          <div>
+            <div class="pipeline-stage-header">
+              <span class="pipeline-stage-name">6. All Parsers &amp; C-Acceleration Benchmark</span>
+              <span class="pipeline-status-badge idle" id="stage_badge_bench_all">IDLE</span>
+            </div>
+            <p class="pipeline-stage-desc">
+              Comprehensive micro-benchmarks across deterministic C-engine (218k EPS) and all 9 enterprise vendor
+              parsers (Cisco, Fortinet, Palo Alto, AWS, Suricata, CEF, LEEF, Syslog, Key=Value).
+            </p>
+          </div>
+          <div class="pipeline-stage-footer">
+            <span class="pipeline-duration" id="stage_dur_bench_all">0.00s</span>
+            <span
+              style="font-size:11px; font-family:var(--font-mono); color:var(--text-secondary);">testing/benchmark_all.py</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Terminal Console -->
+      <div class="card p-md">
+        <div class="section-header" style="margin-bottom:10px;">
+          <h3 class="section-title">Live Pipeline Execution Standard Output</h3>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <button type="button" class="btn-secondary" style="font-size:11px; padding:4px 10px;"
+              onclick="document.getElementById('pipelineConsoleFeed').innerHTML='<div style=\'color:var(--text-secondary); padding:20px; text-align:center;\'>Console cleared.</div>'">
+              <span>Clear</span>
+            </button>
+          </div>
+        </div>
+        <div id="pipelineConsoleFeed" class="terminal-feed" style="height:260px; color:#a7f3d0;">
+          <div style="color:var(--text-secondary); padding:20px; text-align:center;">Click "Run Full Pipeline" or "Fast
+            Smoke Check" above to trigger automated testing.</div>
+        </div>
+      </div>
+
+    </div><!-- End tabPipeline -->
+
+    <!-- ========================================================================
+         TAB 7: LOG FILE INGESTION & UPLOADER
+         ======================================================================== -->
+    <div id="tabFileUploader" class="tab-pane">
+
+      <!-- Beginner Guide Banner for Phase 7 -->
+      <div class="beginner-guide-banner">
+        <div class="guide-banner-header">
+          <div class="guide-banner-title-group">
+            <span class="phase-pill-badge phase-pill-cyan">Phase 7 of 7</span>
+            <span class="guide-banner-heading">DRAG &amp; DROP LOG FILE LAB &amp; MULTI-FORMAT PARSER</span>
+          </div>
+          <span class="guide-banner-hint">Workflow Guide &amp; Instant Walkthrough</span>
+        </div>
+        <div class="guide-cards-grid">
+          <div class="guide-card">
+            <div class="guide-card-header">
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <circle cx="12" cy="12" r="6" />
+                  <circle cx="12" cy="12" r="2" />
+                </svg></span>
+              <h4 class="guide-card-title">What This Does</h4>
+            </div>
+            <p class="guide-card-text">
+              Allows you to test real-world log files or sample security files from top vendors (Palo Alto, Cisco,
+              Suricata, Linux, and industrial SCADA). The platform automatically detects the file format and feeds each
+              line into the pipeline.
+            </p>
+          </div>
+          <div class="guide-card">
+            <div class="guide-card-header">
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg></span>
+              <h4 class="guide-card-title">When To Use This</h4>
+            </div>
+            <p class="guide-card-text">
+              Use this when you have an existing log file (e.g. from an actual firewall or server) and want to see how
+              the system processes and normalizes all events at once.
+            </p>
+          </div>
+          <div class="guide-card">
+            <div class="guide-card-header">
+              <span class="guide-card-icon-pill"><svg class="svg-icon" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                </svg></span>
+              <h4 class="guide-card-title">3-Step Simple Test</h4>
+            </div>
+            <ul class="guide-steps-list">
+              <li><span class="guide-step-num">1</span> Click one of the <b>Quick Load Sample Files</b> (or drag &amp;
+                drop your own file).</li>
+              <li><span class="guide-step-num">2</span> Select <b>Direct HTTP REST Upload</b> as your ingestion mode.
+              </li>
+              <li><span class="guide-step-num">3</span> Click <b>" Start Ingestion / Upload"</b> and see all normalized
+                logs appear below!</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Header & Intro -->
+      <div class="card p-md" style="margin-bottom:20px; border-left:4px solid #38BDF8;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+          <div>
+            <h2 style="font-size:17px; font-weight:700; color:#F1F5F9; margin-bottom:4px;"> Multi-Format Log File
+              Ingestion & Parser Lab</h2>
+            <p style="font-size:12px; color:#94a3b8; margin:0;">
+              Upload raw log files (<code style="color:#38BDF8;">.log</code>, <code style="color:#38BDF8;">.txt</code>,
+              <code style="color:#38BDF8;">.raw</code>, <code style="color:#38BDF8;">.json</code>, <code
+                style="color:#38BDF8;">.csv</code>, <code style="color:#38BDF8;">.cef</code>) to evaluate parser
+              recognition, replay streams, or drop into monitored folders.
+            </p>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button type="button" class="btn-secondary" id="btnUploadFileReset"
+              style="font-size:12px; padding:6px 14px;">
+              <span>Reset / Clear</span>
+            </button>
+            <button type="button" class="btn-primary" id="btnUploadFileSubmit"
+              style="font-size:12px; padding:6px 18px;">
+              <span>Start Ingestion / Upload</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 1-Click Multi-Vendor Sample Datasets Banner -->
+      <div class="card p-md" style="margin-bottom:20px;">
+        <div class="section-header" style="margin-bottom:10px;">
+          <div>
+            <h3 class="section-title" style="font-size:14px;">Quick Load: Pre-Packaged Multi-Vendor Test Files</h3>
+            <p class="section-subtitle">Click any sample dataset below to immediately load and preview its raw payload:
+            </p>
+          </div>
+        </div>
+        <div class="sample-files-grid" id="sampleFilesGrid">
+          <div class="sample-file-card" data-sample="palo_alto_traffic.cef">
+            <div class="sample-file-title">
+              <span>Palo Alto PAN-OS</span>
+              <span class="badge badge-cyan badge-sm">CEF</span>
+            </div>
+            <div class="sample-file-desc">5 firewall session logs with source/destination IPs and verdicts</div>
+          </div>
+          <div class="sample-file-card" data-sample="cisco_asa_firewall.log">
+            <div class="sample-file-title">
+              <span>Cisco ASA Firewall</span>
+              <span class="badge badge-teal badge-sm">Syslog</span>
+            </div>
+            <div class="sample-file-desc">5 standard Cisco ASA message types (%ASA-4-106023, %ASA-6-302013)</div>
+          </div>
+          <div class="sample-file-card" data-sample="suricata_ids_alerts.json">
+            <div class="sample-file-title">
+              <span>Suricata IDS Alerts</span>
+              <span class="badge badge-cyan badge-sm">JSON</span>
+            </div>
+            <div class="sample-file-desc">5 line-delimited Suricata network intrusion alert events</div>
+          </div>
+          <div class="sample-file-card" data-sample="linux_auth_failures.log">
+            <div class="sample-file-title">
+              <span>Linux Auth & SSH</span>
+              <span class="badge badge-teal badge-sm">Syslog</span>
+            </div>
+            <div class="sample-file-desc">5 Linux PAM and OpenSSH authentication failure records</div>
+          </div>
+          <div class="sample-file-card" data-sample="scada_modbus_unknown.raw">
+            <div class="sample-file-title">
+              <span>SCADA Modbus Hex</span>
+              <span class="badge badge-amber badge-sm">Unknown</span>
+            </div>
+            <div class="sample-file-desc">5 proprietary hex frames to test fallback to AI Onboarding Queue</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main 2-Column Workbench Grid -->
+      <div class="workbench-grid">
+
+        <!-- LEFT COLUMN: DROPZONE & INGESTION TRANSPORT SETTINGS -->
+        <div style="display:flex; flex-direction:column; gap:20px;">
+
+          <!-- 1. Drag & Drop Upload Zone -->
+          <div class="card p-md">
+            <h3 class="section-title" style="margin-bottom:8px;">Select or Drop Log File</h3>
+            <div class="upload-drop-zone" id="uploadDropZone">
+              <input type="file" id="logFileInput" accept=".log,.txt,.raw,.json,.csv,.xml,.cef,.leef,.syslog"
+                style="display:none;">
+              <div class="upload-icon-circle"><svg class="svg-icon svg-icon-xl" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                </svg></div>
+              <div style="font-size:14px; font-weight:700; color:#F1F5F9;">
+                Drag & drop your log file here, or <span style="color:#38BDF8; text-decoration:underline;">Browse</span>
+              </div>
+              <div style="font-size:11px; color:#94a3b8;">
+                Supported extensions: .log, .txt, .raw, .json, .csv, .xml, .cef, .leef, .syslog (Max 10 MB)
+              </div>
+            </div>
+
+            <!-- File Metadata Badge (Shown once file is selected) -->
+            <div id="fileMetaCard" class="file-meta-card" style="display:none;">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <svg class="svg-icon svg-icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                </svg>
+                <div>
+                  <div id="metaFileName" style="font-size:13px; font-weight:700; color:#F1F5F9;">logfile.log</div>
+                  <div style="font-size:11px; color:#a7f3d0;">
+                    <span id="metaFileSize">0 KB</span> &bull; <span id="metaLineCount">0 lines</span>
+                  </div>
+                </div>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span id="metaDetectedFormat" class="badge badge-cyan">DETECTED: CEF</span>
+                <button type="button" class="btn-secondary" id="btnRemoveSelectedFile"
+                  style="font-size:11px; padding:3px 8px;" title="Clear selected file"></button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Ingestion Transport Mode Configuration -->
+          <div class="card p-md">
+            <h3 class="section-title" style="margin-bottom:8px;">Ingestion Transport Mode</h3>
+            <p class="section-subtitle" style="margin-bottom:14px;">Select how the log file contents should be
+              transmitted to ULPF Core:</p>
+
+            <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:16px;">
+              <label
+                style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; background:var(--bg-card); padding:10px 12px; border-radius:8px; border:1px solid var(--border-subtle);">
+                <input type="radio" name="uploadTransportMode" value="http_upload" checked
+                  style="margin-top:3px; accent-color:#38BDF8;">
+                <div>
+                  <div style="font-size:13px; font-weight:700; color:#F1F5F9;"> Direct HTTP REST Upload (FastAPI
+                    /api/v1/upload)</div>
+                  <div style="font-size:11px; color:#94a3b8;">Multipart batch POST. Full normalization, OpenSearch
+                    indexing, SQLite persistence, and returns parsed events.</div>
+                </div>
+              </label>
+
+              <label
+                style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; background:var(--bg-card); padding:10px 12px; border-radius:8px; border:1px solid var(--border-subtle);">
+                <input type="radio" name="uploadTransportMode" value="udp_stream"
+                  style="margin-top:3px; accent-color:#38BDF8;">
+                <div>
+                  <div style="font-size:13px; font-weight:700; color:#F1F5F9;"> Sequential UDP Syslog Stream (Port
+                    5140)</div>
+                  <div style="font-size:11px; color:#94a3b8;">Simulates real-time network stream by sending each log
+                    line as a UDP Syslog datagram.</div>
+                </div>
+              </label>
+
+              <label
+                style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; background:var(--bg-card); padding:10px 12px; border-radius:8px; border:1px solid var(--border-subtle);">
+                <input type="radio" name="uploadTransportMode" value="tcp_stream"
+                  style="margin-top:3px; accent-color:#38BDF8;">
+                <div>
+                  <div style="font-size:13px; font-weight:700; color:#F1F5F9;"> Persistent TCP Syslog Stream (Port
+                    5141)</div>
+                  <div style="font-size:11px; color:#94a3b8;">Streams lines over persistent TCP RFC 5424 octet framing.
+                  </div>
+                </div>
+              </label>
+
+              <label
+                style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; background:var(--bg-card); padding:10px 12px; border-radius:8px; border:1px solid var(--border-subtle);">
+                <input type="radio" name="uploadTransportMode" value="file_drop"
+                  style="margin-top:3px; accent-color:#38BDF8;">
+                <div>
+                  <div style="font-size:13px; font-weight:700; color:#F1F5F9;"> File Collector Drop
+                    (main/storage/logs/)</div>
+                  <div style="font-size:11px; color:#94a3b8;">Writes file to the watched directory for real-time tailing
+                    by the File Tail Collector.</div>
+                </div>
+              </label>
+            </div>
+
+            <!-- Streaming Pacing Delay -->
+            <div id="streamingPacingRow"
+              style="display:none; background:var(--bg-card); padding:10px 14px; border-radius:8px; border:1px solid var(--border-subtle); margin-bottom:14px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <label style="font-size:12px; font-weight:600; color:#F1F5F9;">Inter-Line Pacing Delay:</label>
+                <span id="streamingDelayVal"
+                  style="font-family:var(--font-mono); font-size:12px; color:#38BDF8; font-weight:700;">10 ms</span>
+              </div>
+              <input type="range" id="streamingDelaySlider" min="0" max="200" step="5" value="10"
+                style="width:100%; accent-color:#38BDF8;">
+            </div>
+
+            <!-- Target Host & Port Info -->
+            <div style="display:flex; gap:10px;">
+              <div style="flex:1;">
+                <label class="form-label" style="font-size:11px;">Target Host</label>
+                <input type="text" id="uploadTargetHost" class="input-field" value="127.0.0.1"
+                  style="font-family:var(--font-mono); font-size:12px; padding:6px 10px;">
+              </div>
+              <div style="width:100px;">
+                <label class="form-label" style="font-size:11px;">API Port</label>
+                <input type="number" id="uploadTargetPort" class="input-field" value="8000"
+                  style="font-family:var(--font-mono); font-size:12px; padding:6px 10px;">
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- RIGHT COLUMN: CONTENT PREVIEW & SERVER RECEIPT -->
+        <div style="display:flex; flex-direction:column; gap:20px;">
+
+          <!-- 1. File Content Preview & Live Editor -->
+          <div class="card p-md">
+            <div class="section-header" style="margin-bottom:8px;">
+              <div>
+                <h3 class="section-title">Raw Payload Preview & Editor</h3>
+                <p class="section-subtitle">Inspect raw bytes before transmission; edit or insert custom lines directly
+                </p>
+              </div>
+              <div style="display:flex; gap:8px; align-items:center;">
+                <span id="previewLineCountBadge" class="badge badge-neutral badge-sm">0 lines</span>
+                <span id="previewByteCountBadge" class="badge badge-neutral badge-sm">0 B</span>
+              </div>
+            </div>
+            <div class="editor-wrapper">
+              <textarea id="uploadContentEditor" class="editor-textarea"
+                style="height:220px; font-family:var(--font-mono); font-size:12px;"
+                placeholder="Upload a log file or click a sample dataset above to inspect and edit lines here..."></textarea>
+            </div>
+          </div>
+
+          <!-- 2. Server Ingestion Receipt & Verification Card -->
+          <div class="card p-md" id="uploadReceiptCard">
+            <div class="section-header" style="margin-bottom:12px;">
+              <div>
+                <h3 class="section-title">Server Ingestion Receipt & Results</h3>
+                <p class="section-subtitle">Real-time confirmation returned by ULPF processing pipeline</p>
+              </div>
+              <span id="uploadStatusBadge" class="pipeline-status-badge idle">IDLE</span>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="upload-stats-grid">
+              <div class="upload-stat-box">
+                <div class="upload-stat-val" id="uploadStatProcessed">0</div>
+                <div class="upload-stat-lbl">Lines Processed</div>
+              </div>
+              <div class="upload-stat-box">
+                <div class="upload-stat-val" id="uploadStatSuccess" style="color:#2DD4BF;">0</div>
+                <div class="upload-stat-lbl">Normalized OK</div>
+              </div>
+              <div class="upload-stat-box">
+                <div class="upload-stat-val" id="uploadStatUnparsed" style="color:#7dd3fc;">0</div>
+                <div class="upload-stat-lbl">AI / Unparsed</div>
+              </div>
+              <div class="upload-stat-box">
+                <div class="upload-stat-val" id="uploadStatLatency" style="color:#38BDF8;">0 ms</div>
+                <div class="upload-stat-lbl">Duration</div>
+              </div>
+            </div>
+
+            <!-- Sample Parsed Events List -->
+            <div id="sampleEventsWrapper" style="display:none; margin-bottom:12px;">
+              <div style="font-size:12px; font-weight:700; color:#F1F5F9; margin-bottom:6px;">
+                Sample Normalized Canonical Events (First 5):
+              </div>
+              <div id="sampleEventsList" style="display:flex; flex-direction:column; gap:6px;">
+                <!-- Populated dynamically via simulator.js -->
+              </div>
+            </div>
+
+            <!-- Console Feed for Upload Log -->
+            <div style="font-size:11px; font-weight:700; color:#94a3b8; margin-bottom:4px; text-transform:uppercase;">
+              Ingestion Execution Trace:
+            </div>
+            <div id="uploadConsoleFeed" class="terminal-feed" style="height:120px; font-size:11px;">
+              <div style="color:var(--text-secondary); padding:10px; text-align:center;">Select a log file and click
+                "Start
+                Ingestion / Upload" to view wire execution logs.</div>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div><!-- End tabFileUploader -->
+
+  </main>
+
+  <!-- Network Ports & Endpoints Modal -->
+  <div id="endpointsModal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3" />
+            <path
+              d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+          <h3 style="font-size:15px; font-weight:700; color:#F1F5F9; margin:0;">Remote Server Network Endpoints</h3>
+        </div>
+        <button type="button" class="btn-secondary" id="btnCloseEndpointsModal"
+          style="padding:4px 10px; font-size:12px; cursor:pointer;"
+          onclick="document.getElementById('endpointsModal').classList.remove('active')"> Close</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:12px; color:#94a3b8; margin-bottom:16px;">
+          Configure target network transport ports when the ULPF server is hosted on another machine, Docker host, LAN
+          IP, or cloud VM:
+        </p>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
+          <div>
+            <label class="input-label">Protocol Scheme</label>
+            <select id="modalScheme" class="input-field" style="height:38px;">
+              <option value="http" selected>HTTP (Standard)</option>
+              <option value="https">HTTPS (TLS / Cloud)</option>
+            </select>
+          </div>
+          <div>
+            <label class="input-label">Target Host / IP</label>
+            <input type="text" id="modalHost" class="input-field" value="127.0.0.1" placeholder="e.g. 192.168.1.50">
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:14px;">
+          <div>
+            <label class="input-label">HTTP API Port</label>
+            <input type="number" id="modalApiPort" class="input-field" value="8000">
+          </div>
+          <div>
+            <label class="input-label">Syslog UDP</label>
+            <input type="number" id="modalUdpPort" class="input-field" value="5140">
+          </div>
+          <div>
+            <label class="input-label">Syslog TCP</label>
+            <input type="number" id="modalTcpPort" class="input-field" value="5141">
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px;">
+          <div>
+            <label class="input-label">Device Timeout (ms)</label>
+            <input type="number" id="modalTimeout" class="input-field" value="3000" step="500" min="100" max="60000">
+          </div>
+          <div>
+            <label class="input-label">Logs Sent Interval (ms)</label>
+            <input type="number" id="modalLogsInterval" class="input-field" value="50" step="10" min="0" max="10000">
+          </div>
+          <div>
+            <label class="input-label">Auto-Probe Health</label>
+            <select id="modalAutoProbe" class="input-field" style="height:38px;">
+              <option value="0">Disabled</option>
+              <option value="5000" selected>Every 5 seconds</option>
+              <option value="10000">Every 10 seconds</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" id="btnResetModalSettings"
+          style="font-size:12px; padding:6px 14px;">
+          <span>Reset Defaults</span>
+        </button>
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="btn-teal" id="btnModalPingTest" style="font-size:12px; padding:6px 14px;">
+            <span>Test Ping</span>
+          </button>
+          <button type="button" class="btn-primary" id="btnSaveModalSettings" style="font-size:12px; padding:6px 18px;">
+            <span>Save & Apply</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Virtual Device Configuration Modal -->
+  <div id="editDeviceModal" class="modal-backdrop" style="display:none;">
+    <div class="modal-card" style="max-width:580px;">
+      <div class="modal-header">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span style="font-size:20px;"></span>
+          <div>
+            <h3 class="modal-title" id="editDevModalTitle">Edit Virtual Device Configuration</h3>
+            <p class="modal-subtitle">Modify device vendor, parser format, and log generation rate</p>
+          </div>
+        </div>
+        <button type="button" class="btn-close" onclick="window.closeEditDevModal()"></button>
+      </div>
+      <div class="modal-body" style="display:flex; flex-direction:column; gap:14px;">
+        <input type="hidden" id="editDevId">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div>
+            <label class="input-label">Device Name</label>
+            <input type="text" id="editDevName" class="input-field" placeholder="e.g. PaloAlto-Edge-01" required>
+          </div>
+          <div>
+            <label class="input-label">Device IP Address</label>
+            <input type="text" id="editDevIp" class="input-field" placeholder="e.g. 10.0.1.15" required>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div>
+            <label class="input-label">Brand & Log Parser Format</label>
+            <select id="editDevVendor" class="input-field" style="height:40px;">
+              <option value="Palo Alto Networks|palo_alto_panos">Palo Alto Networks (PAN-OS Traffic/Threat)</option>
+              <option value="Cisco|cisco_asa">Cisco ASA / FTD (Security Syslog)</option>
+              <option value="Fortinet|fortinet_fortigate">Fortinet FortiGate (FortiOS UTM & NGFW)</option>
+              <option value="Amazon Web Services|aws_cloudtrail">AWS CloudTrail & VPC Flow (JSON)</option>
+              <option value="OISF / Suricata|suricata_eve">Suricata EVE & Snort (JSON IDS/IPS)</option>
+              <option value="Linux|syslog">Linux Server (Syslog RFC 5424)</option>
+              <option value="Cisco Meraki|syslog">Cisco Meraki AP (Syslog 802.11)</option>
+              <option value="Aruba Networks|syslog">Aruba Instant AP (Syslog 802.11)</option>
+              <option value="Multi-Vendor|cef">Common Event Format (CEF)</option>
+              <option value="Generic|kv">Generic Key=Value Firewall</option>
+            </select>
+          </div>
+          <div>
+            <label class="input-label">Delivery Protocol & Port</label>
+            <select id="editDevProto" class="input-field" style="height:40px;">
+              <option value="UDP|5140">UDP Socket (:5140) - Fast Syslog</option>
+              <option value="TCP|5141">TCP Stream (:5141) - Reliable Stream</option>
+              <option value="HTTP|8000">HTTP REST Ingest (:8000) - Web API</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="input-label">Logs per second (EPS)</label>
+          <input type="number" id="editDevInterval" class="input-field" min="1" max="1000" step="1"
+            placeholder="e.g. 10 EPS">
+        </div>
+
+        <div>
+          <label class="input-label">Custom Log Template (Optional Override)</label>
+          <textarea id="editDevTemplate" class="input-field" rows="3"
+            style="font-family:var(--font-mono); font-size:11px;"
+            placeholder="Optional raw template pattern, e.g. {{timestamp}} {{device_name}} src={{src_ip}} act=allow"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" onclick="window.closeEditDevModal()"
+          style="font-size:12px; padding:6px 14px;">
+          <span>Cancel</span>
+        </button>
+        <button type="button" class="btn-primary" onclick="window.saveSimDeviceEdit()"
+          style="font-size:12px; padding:6px 18px;">
+          <span>Save Changes</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="toast-msg">Notification</div>
+
+  <footer
+    style="margin-top:48px; padding:24px 20px; text-align:center; border-top:1px solid var(--border-subtle); color:var(--text-secondary); font-size:12px; background:var(--bg-card);">
+    <div style="display:flex; justify-content:center; align-items:center; gap:12px; flex-wrap:wrap;">
+      <span style="font-weight:600; color:var(--text-primary);">ULPF — Universal Log Pre-processing Framework</span>
+      <span>•</span>
+      <span style="font-weight:700; color:var(--accent-cyan);">Version 1.0.0 Enterprise (Phase 8 Production)</span>
+      <span>•</span>
+      <span>Dual-Engine Architecture: Core 1 (:8000) &amp; Core 2 (:8050)</span>
+      <span>•</span>
+      <span style="color:#10b981;">Deterministic C-Engine Ready</span>
+    </div>
+  </footer>
+
+  <script src="simulator.js?v=1.0.0_phase10"></script>
+</body>
+
+</html>

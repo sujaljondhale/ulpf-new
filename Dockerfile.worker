@@ -1,0 +1,25 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+RUN groupadd -r ulpfgroup && useradd -r -g ulpfgroup -d /app -s /sbin/nologin ulpfuser
+RUN mkdir -p /app/storage/raw && chown -R ulpfuser:ulpfgroup /app
+
+COPY --chown=ulpfuser:ulpfgroup main/ main/
+COPY --chown=ulpfuser:ulpfgroup scripts/ scripts/
+
+USER ulpfuser
+
+CMD ["python", "-m", "scripts.run_worker"]
+
