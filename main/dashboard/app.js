@@ -98,36 +98,21 @@
 
   // --- TOP BAR CONTROLS ---
   function initTopBarControls() {
-<<<<<<< HEAD
     // 3-Theme Switcher (Dark Emerald Glow, Light Crystal, and Luxury Champagne Gold)
     const themeSelect = document.getElementById("themeSelector");
 
     function applyTheme(theme) {
       let activeTheme = (theme === "light" || theme === "luxury") ? theme : "dark";
-=======
-    // SOC Dark Theme Switcher
-    const themeSelect = document.getElementById("themeSelector");
-
-    function applyTheme(theme) {
-      let activeTheme = theme;
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
       document.documentElement.setAttribute("data-theme", activeTheme);
       try {
         localStorage.setItem("ulpf_theme", activeTheme);
       } catch (e) { }
       if (themeSelect) themeSelect.value = activeTheme;
-<<<<<<< HEAD
       document.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: activeTheme } }));
     }
 
     let savedTheme = localStorage.getItem("ulpf_theme") || "dark";
     if (savedTheme !== "light" && savedTheme !== "luxury") savedTheme = "dark";
-=======
-      document.dispatchEvent(new CustomEvent('themeChanged'));
-    }
-
-    let savedTheme = localStorage.getItem("ulpf_theme") || "nord";
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
     applyTheme(savedTheme);
 
     if (themeSelect) {
@@ -397,18 +382,8 @@
               if (idx !== -1) state.events[idx] = rec;
             }
 
-<<<<<<< HEAD
             // Batched / Throttled UI update (Prevents browser thread freeze during high EPS)
             triggerThrottledUiUpdate();
-=======
-            // Refresh views dynamically
-            if (state.currentRoute === "overview") {
-              renderHomeLiveEventsTable();
-              renderHomeMetrics();
-            } else if (state.currentRoute === "events" || state.currentRoute === "logs") {
-              refreshEventsTable();
-            }
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
           }
 
           // 6. Stored Data Logs Cleared
@@ -451,7 +426,6 @@
     }
   }
 
-<<<<<<< HEAD
   // --- HIGH-THROUGHPUT UI RENDER SCHEDULER (ZERO LAG) ---
   let uiUpdateScheduled = false;
   let lastUiUpdateTime = 0;
@@ -503,73 +477,6 @@
     }
   }
 
-=======
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
-  // --- REAL-TIME THROUGHPUT AND EPS TRACKER ---
-  let liveEventTimestamps = [];
-  function recordIncomingEventTimestamp() {
-    const now = Date.now();
-    liveEventTimestamps.push(now);
-    const cutoff = now - 5000;
-    liveEventTimestamps = liveEventTimestamps.filter(t => t >= cutoff);
-  }
-
-  function calculateLiveClientEps() {
-    const now = Date.now();
-    const last1s = liveEventTimestamps.filter(t => t >= now - 1000).length;
-    if (last1s > 0) return last1s;
-    const last5s = liveEventTimestamps.filter(t => t >= now - 5000).length;
-    if (last5s > 0) return Math.round((last5s / 5) * 10) / 10;
-    return 0;
-  }
-
-  // Global handler to permanently clear stored logs
-  window.clearStoredLogs = async function () {
-    if (!confirm("Are you sure you want to permanently delete all stored data logs and raw evidence?")) return;
-    try {
-      const res = await fetch("/api/v1/events/clear", { method: "POST" });
-      if (res.ok) {
-        state.events = [];
-        showToast("All stored data logs permanently deleted.", "success");
-        if (state.currentRoute === "overview") {
-          renderHomeLiveEventsTable();
-          renderHomeMetrics();
-        } else if (state.currentRoute === "logs") {
-          const content = document.getElementById("contentArea");
-          if (content) renderLogsView(content);
-        }
-      } else {
-        showToast("Failed to clear logs: " + res.statusText, "error");
-      }
-    } catch (err) {
-      showToast("Error clearing logs: " + err.message, "error");
-    }
-  };
-
-  // --- API DATA FETCHERS ---
-  async function fetchMetrics() {
-    try {
-      const res = await fetch("/api/v1/metrics");
-      if (res.ok) {
-        state.metrics = await res.json();
-        renderHomeMetrics();
-      }
-
-<<<<<<< HEAD
-      // Only fetch initial events if empty (SSE handles incremental stream)
-      if (!state.events || state.events.length === 0) {
-        const evtRes = await fetch("/api/v1/events?limit=250");
-        if (evtRes.ok) {
-          const data = await evtRes.json();
-          state.events = data.events || [];
-          if (state.currentRoute === "overview") renderHomeLiveEventsTable();
-        }
-=======
-      const evtRes = await fetch("/api/v1/events?limit=1000");
-      if (evtRes.ok) {
-        const data = await evtRes.json();
-        state.events = data.events || [];
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
       }
 
       const srcRes = await fetch("/api/v1/sources");
@@ -938,948 +845,15 @@
       window.closeConnectRealDeviceModal();
       window.closeInspectUnknownLogModal();
       window.closeScenarioModal();
-<<<<<<< HEAD
       const aiPopup = document.getElementById("aiReviewPopupModal");
       if (aiPopup) aiPopup.classList.add("hidden");
-=======
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
-      const aiRep = document.getElementById("aiIncidentReportContainer");
-      if (aiRep) aiRep.style.display = "none";
-    }
-  });
-
-  document.addEventListener("click", (e) => {
-    if (e.target && e.target.classList && e.target.classList.contains("modal-overlay")) {
-      e.target.classList.remove("open");
-      e.target.classList.add("hidden");
-      // DO NOT set inline display:none here, it breaks reusable modals!
-      if (e.target.id === "editDeviceModal" || e.target.id === "connectRealDeviceModal" || e.target.id === "inspectUnknownLogModal" || e.target.id === "scenarioPhaseModal") {
-        e.target.remove();
-      }
-    }
-  });
-
-  function initModalHandlers() {
-    const modal = document.getElementById("eventDetailModal");
-    const closeBtn = document.getElementById("closeEventModal");
-
-    if (closeBtn) {
-      closeBtn.addEventListener("click", () => {
-        window.closeEventDetailModal();
-      });
-    }
-
-    if (modal) {
-      modal.addEventListener("click", (e) => {
-        if (e.target === modal) window.closeEventDetailModal();
-      });
-    }
-
-    // Modal Tabs Navigation Handler
-    const tabHeader = document.getElementById("modalTabHeader");
-    if (tabHeader) {
-      tabHeader.addEventListener("click", (e) => {
-        const btn = e.target.closest(".tab-btn");
-        if (!btn) return;
-
-        const tabId = btn.getAttribute("data-tab");
-        document.querySelectorAll("#modalTabHeader .tab-btn").forEach((b) => b.classList.remove("active"));
-        document.querySelectorAll(".modal-body .tab-pane").forEach((p) => p.classList.remove("active"));
-
-        btn.classList.add("active");
-        const pane = document.getElementById(tabId);
-        if (pane) pane.classList.add("active");
-      });
-    }
-  }
-
-  window.renderJsonTree = function renderJsonTree(obj) {
-      if (typeof obj !== 'object' || obj === null) {
-        let valStr = String(obj);
-        let typeClass = typeof obj === 'boolean' ? 'parsed-val-bool' : (typeof obj === 'number' ? 'parsed-val-num' : 'parsed-val-str');
-        return `<span class="parsed-value-interactive ${typeClass}" data-val="${valStr.replace(/"/g, '&quot;')}" style="cursor:pointer; text-decoration:underline; text-decoration-style:dotted;" title="Click to locate in raw log">${valStr}</span>`;
-      }
-      if (Array.isArray(obj) && obj.length === 0) return '[]';
-      if (Object.keys(obj).length === 0) return '{}';
-
-      let html = '<div style="margin-left:12px; border-left:1px solid var(--border-color); padding-left:8px;">';
-      for (const key in obj) {
-        html += `<div style="margin-bottom:4px;">
-                   <strong class="parsed-key">${key}:</strong> 
-                   ${renderJsonTree(obj[key])}
-                 </div>`;
-      }
-      html += '</div>';
-      return html;
-  };
-
-  window.renderRawBlocks = function(text) {
-      if (!text) return "N/A";
-      try {
-        const j = JSON.parse(text);
-        return renderJsonTree(j);
-      } catch (e) {
-        const parts = text.split(/(?=\b\w+=)|\|/g); 
-        let html = '<div style="display:flex; flex-wrap:wrap; gap:6px; font-family:\'JetBrains Mono\', monospace; font-size:12px;">';
-        parts.forEach(p => {
-           let pt = p.trim();
-           if (pt) {
-              let bg = "rgba(148, 163, 184, 0.1)";
-              let color = "var(--text-main)";
-              let border = "rgba(148,163,184,0.2)";
-              if (pt.includes('=')) {
-                 const idx = pt.indexOf('=');
-                 const k = pt.substring(0, idx);
-                 const v = pt.substring(idx + 1);
-                 let kLower = k.toLowerCase();
-                 if (['src', 'dst', 'ip', 'source', 'destination', 'spt', 'dpt', 'port'].includes(kLower)) {
-                     bg = "rgba(16, 185, 129, 0.1)"; color = "var(--success-main)"; border = "rgba(16,185,129,0.3)";
-                 } else if (['act', 'action', 'reason', 'signature', 'threat'].includes(kLower)) {
-                     if (['deny', 'drop', 'block'].includes(v.toLowerCase())) {
-                         bg = "rgba(239, 68, 68, 0.1)"; color = "var(--danger-main)"; border = "rgba(239,68,68,0.3)";
-                     } else {
-                         bg = "rgba(245, 158, 11, 0.1)"; color = "var(--warning-main)"; border = "rgba(245,158,11,0.3)";
-                     }
-                 } else if (['proto', 'app', 'transport', 'protocol'].includes(kLower)) {
-                     bg = "rgba(139, 92, 246, 0.1)"; color = "var(--violet-main)"; border = "rgba(139,92,246,0.3)";
-                 } else {
-                     bg = "rgba(56, 189, 248, 0.1)"; color = "var(--primary-main)"; border = "rgba(56,189,248,0.3)";
-                 }
-                 html += `<span style="background:${bg}; color:${color}; padding: 4px 8px; border-radius: 4px; border: 1px solid ${border}; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><strong>${k}=</strong>${v}</span>`;
-              } else {
-                 if (pt.startsWith("CEF:") || pt.startsWith("<")) {
-                     bg = "rgba(99, 102, 241, 0.1)"; color = "#818cf8"; border = "rgba(99, 102, 241, 0.3)";
-                 }
-                 html += `<span style="background:${bg}; color:${color}; padding: 4px 8px; border-radius: 4px; border: 1px dashed ${border};">${pt}</span>`;
-              }
-           }
-        });
-        html += '</div>';
-        return html;
-      }
-  };
-
-  window.openEventDetailModal = async function openEventDetailModal(eventId, forceEv = null) {
-    const modal = document.getElementById("eventDetailModal");
-    if (!modal) return;
-
-    // Mutual exclusivity: Close other active overlays
-    const existingScenarioModal = document.getElementById("scenarioPhaseModal");
-    if (existingScenarioModal) existingScenarioModal.remove();
-    const scenarioMenu = document.getElementById("scenarioDropdownMenu");
-    if (scenarioMenu) scenarioMenu.classList.add("hidden");
-
-    document.getElementById("modalEventIdTitle").innerText = eventId || "ULPF-2026-EVENT";
-
-    // Reset tabs to Overview first
-    document.querySelectorAll("#modalTabHeader .tab-btn").forEach((b) => b.classList.remove("active"));
-    document.querySelectorAll(".modal-body .tab-pane").forEach((p) => p.classList.remove("active"));
-    const firstTabBtn = document.querySelector('#modalTabHeader .tab-btn[data-tab="tabOverview"]');
-    const firstTabPane = document.getElementById("tabOverview");
-    if (firstTabBtn) firstTabBtn.classList.add("active");
-    if (firstTabPane) firstTabPane.classList.add("active");
-
-    // Check Multi-Vendor cached comparisons first
-    if (window.cachedMvComparisons && window.cachedMvComparisons.length > 0) {
-      const mvComp = window.cachedMvComparisons.find(c => c.event_id === eventId);
-      if (mvComp) {
-        const syntheticEv = {
-          event_id: mvComp.event_id,
-          source_device: mvComp.device,
-          original: { format: mvComp.format, raw: mvComp.raw_log, sha256: mvComp.sha256 },
-          ulpf: mvComp.ulpf_ir,
-          source: mvComp.ulpf_ir.source,
-          destination: mvComp.ulpf_ir.destination,
-          event: mvComp.ulpf_ir.event,
-          network: mvComp.ulpf_ir.network,
-          status: mvComp.ulpf_ir.event.action === "deny" || mvComp.ulpf_ir.event.action === "drop" ? "blocked" : "success",
-          severity: mvComp.ulpf_ir.event.action === "deny" ? "high" : "low",
-          provenance: { hash: mvComp.sha256, transformations: ["Format Detection", "AST Parsing", "Canonical Mapping", "OCSF Serialization"] }
-        };
-        state.selectedEvent = syntheticEv;
-        renderEventModalContent(syntheticEv, eventId);
-        modal.classList.remove("hidden");
-        return;
-      }
-    }
-
-    if (forceEv) {
-        state.selectedEvent = forceEv;
-        renderEventModalContent(forceEv, eventId);
-        modal.classList.remove("hidden");
-        return;
-    }
-
-    try {
-      const res = await fetch(`/events/${eventId}`);
-      if (res.ok) {
-        const ev = await res.json();
-        state.selectedEvent = ev;
-        renderEventModalContent(ev, eventId);
-        modal.classList.remove("hidden");
-      } else {
-        const rec = state.events.find((e) => e.event_id === eventId || e.raw_event_id === eventId);
-        if (rec) {
-          renderFallbackModalContent(rec);
-        } else {
-          // General fallback
-          const genericEv = {
-            event_id: eventId,
-            source_device: "Perimeter Security Gateway",
-            original: { format: "CheckPoint CEF", raw: "CEF:0|CheckPoint|VPN-1|R81|100|Drop|High|src=10.10.10.20 dst=8.8.8.8 spt=54321 dpt=443 proto=tcp act=deny", sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" },
-            ulpf: { event: { action: "deny" }, source: { ip: "10.10.10.20" }, destination: { ip: "8.8.8.8", port: 443 } },
-            source: { ip: "10.10.10.20" },
-            destination: { ip: "8.8.8.8", port: 443 },
-            event: { action: "deny" },
-            status: "blocked",
-            severity: "high"
-          };
-          renderEventModalContent(genericEv, eventId);
-        }
-        modal.classList.remove("hidden");
-      }
-    } catch (e) {
-      const rec = state.events.find((e) => e.event_id === eventId || e.raw_event_id === eventId);
-      if (rec) {
-        renderFallbackModalContent(rec);
-      }
-      modal.classList.remove("hidden");
-    }
-  }
-
-  function renderEventModalContent(ev, displayId) {
-    window.currentActiveModalEvent = ev;
-    const orig = ev.original || {};
-    const ulpf = ev.ulpf || {};
-    const prov = ev.provenance || {};
-
-    const statusBadge = document.getElementById("modalEventStatusBadge");
-    if (statusBadge) {
-      statusBadge.className = ev.status === "blocked" ? "badge badge-red" : ev.status === "success" ? "badge badge-teal" : "badge badge-amber";
-      statusBadge.innerText = (ev.status || "SUCCESS").toUpperCase();
-    }
-
-    // ACCURATE SOURCE DEVICE RESOLUTION
-    const sourceDevice = ev.source_device || ev.source || ev.device?.hostname || ev.device?.product || ev.device?.vendor || "Perimeter Gateway";
-    const srcIp = ev.source?.ip || "N/A";
-    const dstIp = ev.destination?.ip || "N/A";
-    const isIpBlocked = state.blockedIps.has(srcIp);
-    const isEventBlocked = ev.status === "blocked" || ev.event?.action === "block" || ev.event?.action === "deny" || ev.event?.action === "drop";
-    const threat = ev.threat;
-
-    const overviewGrid = document.getElementById("modalOverviewGrid");
-    if (overviewGrid) {
-      overviewGrid.innerHTML = `
-        ${threat ? `
-          <div style="grid-column: 1 / -1; background:#450a0a; border:1px solid #ef4444; border-radius:6px; padding:12px 16px; color:#fef2f2; margin-bottom:4px;">
-            <strong style="text-transform:uppercase; letter-spacing:0.5px;">ACTIVE SECURITY THREAT DETECTED:</strong>
-            <span style="margin-left:8px; font-weight:600;">${threat.threat_type}</span> — ${threat.detail}
-            <div class="mt-sm">
-              <button class="${isIpBlocked ? 'btn-unblock-ip' : 'btn-block-ip'}" onclick="window.toggleBlockIp('${srcIp}')">
-                ${isIpBlocked ? 'Blacklisted' : 'Immediately Blacklist Attacker IP'}
-              </button>
-            </div>
-          </div>
-        ` : ''}
-
-        <div class="card p-md">
-          <div class="text-muted font-sm">EVENT ID</div>
-          <div class="mono font-bold mt-sm" style="font-size:13.5px; color:var(--text-main);">${displayId || ulpf.event_id || "ULPF-2026-1001"}</div>
-        </div>
-        <div class="card p-md">
-          <div class="text-muted font-sm">TIMESTAMP</div>
-          <div class="mono mt-sm">${ev.event?.time || new Date().toISOString()}</div>
-        </div>
-        <div class="card p-md">
-          <div class="text-muted font-sm">DETECTED FORMAT</div>
-          <div class="badge badge-violet mt-sm">${orig.format || "Syslog"}</div>
-        </div>
-        <div class="card p-md">
-          <div class="text-muted font-sm">SOURCE DEVICE (INGESTION ORIGIN)</div>
-          <div class="font-bold mt-sm" style="font-size:13.5px; color:var(--success-main);">${sourceDevice}</div>
-        </div>
-        <div class="card p-md">
-          <div class="text-muted font-sm">SOURCE IP -> DESTINATION IP</div>
-          <div class="mono font-bold mt-sm flex-between">
-            <span>${srcIp} -> ${dstIp}</span>
-            ${srcIp && srcIp !== "N/A" ? (
-              isIpBlocked ? `
-                <button class="btn-unblock-ip" onclick="window.toggleBlockIp('${srcIp}')">
-                  Blacklisted
-                </button>
-              ` : (isEventBlocked ? `
-                <span class="badge badge-red" style="font-size:10px;">Traffic Dropped</span>
-              ` : `
-                <button class="btn-block-ip" onclick="window.toggleBlockIp('${srcIp}')">
-                  Block IP
-                </button>
-              `)
-            ) : ''}
-          </div>
-          ${(ev.source?.mac || ev.network?.ssid) ? `
-            <div class="mono text-xs text-muted mt-xs" style="margin-top:6px; font-size:11.5px;">
-              ${ev.source?.mac ? `Client MAC: <strong style="color:var(--text-main);">${ev.source.mac}</strong>` : ''}
-              ${ev.network?.ssid ? ` | Wireless SSID: <strong style="color:var(--primary-main);">${ev.network.ssid}</strong>` : ''}
-            </div>
-          ` : ''}
-        </div>
-        <div class="card p-md">
-          <div class="text-muted font-sm">ACTION & SEVERITY</div>
-          <div class="font-bold mt-sm">
-            <span class="badge ${ev.event?.action === 'block' || ev.status === 'blocked' ? 'badge-red' : 'badge-teal'}">${(ev.event?.action || ev.status || "allow").toUpperCase()}</span>
-            <span class="badge ${ev.severity === 'critical' ? 'badge-red' : 'badge-amber'}" style="margin-left:4px;">${(ev.severity || "medium").toUpperCase()}</span>
-          </div>
-        </div>
-
-        <!-- SOVEREIGN AI INCIDENT ANALYSIS & REASONING -->
-        <div class="card p-md" style="grid-column: 1 / -1; margin-top:8px; border:1px solid var(--primary-border); background:var(--bg-card-subtle);">
-          <div class="flex-between">
-            <div style="display:flex; align-items:center; gap:8px;">
-              <div>
-                <h3 style="font-size:13px; font-weight:700; color:var(--primary-main); margin:0;">SOVEREIGN AI INCIDENT ANALYSIS &amp; MITRE REASONING</h3>
-                <span class="text-muted text-xs">Deterministic root cause analysis, tactic mapping, and tactical SOC containment steps</span>
-              </div>
-            </div>
-            <div style="display:flex; align-items:center; gap:8px;">
-              <span id="modalAiStatusBadge" class="badge badge-teal">LOCAL SLM READY</span>
-              <button type="button" class="btn btn-sm btn-primary ai-analysis-btn" id="btnRunModalAi" onclick="window.explainCurrentModalEvent()" style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px; font-size:12px; font-weight:600; white-space:nowrap;">
-                <span>Analyze with Sovereign AI</span>
-              </button>
-            </div>
-          </div>
-          <div id="modalAiExplanationBody" class="mt-sm">
-            <div style="padding:10px 0; color:var(--text-muted); font-size:12px;">
-              Click <strong>Analyze with AI</strong> to inspect this event using the sovereign LLM/SLM engine for MITRE ATT&amp;CK classification and containment steps.
-            </div>
-          </div>
-        </div>
-
-        <!-- POST-PARSING LIFECYCLE FLOW -->
-        <div class="card p-md" style="grid-column: 1 / -1; margin-top:8px;">
-          <div class="flex-between">
-            <h3 style="font-size:13px; font-weight:700;">POST-PARSING LIFECYCLE & STAGE-BY-STAGE PIPELINE JOURNEY</h3>
-            <span class="badge badge-teal">PIPELINE VERIFIED</span>
-          </div>
-          <p class="text-muted font-sm mt-sm">Visual tracking of how this event transitioned from raw byte payload to final standardized export outputs:</p>
-          
-          <div class="post-parsing-flow">
-            <div class="flow-step-box active-step">
-              <div class="flow-step-num">Stage 1</div>
-              <div class="flow-step-title">Raw Ingest</div>
-              <div class="flow-step-sub">Byte Evidence Pinned</div>
-              <span class="badge badge-neutral mt-sm" style="font-size:9px;">SHA-256 Digest</span>
-            </div>
-            <div class="flow-arrow-sep">→</div>
-            <div class="flow-step-box active-step">
-              <div class="flow-step-num">Stage 2</div>
-              <div class="flow-step-title">Format Detection</div>
-              <div class="flow-step-sub">${orig.format || "CEF"} Signature</div>
-              <span class="badge badge-violet mt-sm" style="font-size:9px;">Deterministic</span>
-            </div>
-            <div class="flow-arrow-sep">→</div>
-            <div class="flow-step-box active-step">
-              <div class="flow-step-num">Stage 3</div>
-              <div class="flow-step-title">Parser Engine</div>
-              <div class="flow-step-sub">Extracted Key-Values</div>
-              <span class="badge badge-teal mt-sm" style="font-size:9px;">Zero-Copy Regex</span>
-            </div>
-            <div class="flow-arrow-sep">→</div>
-            <div class="flow-step-box active-step">
-              <div class="flow-step-num">Stage 4</div>
-              <div class="flow-step-title">ULPF-IR Normalizer</div>
-              <div class="flow-step-sub">Vendor -> Canonical</div>
-              <span class="badge badge-teal mt-sm" style="font-size:9px;">Schema Conformed</span>
-            </div>
-            <div class="flow-arrow-sep">→</div>
-            <div class="flow-step-box active-step">
-              <div class="flow-step-num">Stage 5</div>
-              <div class="flow-step-title">Security & Bounds</div>
-              <div class="flow-step-sub">IP & Port Validated</div>
-              <span class="badge badge-teal mt-sm" style="font-size:9px;">Checks Passed</span>
-            </div>
-            <div class="flow-arrow-sep">→</div>
-            <div class="flow-step-box active-step">
-              <div class="flow-step-num">Stage 6</div>
-              <div class="flow-step-title">Final SIEM Delivery</div>
-              <div class="flow-step-sub">OCSF & ECS Exported</div>
-              <span class="badge badge-teal mt-sm" style="font-size:9px;">Delivered (200 OK)</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- FINAL RESPONSE & DOWNSTREAM DISPATCH TARGETS -->
-        <div class="card p-md" style="grid-column: 1 / -1; margin-top:8px;">
-          <div class="flex-between">
-            <h3 style="font-size:13px; font-weight:700;">FINAL MULTI-SINK EXPORT DISPATCH RESPONSES</h3>
-            <span class="badge badge-teal">DOWNSTREAM SYNCHRONIZED</span>
-          </div>
-          <div class="grid grid-3 gap-sm mt-md">
-            <div style="background:var(--bg-card-solid); padding:12px; border-radius:6px; border:1px solid var(--border-color);">
-              <div class="text-muted font-sm">DESTINATION SINK #1</div>
-              <div class="font-bold text-teal mt-sm">In-Memory SIEM DataLake Sink</div>
-              <div class="text-muted font-sm" style="font-size:11px; margin-top:2px;">Format: OCSF v1.1.0 JSON (Class 4001)</div>
-              <div class="mono text-teal mt-sm" style="font-size:11px;">Response: HTTP 200 DELIVERED (1.4ms)</div>
-            </div>
-            <div style="background:var(--bg-card-solid); padding:12px; border-radius:6px; border:1px solid var(--border-color);">
-              <div class="text-muted font-sm">DESTINATION SINK #2</div>
-              <div class="font-bold text-teal mt-sm">MinIO S3 Evidence Lake</div>
-              <div class="text-muted font-sm" style="font-size:11px; margin-top:2px;">Bucket: ulpf-raw-evidence</div>
-              <div class="mono text-teal mt-sm" style="font-size:11px;">ETag: ${orig.sha256 ? orig.sha256.substring(0, 14) + '...' : 'W/"8f4c2b74..."'} (Stored)</div>
-            </div>
-            <div style="background:var(--bg-card-solid); padding:12px; border-radius:6px; border:1px solid var(--border-color);">
-              <div class="text-muted font-sm">DESTINATION SINK #3</div>
-              <div class="font-bold text-teal mt-sm">Elastic / OpenSearch</div>
-              <div class="text-muted font-sm" style="font-size:11px; margin-top:2px;">Index: ulpf-canonical-events-v1</div>
-              <div class="mono text-teal mt-sm" style="font-size:11px;">Status: _id ${displayId || "doc-1002"} (Indexed)</div>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
-    const rawCode = document.getElementById("modalRawCode");
-    const rawSha = document.getElementById("modalRawSha");
-    if (rawCode) {
-       if (orig.raw_evidence || orig.message || orig.raw_log || orig.raw) {
-          rawCode.innerHTML = window.renderRawBlocks(orig.raw_evidence || orig.message || orig.raw_log || orig.raw);
-       } else {
-          rawCode.innerText = "N/A";
-       }
-    }
-    if (rawSha) rawSha.innerText = `SHA-256: ${orig.sha256 || "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}`;
-
-    const detTable = document.getElementById("modalDetectionTable");
-    if (detTable) {
-      detTable.innerHTML = `
-        <tr><th>Attribute</th><th>Value</th></tr>
-        <tr><td>Detected Format</td><td><span class="badge badge-violet">${orig.format || "CEF"}</span></td></tr>
-        <tr><td>Detection Confidence</td><td><strong>99.4%</strong></td></tr>
-        <tr><td>Matching Reason</td><td>Format signature header pattern matched deterministically</td></tr>
-        <tr><td>Detector Engine</td><td>ULPF FormatDetector v1.0</td></tr>
-      `;
-    }
-
-    const parsedTable = document.getElementById("modalParsedTable");
-    if (parsedTable) {
-      parsedTable.innerHTML = `
-        <tr><th>Raw Field</th><th>Extracted Value</th></tr>
-        ${Object.entries(ev.unmapped || {})
-          .map(([k, v]) => `<tr><td class="mono">${k}</td><td class="mono">${v}</td></tr>`)
-          .join("") || '<tr><td class="mono">src</td><td class="mono">10.10.1.5</td></tr><tr><td class="mono">dst</td><td class="mono">8.8.8.8</td></tr><tr><td class="mono">act</td><td class="mono">allow</td></tr>'}
-      `;
-    }
-
-    const irCode = document.getElementById("modalIrCode");
-    if (irCode) irCode.innerText = JSON.stringify(ev, null, 2);
-
-    const normTable = document.getElementById("modalNormTable");
-    if (normTable) {
-      normTable.innerHTML = `
-        <tr><th>Vendor Field</th><th>Mapping Direction</th><th>Canonical ULPF Field</th><th>Normalized Value</th></tr>
-        <tr><td class="mono">src / source</td><td>→</td><td class="mono font-bold">source.ip</td><td class="mono">${ev.source?.ip || "10.0.0.1"}</td></tr>
-        <tr><td class="mono">dst / dest</td><td>→</td><td class="mono font-bold">destination.ip</td><td class="mono">${ev.destination?.ip || "8.8.8.8"}</td></tr>
-        <tr><td class="mono">dpt / dport</td><td>→</td><td class="mono font-bold">destination.port</td><td class="mono">${ev.destination?.port || 443}</td></tr>
-        <tr><td class="mono">act / action</td><td>→</td><td class="mono font-bold">event.action</td><td class="mono">${ev.event?.action || "allow"}</td></tr>
-      `;
-    }
-
-    const valTable = document.getElementById("modalValidationTable");
-    if (valTable) {
-      valTable.innerHTML = `
-        <tr><th>Validation Rule</th><th>Status</th><th>Details</th></tr>
-        <tr><td>SHA-256 Raw Digest Integrity</td><td><span class="badge badge-teal">OK Valid</span></td><td>Digest verified immutable</td></tr>
-        <tr><td>Source & Destination IP Syntax</td><td><span class="badge badge-teal">OK Valid</span></td><td>IPv4 syntax check passed</td></tr>
-        <tr><td>Transport Port Bounds Check</td><td><span class="badge badge-teal">OK Valid</span></td><td>Port in range (1-65535)</td></tr>
-        <tr><td>Taxonomy Schema Conformance</td><td><span class="badge badge-teal">OK Valid</span></td><td>ULPF-IR v1.0 Schema passed</td></tr>
-      `;
-    }
-
-    const provTable = document.getElementById("modalProvenanceTable");
-    if (provTable) {
-      provTable.innerHTML = `
-        <tr><th>Normalized Field</th><th>Original Field</th><th>Original Value</th><th>Parser Name</th><th>Confidence</th></tr>
-        ${Object.entries(prov)
-          .map(
-            ([k, v]) => `
-          <tr>
-            <td class="mono font-bold">${k}</td>
-            <td class="mono">${v.original_field || "N/A"}</td>
-            <td class="mono">${v.original_value || "N/A"}</td>
-            <td>${v.parser || "cef"}</td>
-            <td><span class="badge badge-teal">${v.confidence || 1.0}</span></td>
-          </tr>
-        `
-          )
-          .join("") || '<tr><td class="mono font-bold">source.ip</td><td class="mono">src</td><td class="mono">10.10.1.5</td><td>cef</td><td><span class="badge badge-teal">1.0</span></td></tr>'}
-      `;
-    }
-
-    const ocsfCode = document.getElementById("modalOcsfCode");
-    const ecsCode = document.getElementById("modalEcsCode");
-    if (ocsfCode) {
-      ocsfCode.innerText = JSON.stringify({
-        class_uid: 4001,
-        class_name: "Network Activity",
-        category_uid: 4,
-        category_name: "Network Activity",
-        action: ev.event?.action || "allow",
-        severity: ev.severity || "medium",
-        src_endpoint: { ip: ev.source?.ip || "10.0.0.1" },
-        dst_endpoint: { ip: ev.destination?.ip || "8.8.8.8", port: ev.destination?.port || 443 },
-        device: { hostname: sourceDevice },
-      }, null, 2);
-    }
-    if (ecsCode) {
-      ecsCode.innerText = JSON.stringify({
-        "@timestamp": ulpf.timestamp || new Date().toISOString(),
-        event: { category: "network", action: ev.event?.action || "allow", severity: ev.severity || 1 },
-        source: { ip: ev.source?.ip || "10.0.0.1" },
-        destination: { ip: ev.destination?.ip || "8.8.8.8", port: ev.destination?.port || 443 },
-        host: { name: sourceDevice },
-      }, null, 2);
-    }
-
-    const expTable = document.getElementById("modalExportTable");
-    if (expTable) {
-      expTable.innerHTML = `
-        <tr><th>Destination Sink</th><th>Target Protocol</th><th>Delivery Status</th><th>Latency</th></tr>
-        <tr><td>OpenSearch Security Index</td><td>REST / Bulk API</td><td><span class="badge badge-teal">OK Indexed</span></td><td>4.2 ms</td></tr>
-        <tr><td>In-Memory SIEM Forwarder</td><td>Syslog / JSON</td><td><span class="badge badge-teal">OK Delivered</span></td><td>1.8 ms</td></tr>
-        <tr><td>MinIO Raw Evidence Lake</td><td>S3 Storage API</td><td><span class="badge badge-teal">OK Stored</span></td><td>8.5 ms</td></tr>
-      `;
-    }
-
-    const timelineList = document.getElementById("modalTimelineList");
-    if (timelineList) {
-      timelineList.innerHTML = `
-        <div class="timeline-item"><div class="timeline-dot"></div><div><strong>00.000 ms</strong> — Ingestion Received from <strong>${sourceDevice}</strong></div></div>
-        <div class="timeline-item"><div class="timeline-dot"></div><div><strong>00.001 ms</strong> — Raw Payload Stored & SHA-256 Digest Computed</div></div>
-        <div class="timeline-item"><div class="timeline-dot"></div><div><strong>00.002 ms</strong> — Format Detection Completed (${orig.format || "CEF"})</div></div>
-        <div class="timeline-item"><div class="timeline-dot"></div><div><strong>00.004 ms</strong> — Parser Selection & Field Extraction</div></div>
-        <div class="timeline-item"><div class="timeline-dot"></div><div><strong>00.005 ms</strong> — Taxonomy Normalization & Field Provenance Attached</div></div>
-        <div class="timeline-item"><div class="timeline-dot"></div><div><strong>00.006 ms</strong> — Security & Schema Validation Passed</div></div>
-        <div class="timeline-item"><div class="timeline-dot"></div><div><strong>00.008 ms</strong> — OCSF & ECS Exports Generated & Forwarded to SIEM (200 OK)</div></div>
-      `;
-    }
-
-    // Auto-trigger AI explanation if threat or critical
-    if (threat || ev.status === "blocked" || ev.severity === "critical" || ev.severity === "high") {
-      setTimeout(() => {
-        if (window.explainCurrentModalEvent) window.explainCurrentModalEvent();
-      }, 60);
-    }
-  }
-
-  window.explainCurrentModalEvent = async () => {
-    const ev = window.currentActiveModalEvent;
-    if (!ev) return;
-    const bodyEl = document.getElementById("modalAiExplanationBody");
-    const statusBadge = document.getElementById("modalAiStatusBadge");
-    if (!bodyEl) return;
-
-    if (statusBadge) {
-      statusBadge.className = "badge badge-amber";
-      statusBadge.innerText = "REASONING...";
-    }
-    bodyEl.innerHTML = `<div style="padding:12px 0; color:var(--primary-main); font-family:var(--font-mono); font-size:12px;"><span class="pulse-dot teal"></span> Consulting sovereign AI engine for incident reasoning and MITRE classification...</div>`;
-
-    const rawMsg = ev.original?.message || ev.original?.raw || (typeof ev.original === 'string' ? ev.original : '') || JSON.stringify(ev);
-    const srcIp = ev.source?.ip || ev.source_device || "Unknown";
-    const isIpBlocked = state.blockedIps.has(srcIp);
-    const isEventBlocked = ev.status === "blocked" || ev.event?.action === "block" || ev.event?.action === "deny" || ev.event?.action === "drop";
-
-    try {
-      const res = await fetch("/api/v1/ai/explain", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          log: rawMsg,
-          event_id: ev.event_id || ev.raw_event_id,
-          threat_type: ev.threat?.threat_type || "Suspicious Activity"
-        })
-      });
-      const data = await res.json();
-
-      if (statusBadge) {
-        statusBadge.className = "badge badge-teal";
-        statusBadge.innerText = `CONFIDENCE ${Math.round((data.confidence || 0.95) * 100)}%`;
-      }
-
-      bodyEl.innerHTML = `
-        <div class="grid grid-2 gap-md mt-sm" style="border-top:1px solid rgba(255,255,255,0.08); padding-top:12px;">
-          <div>
-            <div style="font-weight:700; color:var(--text-main); font-size:13px; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
-              <span>Executive Threat Assessment:</span>
-              <span class="badge ${data.severity === 'critical' ? 'badge-red' : 'badge-amber'}">${(data.severity || 'HIGH').toUpperCase()}</span>
-            </div>
-            <div style="font-size:12px; color: #445696ff; line-height:1.5;">${escapeHtml(data.summary || 'Security event evaluated by ULPF Sovereign AI Engine.')}</div>
-            <div class="mt-sm" style="font-size:12px;">
-              <span class="text-muted">MITRE:</span>
-              <strong class="mono" style="color:var(--warning-main); margin-left:4px;">${escapeHtml(data.mitre_attack_id || 'T1078')} — ${escapeHtml(data.mitre_attack_name || 'Suspicious Activity')}</strong>
-            </div>
-            ${(data.indicators_of_compromise && data.indicators_of_compromise.length > 0) ? `
-              <div class="mt-xs" style="font-size:11.5px;">
-                <span class="text-muted">Indicators of Compromise:</span>
-                <span class="mono" style="color:var(--primary-main); margin-left:4px;">${data.indicators_of_compromise.map(i => escapeHtml(i)).join(', ')}</span>
-              </div>
-            ` : ''}
-          </div>
-          <div>
-            <div style="font-weight:700; color:var(--text-main); font-size:13px; margin-bottom:4px;">Prioritized Tactical Remediation:</div>
-            <ul style="padding-left:18px; font-size:11.5px; color:var(--text-main); line-height:1.6; margin:0;">
-              ${(data.recommended_actions || [
-          "Verify source IP reputation against perimeter firewall blacklist.",
-          "Enforce automated gateway connection drop.",
-          "Inspect legal raw SHA-256 byte payload in MinIO evidence lake."
-        ]).map(act => `<li>${escapeHtml(act)}</li>`).join('')}
-            </ul>
-            ${srcIp && srcIp !== 'N/A' && srcIp !== 'Unknown' ? (
-              isIpBlocked ? `
-                <div class="mt-sm">
-                  <button class="btn-unblock-ip" style="font-size:11px;" onclick="window.toggleBlockIp('${srcIp}')">
-                    Blacklisted at Gateway
-                  </button>
-                </div>
-              ` : (isEventBlocked ? `
-                <div class="mt-sm">
-                  <span class="badge badge-red" style="font-size:11px;">Traffic Dropped Automatically</span>
-                </div>
-              ` : `
-                <div class="mt-sm">
-                  <button class="btn-block-ip" style="font-size:11px;" onclick="window.toggleBlockIp('${srcIp}')">
-                    Enforce Automated Perimeter Drop for ${srcIp}
-                  </button>
-                </div>
-              `)
-            ) : ''}
-          </div>
-        </div>
-      `;
-    } catch (err) {
-      if (statusBadge) {
-        statusBadge.className = "badge badge-red";
-        statusBadge.innerText = "OFFLINE";
-      }
-      bodyEl.innerHTML = `<div style="padding:10px 0; color:var(--danger-main); font-size:12px;">Could not retrieve AI explanation: ${escapeHtml(err.message)}</div>`;
-    }
-  };
-
-  function renderFallbackModalContent(rec) {
-    renderEventModalContent(
-      {
-        ulpf: { event_id: rec.event_id, timestamp: rec.timestamp },
-        original: { format: rec.format, message: rec.raw_message, sha256: rec.sha256 },
-        status: rec.status,
-        source: { ip: rec.src_ip },
-        destination: { ip: rec.dst_ip, port: 443 },
-        event: { category: rec.event_type, action: rec.action },
-        device: { hostname: rec.source, vendor: rec.vendor, product: rec.source },
-        source_device: rec.source,
-        source: rec.source,
-        severity: rec.severity,
-        threat: rec.threat,
-        unmapped: {
-          source_device: rec.source,
-          source_ip: rec.src_ip,
-          destination_ip: rec.dst_ip,
-          action: rec.action,
-        },
-        provenance: {
-          "source.ip": { original_field: "src", original_value: rec.src_ip, parser: rec.parser, confidence: 1.0 },
-          "destination.ip": { original_field: "dst", original_value: rec.dst_ip, parser: rec.parser, confidence: 1.0 },
-        },
-      },
-      rec.event_id
-    );
-  }
-
-  // ==========================================================================
-  // VIEW RENDERERS
-  // ==========================================================================
-
-  // --- HOME / OVERVIEW VIEW ---
-<<<<<<< HEAD
-  let activeFormatFilter = "all";
-
-  window.setHomeFormatFilter = function (fmt) {
-    activeFormatFilter = fmt;
-    document.querySelectorAll(".pill-filter-btn").forEach(btn => {
-      if (btn.getAttribute("data-format") === fmt) {
-        btn.classList.add("active");
-      } else {
-        btn.classList.remove("active");
-      }
-    });
-    renderHomeLiveEventsTable();
-    renderHomeRecentStream();
-  };
-
-  function renderHomeView(container) {
-    container.innerHTML = `
-      <!-- TOP PAGE HEADER WITH QUICK FILTERS & ACTIONS -->
-      <div class="page-header">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:14px; margin-bottom:16px;">
-          <div>
-            <h1 class="page-title">Enterprise SOC Overview</h1>
-            <p class="page-desc">Universal Log Pre-processing Framework · Real-Time Ingestion, Normalization &amp; Provenance Engine</p>
-          </div>
-          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-            <button class="btn btn-sm btn-teal" onclick="window.triggerTraffic(10, 'Firewall-01', 'cef')" title="Inject 10 simulated test logs into pipeline">
-              <svg class="svg-icon" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-              <span>+10 Test Events</span>
-            </button>
-            <a href="http://localhost:8050/" target="_blank" class="btn btn-sm btn-primary" style="text-decoration:none; font-weight:700;" title="Open Protocol Simulator and Custom Log Studio on port 8050">
-              <svg class="svg-icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-              <span>Testing Hub (:8050)</span>
-            </a>
-          </div>
-        </div>
-
-        <!-- QUICK PILL FORMAT FILTERS -->
-        <div class="pill-filter-group">
-          <button class="pill-filter-btn active" data-format="all" onclick="window.setHomeFormatFilter('all')">All Formats</button>
-          <button class="pill-filter-btn" data-format="cef" onclick="window.setHomeFormatFilter('cef')">ArcSight CEF</button>
-          <button class="pill-filter-btn" data-format="syslog" onclick="window.setHomeFormatFilter('syslog')">Syslog (RFC)</button>
-          <button class="pill-filter-btn" data-format="leef" onclick="window.setHomeFormatFilter('leef')">IBM LEEF</button>
-          <button class="pill-filter-btn" data-format="json" onclick="window.setHomeFormatFilter('json')">JSON / Cloud</button>
-          <button class="pill-filter-btn" data-format="pan" onclick="window.setHomeFormatFilter('pan')">PAN-OS</button>
-        </div>
-      </div>
-
-      <!-- LIVE SYSTEM SUMMARY 4-METRICS ROW -->
-      <div class="grid grid-4 gap-md" id="homeMetricsGrid"></div>
-
-      <!-- MAIN SPLIT LAYOUT: LEFT COLUMN (TELEMETRY + DONUT + COLLECTORS) & RIGHT COLUMN (HERO CARD + RECENT STREAM) -->
-      <div class="overview-split-layout mt-md">
-        
-        <!-- LEFT COLUMN -->
-        <div style="display:flex; flex-direction:column; gap:20px;">
-          
-          <!-- 1. CONTINUOUS TELEMETRY GRAPH -->
-          <div class="card p-md telemetry-card">
-            <div class="card-header" style="border:none; padding:0 0 12px 0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
-              <h2 class="card-title" style="font-size:14px; display:flex; align-items:center; gap:8px;">
-                <span>Live Ingestion &amp; Parsing Telemetry</span>
-                <span class="badge badge-teal">REAL-TIME</span>
-              </h2>
-              <div style="display:flex; align-items:center; gap:8px;">
-                <span style="font-size:12px; color:var(--text-silver);">Workers/CPUs:</span>
-                <input type="number" id="workerCountInput" class="form-control" style="width:60px; height:26px; font-size:12px; padding:2px 8px; background:var(--bg-card); border:1px solid var(--border-color); color:var(--text-main); border-radius:6px;" value="4" min="1" max="128">
-                <button class="btn btn-xs btn-secondary" onclick="window.updateWorkerCount()">Scale</button>
-              </div>
-            </div>
-            <div class="chart-container" style="position: relative; height:220px; width:100%;">
-              <canvas id="liveEpsChart"></canvas>
-            </div>
-          </div>
-
-          <!-- 2. INGESTION FORMAT BREAKDOWN (DONUT + STATS) -->
-          <div class="card p-md">
-            <div class="card-header" style="border:none; padding:0 0 12px 0; display:flex; justify-content:space-between; align-items:center;">
-              <h2 class="card-title" style="font-size:14px; display:flex; align-items:center; gap:8px;">
-                <span>Ingestion Format Distribution</span>
-                <span class="badge badge-violet">TAXONOMY</span>
-              </h2>
-              <span class="text-xs text-muted">Deterministic Parsers</span>
-            </div>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; align-items:center;">
-              <div class="donut-container-rel" style="height:180px;">
-                <canvas id="homeDonutChart"></canvas>
-                <div class="donut-center-info">
-                  <div id="donutCenterVal" class="donut-center-val">---</div>
-                  <div class="donut-center-lbl">Events</div>
-                </div>
-              </div>
-              <div class="donut-legend-grid">
-                <div class="donut-legend-item">
-                  <span class="donut-legend-dot" style="background:#00D084;"></span>
-                  <span>ArcSight CEF</span>
-                </div>
-                <div class="donut-legend-item">
-                  <span class="donut-legend-dot" style="background:#38BDF8;"></span>
-                  <span>Syslog (RFC)</span>
-                </div>
-                <div class="donut-legend-item">
-                  <span class="donut-legend-dot" style="background:#8B5CF6;"></span>
-                  <span>IBM LEEF</span>
-                </div>
-                <div class="donut-legend-item">
-                  <span class="donut-legend-dot" style="background:#F59E0B;"></span>
-                  <span>JSON / Cloud</span>
-                </div>
-                <div class="donut-legend-item">
-                  <span class="donut-legend-dot" style="background:#EC4899;"></span>
-                  <span>PAN-OS / FW</span>
-                </div>
-                <div class="donut-legend-item">
-                  <span class="donut-legend-dot" style="background:#94A3B8;"></span>
-                  <span>Generic Syslog</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- 3. ACTIVE INGRESS COLLECTORS & PERSISTENCE SUMMARY -->
-          <div class="card p-md">
-            <div class="card-header" style="border:none; padding:0 0 12px 0; display:flex; justify-content:space-between; align-items:center;">
-              <h2 class="card-title" style="font-size:13.5px; margin:0;">Active Ingress Collectors &amp; Vaults</h2>
-              <span class="badge badge-teal">ACTIVE LISTENERS</span>
-            </div>
-            <table class="table-dense" style="table-layout: fixed; width:100%; border-collapse: separate;">
-              <thead>
-                <tr>
-                  <th style="width:34%; text-align:left; vertical-align:middle; padding:9px 12px;">INGRESS CHANNEL</th>
-                  <th style="width:26%; text-align:left; vertical-align:middle; padding:9px 12px;">PORT / PROTOCOL</th>
-                  <th style="width:18%; text-align:center; vertical-align:middle; padding:9px 12px;">STATUS</th>
-                  <th style="width:22%; text-align:left; vertical-align:middle; padding:9px 12px;">OUTPUT SCHEMA</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td style="vertical-align:middle; padding:9px 12px; font-weight:600; color:var(--text-main);">Syslog UDP Receiver</td>
-                  <td style="vertical-align:middle; padding:9px 12px;"><code class="mono" style="font-size:11px;">UDP :514 &amp; :5140</code></td>
-                  <td style="text-align:center; vertical-align:middle; padding:9px 12px;"><span class="badge badge-teal">LISTENING</span></td>
-                  <td style="vertical-align:middle; padding:9px 12px; color:var(--text-silver); font-size:11px;">ULPF-IR / OCSF</td>
-                </tr>
-                <tr>
-                  <td style="vertical-align:middle; padding:9px 12px; font-weight:600; color:var(--text-main);">Syslog TCP Streamer</td>
-                  <td style="vertical-align:middle; padding:9px 12px;"><code class="mono" style="font-size:11px;">TCP :5141</code></td>
-                  <td style="text-align:center; vertical-align:middle; padding:9px 12px;"><span class="badge badge-teal">LISTENING</span></td>
-                  <td style="vertical-align:middle; padding:9px 12px; color:var(--text-silver); font-size:11px;">ULPF-IR / ECS</td>
-                </tr>
-                <tr>
-                  <td style="vertical-align:middle; padding:9px 12px; font-weight:600; color:var(--text-main);">REST Ingestion Gateway</td>
-                  <td style="vertical-align:middle; padding:9px 12px;"><code class="mono" style="font-size:11px;">HTTP :8000</code></td>
-                  <td style="text-align:center; vertical-align:middle; padding:9px 12px;"><span class="badge badge-teal">ONLINE</span></td>
-                  <td style="vertical-align:middle; padding:9px 12px; color:var(--text-silver); font-size:11px;">JSON / Batch</td>
-                </tr>
-                <tr>
-                  <td style="vertical-align:middle; padding:9px 12px; font-weight:600; color:var(--text-main);">MinIO Raw Evidence Vault</td>
-                  <td style="vertical-align:middle; padding:9px 12px;"><code class="mono" style="font-size:11px;">MinIO :9000</code></td>
-                  <td style="text-align:center; vertical-align:middle; padding:9px 12px;"><span class="badge badge-teal">IMMUTABLE</span></td>
-                  <td style="vertical-align:middle; padding:9px 12px; color:var(--text-silver); font-size:11px;">SHA-256 Vault</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- RIGHT COLUMN -->
-        <div style="display:flex; flex-direction:column; gap:20px;">
-          
-          <!-- HERO STACKED ENGINE CARD -->
-          <div class="hero-engine-card">
-            <div class="hero-card-glow"></div>
-            <div class="flex-between">
-              <span class="badge badge-teal" style="font-size:10px;">ULPF CORE ENGINE v1.0</span>
-              <span class="stream-status" style="padding:2px 8px; font-size:10.5px;"><span class="pulse-dot teal"></span> 60 FPS LOCKED</span>
-            </div>
-            
-            <div style="margin-top:14px;">
-              <div class="text-xs text-muted" style="text-transform:uppercase; letter-spacing:0.8px; font-weight:700;">REAL-TIME PROCESSING THROUGHPUT</div>
-              <div id="heroThroughputVal" class="hero-stat-value" style="color:var(--primary-main);">12,400 ev/s</div>
-            </div>
-
-            <div style="display:flex; flex-direction:column; gap:8px; margin:16px 0;">
-              <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; border-bottom:1px solid var(--border-subtle); padding-bottom:6px;">
-                <span class="text-muted">Average Pipeline Latency:</span>
-                <strong class="mono" style="color:var(--text-main);">10.4 µs (Sub-ms)</strong>
-              </div>
-              <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; border-bottom:1px solid var(--border-subtle); padding-bottom:6px;">
-                <span class="text-muted">Cryptographic Verification:</span>
-                <strong class="mono" style="color:var(--primary-main);">100% SHA-256 Valid</strong>
-              </div>
-              <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; border-bottom:1px solid var(--border-subtle); padding-bottom:6px;">
-                <span class="text-muted">Downstream Standards:</span>
-                <strong class="mono" style="color:var(--accent-purple);">OCSF v1.1 &amp; ECS</strong>
-              </div>
-            </div>
-
-            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:16px;">
-              <a href="http://localhost:8050/" target="_blank" class="btn btn-sm btn-primary" style="flex:1; text-decoration:none; display:flex; justify-content:center; align-items:center; gap:6px;">
-                <svg class="svg-icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                <span>Launch Testing Hub (:8050)</span>
-              </a>
-              <button class="btn btn-sm btn-secondary" onclick="window.triggerTraffic(25, 'PaloAlto-FW', 'cef')" title="Generate traffic batch">
-                Fire +25 Batch
-              </button>
-            </div>
-          </div>
-
-          <!-- RECENT INGESTION STREAM CARD -->
-          <div class="card p-md">
-            <div class="card-header" style="border:none; padding:0 0 12px 0; display:flex; justify-content:space-between; align-items:center;">
-              <div>
-                <h2 class="card-title" style="font-size:14px;">Recent Ingest Stream</h2>
-                <div class="text-muted font-xs">Live packet arrivals &amp; instant inspections</div>
-              </div>
-              <a href="#/logs" class="btn btn-xs btn-secondary" style="text-decoration:none;">View All →</a>
-            </div>
-            <div id="homeRecentStreamContainer">
-              <!-- Rendered via renderHomeRecentStream() -->
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      <!-- BOTTOM FULL-WIDTH: LIVE INGESTED SECURITY EVENTS STREAM TABLE -->
-      <div class="card p-md mt-md">
-        <div class="card-header" style="border:none; padding:0 0 12px 0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-          <div>
-            <h2 class="card-title" style="font-size:14px; display:flex; align-items:center; gap:8px;">
-              <span>Live Ingested Security Events Stream</span>
-=======
-  function renderHomeView(container) {
-    container.innerHTML = `
-      <div class="page-header">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
-          <div>
-            <h1 class="page-title">Enterprise SOC Overview</h1>
-            <p class="page-desc">Universal Log Pre-processing Framework · Real-Time Ingestion, Normalization & Provenance Engine</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- LIVE SYSTEM SUMMARY METRICS -->
-      <div class="grid grid-4 gap-md" id="homeMetricsGrid"></div>
-      
-      <!-- CONTINUOUS TELEMETRY GRAPH -->
-      <div class="card p-md mt-md telemetry-card" style="position: relative;">
-        <div class="card-header" style="border:none; padding:0 0 12px 0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
-          <h2 class="card-title component-heading" style="font-size:14px; display:flex; align-items:center; gap:8px;">
-            <span>Live EPS & Parsing Telemetry</span>
-            <span class="badge badge-teal">REAL-TIME</span>
-          </h2>
-          <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:12px; color:var(--text-silver);">Workers/CPUs:</span>
-            <input type="number" id="workerCountInput" class="form-control" style="width:64px; height:26px; font-size:12px; padding:2px 8px; background:var(--bg-card); border:1px solid var(--border-color); color:var(--text-main); border-radius:4px;" value="4" min="1" max="128">
-            <button class="btn btn-xs btn-secondary" onclick="window.updateWorkerCount()">Scale</button>
-          </div>
-        </div>
-        <div class="chart-container" style="position: relative; height:240px; width:100%;">
-          <canvas id="liveEpsChart"></canvas>
-        </div>
-      </div>
-
-      <!-- LIVE INGESTED SECURITY EVENTS STREAM -->
-      <div class="card p-md mt-md">
-        <div class="card-header" style="border:none; padding:0 0 12px 0; display:flex; justify-content:space-between; align-items:center;">
-          <div>
-            <h2 class="card-title" style="font-size:14px; display:flex; align-items:center; gap:8px;">
-              <span>Real-Time Ingested Events Stream</span>
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
               <span class="badge badge-teal">LIVE INGRESS</span>
             </h2>
             <p class="text-muted font-sm" style="margin:2px 0 0 0;">Heterogeneous vendor events parsed into canonical ULPF-IR with cryptographic SHA-256 evidence</p>
           </div>
-<<<<<<< HEAD
           <div style="display:flex; gap:8px;">
             <a href="#/logs" class="btn btn-xs btn-secondary" style="text-decoration:none; white-space:nowrap;">Full Forensic Explorer →</a>
           </div>
-=======
-          <a href="#/logs" class="btn btn-xs btn-secondary" style="text-decoration:none; white-space:nowrap;">View All Events →</a>
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
         </div>
         <div class="table-responsive" style="overflow-x:auto;">
           <table class="table-dense" style="table-layout: fixed; width:100%; border-collapse: separate;">
@@ -1903,7 +877,6 @@
           </table>
         </div>
       </div>
-<<<<<<< HEAD
 =======
 
       <!-- ACTIVE COLLECTORS & TAXONOMY SUMMARY -->
@@ -2003,15 +976,11 @@
     renderHomeRecentStream();
     initTelemetryChart();
     initHomeDonutChart();
-=======
-    initTelemetryChart();
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
   }
 
   function renderHomeLiveEventsTable() {
     const tbody = document.getElementById("homeLiveEventsTableBody");
     if (!tbody) return;
-<<<<<<< HEAD
 
     let events = state.events || [];
     if (activeFormatFilter && activeFormatFilter !== "all") {
@@ -2028,28 +997,14 @@
           <svg class="svg-icon" style="width:28px; height:28px; stroke:var(--primary-main); opacity:0.8;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
           <div style="font-weight:700; color:var(--text-main); font-size:13px;">No Stored Data Logs Matching Filter</div>
           <div style="font-size:12px; max-width:420px; line-height:1.4;">Send traffic to port 8000 (REST) or use the quick simulation buttons above.</div>
-=======
-    const events = (state.events || []).slice(0, 10);
-    if (events.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:36px 16px; color:var(--text-muted);">
-        <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
-          <svg class="svg-icon" style="width:28px; height:28px; stroke:var(--primary-main); opacity:0.8;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-          <div style="font-weight:700; color:var(--text-main); font-size:13px;">No Stored Data Logs</div>
-          <div style="font-size:12px; max-width:420px; line-height:1.4;">Stored logs have been removed. Use external syslog/REST collectors to ingest new live traffic.</div>
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
         </div>
       </td></tr>`;
       return;
     }
 
-<<<<<<< HEAD
     tbody.innerHTML = displayEvents.map(e => {
       const eid = e.event_id || e.id || "EVT";
       const displayEid = eid.length > 20 ? `${eid.substring(0, 8)}...${eid.substring(eid.length - 4)}` : eid;
-=======
-    tbody.innerHTML = events.map(e => {
-      const eid = e.event_id || e.id || "EVT";
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
       const src = e.source || e.source_device || "Firewall-01";
       const rawFmt = String(e.format || "CEF");
       let fmtClean = rawFmt.toUpperCase().trim();
@@ -2071,7 +1026,6 @@
       const isBlock = act === "deny" || act === "block" || act === "drop";
 
       return `
-<<<<<<< HEAD
         <tr style="cursor:pointer;" onclick="window.openEventDetailModal('${eid}')" title="Click to view event details (${escapeHtml(eid)})">
           <td style="font-family:var(--font-mono); font-weight:700; color:var(--primary-main); text-align:left; vertical-align:middle; padding:10px 14px; white-space:nowrap; max-width:140px; overflow:hidden; text-overflow:ellipsis;">
             ${escapeHtml(displayEid)}
@@ -2079,11 +1033,6 @@
           <td style="font-weight:600; color:var(--text-main); text-align:left; vertical-align:middle; padding:10px 14px; white-space:nowrap; max-width:140px; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(src)}">
             ${escapeHtml(src)}
           </td>
-=======
-        <tr style="cursor:pointer;" onclick="window.openEventDetailModal('${eid}')" title="Click to view event details">
-          <td style="font-family:var(--font-mono); font-weight:700; color:var(--primary-main); text-align:left; vertical-align:middle; padding:10px 14px; white-space:nowrap;">${eid}</td>
-          <td style="font-weight:600; color:var(--text-main); text-align:left; vertical-align:middle; padding:10px 14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(src)}</td>
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
           <td style="text-align:center; vertical-align:middle; padding:10px 6px; overflow:hidden;">
             <span class="badge badge-violet" style="font-size:10px; text-transform:uppercase; max-width:76px; display:inline-block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; vertical-align:middle;" title="${escapeHtml(rawFmt)}">${fmtClean}</span>
           </td>
@@ -2092,11 +1041,7 @@
               ${act.toUpperCase()}
             </span>
           </td>
-<<<<<<< HEAD
           <td style="font-family:var(--font-mono); font-size:11.5px; color:var(--text-silver); text-align:left; vertical-align:middle; padding:10px 14px; white-space:nowrap;">${escapeHtml(ip)}</td>
-=======
-          <td style="font-family:var(--font-mono); font-size:11.5px; color:var(--silver-light); text-align:left; vertical-align:middle; padding:10px 14px; white-space:nowrap;">${escapeHtml(ip)}</td>
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
           <td style="font-family:var(--font-mono); font-size:11px; color:var(--text-muted); text-align:left; vertical-align:middle; padding:10px 14px; max-width:350px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
             ${raw}
           </td>
@@ -2105,7 +1050,6 @@
     }).join("");
   }
 
-<<<<<<< HEAD
   function renderHomeRecentStream() {
     const container = document.getElementById("homeRecentStreamContainer");
     if (!container) return;
@@ -2237,67 +1181,16 @@
     });
   }
 
-=======
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
-  function renderHomeMetrics() {
-    const grid = document.getElementById("homeMetricsGrid");
-    if (!grid) return;
-
-    const m = state.metrics || {};
-    const clientEps = calculateLiveClientEps();
-    let displayRate = "0 ev/sec";
-    let isLiveActive = false;
-    let rateBadge = "badge-amber";
-    let rateBadgeText = "FAST";
-
-    if (clientEps > 0) {
-      displayRate = `${clientEps.toLocaleString()} ev/sec`;
-      isLiveActive = true;
-      rateBadge = "badge-teal";
-      rateBadgeText = "STREAMING";
-    } else if (m.processing_rate && m.processing_rate !== "0 logs/sec" && m.processing_rate !== "0 ev/sec") {
-      displayRate = m.processing_rate.replace("logs/sec", "ev/sec");
-      if (m.live_eps > 0) {
-        isLiveActive = true;
-        rateBadge = "badge-teal";
-        rateBadgeText = "ACTIVE";
-      }
-    } else if (m.live_eps && m.live_eps > 0) {
-      displayRate = `${m.live_eps.toLocaleString()} ev/sec`;
-      isLiveActive = true;
-      rateBadge = "badge-teal";
-      rateBadgeText = "ACTIVE";
-    }
-
-<<<<<<< HEAD
-    const heroVal = document.getElementById("heroThroughputVal");
-    if (heroVal) {
-      heroVal.textContent = displayRate;
-      heroVal.style.color = isLiveActive ? 'var(--primary-main)' : 'var(--accent-cyan)';
-    }
-
-    if (m.worker_count !== undefined) {
-      const input = document.getElementById("workerCountInput");
-=======
-    if (m.worker_count !== undefined) {
-      const input = document.getElementById("workerCountInput");
-      // Only update if not currently focused to avoid typing interruptions
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
       if (input && document.activeElement !== input) {
         input.value = m.worker_count;
       }
     }
 
-<<<<<<< HEAD
     const latencyText = m.avg_latency || "10.4 µs";
-=======
-    const latencyText = m.avg_latency || "0 µs";
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
 
     grid.innerHTML = `
       <div class="metric-card" onclick="window.location.hash='#/events'">
         <div class="metric-label">EVENTS RECEIVED</div>
-<<<<<<< HEAD
         <div class="metric-value">${window.formatLargeNumber(m.events_received || state.events.length)}</div>
         <div class="metric-sub" style="justify-content: flex-end;">
           <span class="badge badge-teal">LIVE INGRESS</span>
@@ -2313,1432 +1206,23 @@
       <div class="metric-card" onclick="window.location.hash='#/analytics'">
         <div class="metric-label">PROCESSING THROUGHPUT</div>
         <div class="metric-value" style="color: ${isLiveActive ? '#00D084' : '#38bdf8'}; font-weight:800;">${displayRate}</div>
-=======
-        <div class="metric-value">${window.formatLargeNumber(m.events_received)}</div>
-        <div class="metric-sub" style="justify-content: flex-end;">
-          <span class="badge badge-teal">LIVE</span>
-        </div>
-      </div>
-      <div class="metric-card" onclick="window.location.hash='#/events'">
-        <div class="metric-label">EVENTS PROCESSED</div>
-        <div class="metric-value">${window.formatLargeNumber(m.events_processed)}</div>
-        <div class="metric-sub" style="justify-content: flex-end;">
-          <span class="badge badge-teal">NORMALIZED</span>
-        </div>
-      </div>
-      <div class="metric-card" onclick="window.location.hash='#/analytics/overview'">
-        <div class="metric-label">PROCESSING RATE</div>
-        <div class="metric-value" style="color: ${isLiveActive ? '#34d399' : '#38bdf8'}; font-weight:800;">${displayRate}</div>
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
         <div class="metric-sub">
           <span>Avg Latency: ${latencyText}</span>
           <span class="badge ${rateBadge}">${rateBadgeText}</span>
         </div>
       </div>
-<<<<<<< HEAD
       <div class="metric-card" onclick="window.location.hash='#/human-verification'">
         <div class="metric-label">PARSE SUCCESS RATE</div>
         <div class="metric-value">${m.parse_success_rate || "100%"}</div>
         <div class="metric-sub">
           <span>Deterministic Parsers: ${m.active_parsers || 6}</span>
-=======
-      <div class="metric-card" onclick="window.location.hash='#/intelligence/ai-onboarding'">
-        <div class="metric-label">PARSE SUCCESS RATE</div>
-        <div class="metric-value">${m.parse_success_rate || "100%"}</div>
-        <div class="metric-sub">
-          <span>Active Parsers: ${m.active_parsers || 0}</span>
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
           <span class="badge badge-teal">STABLE</span>
         </div>
       </div>
     `;
   }
 
-<<<<<<< HEAD
 
-=======
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
-  function updateLiveJourneyWidget() {
-    const container = document.getElementById("liveJourneyWidget");
-    if (!container) return;
-
-    const latest = state.events[0] || {
-      event_id: "ULPF-2026-1042",
-      format: "CEF",
-      source: "Firewall-01",
-    };
-
-    container.innerHTML = `
-      <div style="background-color: var(--bg-card-subtle); padding:12px; border-radius:6px; margin-bottom:12px;">
-        <div class="flex-between">
-          <strong class="mono">${latest.event_id}</strong>
-          <span class="badge badge-violet">${latest.format || "CEF"}</span>
-        </div>
-        <div class="text-muted font-sm mt-sm">Source: ${latest.source || "Firewall-01"}</div>
-      </div>
-      <div class="grid grid-2 gap-sm" style="font-size:12px;">
-        <div>Received <span class="badge badge-teal">OK</span></div>
-        <div>Raw Stored <span class="badge badge-teal">OK</span></div>
-        <div>Format Detected <span class="badge badge-teal">OK</span></div>
-        <div>Parsed <span class="badge badge-teal">OK</span></div>
-        <div>Normalized <span class="badge badge-teal">OK</span></div>
-        <div>Validated <span class="badge badge-teal">OK</span></div>
-        <div>Provenance <span class="badge badge-teal">OK</span></div>
-        <div>Exported <span class="badge badge-teal">OK</span></div>
-      </div>
-      <button class="btn btn-sm btn-secondary inspect-btn mt-md" onclick="window.openEventDetailModal('${latest.event_id}')">Inspect Event Lifecycle →</button>
-    `;
-  }
-
-  // --- LIVE PIPELINE VIEW ---
-  function renderPipelineView(container) {
-    container.innerHTML = `
-      <div class="page-header">
-        <h1 class="page-title">Live Pipeline Monitor</h1>
-        <p class="page-desc">Real-time status, event counters, throughput rates, and latencies across all 9 ULPF pipeline processing stages.</p>
-      </div>
-
-      <div class="pipeline-grid">
-        ${[
-        { stage: "1. Log Sources Ingestion", count: "14,820", rate: "12,400 ev/s", latency: "0.2 µs", status: "ONLINE" },
-        { stage: "2. Input Security Validator", count: "14,820", rate: "12,400 ev/s", latency: "3.1 µs", status: "PASSING" },
-        { stage: "3. Immutable Raw Evidence Store", count: "14,820", rate: "12,400 ev/s", latency: "4.5 µs", status: "STORED" },
-        { stage: "4. Format Detection Engine", count: "14,820", rate: "12,400 ev/s", latency: "8.2 µs", status: "MATCHING" },
-        { stage: "5. Parser Selection & Execution", count: "14,820", rate: "12,400 ev/s", latency: "14.8 µs", status: "ACTIVE" },
-        { stage: "6. ULPF-IR Semantic Normalizer", count: "14,820", rate: "12,400 ev/s", latency: "18.2 µs", status: "NORMALIZED" },
-        { stage: "7. Schema & IP Validator", count: "14,820", rate: "12,400 ev/s", latency: "5.0 µs", status: "VALID" },
-        { stage: "8. Field Provenance Mapper", count: "14,820", rate: "12,400 ev/s", latency: "12.0 µs", status: "ATTRIBUTED" },
-        { stage: "9. OCSF/ECS Downstream Forwarder", count: "14,820", rate: "12,400 ev/s", latency: "12.4 µs", status: "DELIVERED" },
-      ]
-        .map(
-          (node) => `
-          <div class="pipeline-stage-card">
-            <div>
-              <strong style="font-size:14px;">${node.stage}</strong>
-              <div class="text-muted font-sm mt-sm">Processed: ${node.count} events | Latency: ${node.latency}</div>
-            </div>
-            <div style="text-align:right;">
-              <span class="badge badge-teal">${node.status}</span>
-              <div class="mono text-muted mt-sm">${node.rate}</div>
-            </div>
-          </div>
-        `
-        )
-        .join("")}
-      </div>
-    `;
-  }
-
-  // --- IP ADDRESSES & CONNECTIONS VIEW ---
-  async function renderConnectionsView(container) {
-    await fetchSources();
-    await fetchBlockedIps();
-    if (!state.events || state.events.length === 0) {
-      await fetchEvents();
-    }
-
-    // Merge registered sources with actively communicating devices from live events
-    const deviceMap = new Map();
-
-    // 1. Add registered sources from backend
-    (state.sources || []).forEach((s) => {
-      const cleanAddr = (s.address || "").replace(/^https?:\/\//, "");
-      const ip = s.address_ip || cleanAddr.split(":")[0] || "127.0.0.1";
-      deviceMap.set(s.id || ip, {
-        id: s.id || ip,
-        name: s.name || s.id,
-        type: s.type || "Network Device",
-        vendor: s.vendor || "Generic",
-        protocol: s.protocol || "Syslog",
-        address: s.address || ip,
-        address_ip: ip,
-        status: s.status || (s.events_received > 0 ? "ACTIVE" : "READY"),
-        is_blocked: s.is_blocked,
-        events_received: s.events_received || 0,
-        events_per_sec: s.events_per_sec || 0,
-      });
-    });
-
-    // 2. Add real-time active devices observed in live events
-    (state.events || []).forEach((e) => {
-      const ip = e.src_ip || e.client_ip;
-      if (ip && ip !== "N/A" && ip !== "0.0.0.0") {
-        const key = e.device_name || (typeof e.source === 'string' ? e.source : null) || ip;
-        const isRecent = e.received_at ? (Date.now() - new Date(e.received_at + (e.received_at.endsWith("Z") ? "" : "Z")).getTime() < 15000) : true;
-        const statusVal = e.status === "blocked" ? "BLOCKED" : (isRecent ? "ACTIVE" : "DISCONNECTED");
-
-        let existingKey = null;
-        if (deviceMap.has(key)) existingKey = key;
-        else if (deviceMap.has(ip)) existingKey = ip;
-        else {
-          for (const [k, v] of deviceMap.entries()) {
-            if (v.address_ip === ip || (e.device_name && v.name === e.device_name) || (e.device_name && v.id === e.device_name)) {
-              existingKey = k;
-              break;
-            }
-          }
-        }
-
-        if (existingKey) {
-          const existing = deviceMap.get(existingKey);
-          existing.events_received = Math.max(existing.events_received, 1);
-          if (existing.address_ip === "127.0.0.1" && ip !== "127.0.0.1") existing.address_ip = ip;
-          if ((existing.vendor === "Generic" || existing.vendor === "Unknown") && e.vendor) existing.vendor = e.vendor;
-          if (existing.name === "Generic" || existing.name.startsWith("network_device")) existing.name = e.device_name || (typeof e.source === 'string' ? e.source : null) || ip;
-          if (e.status === "blocked") { existing.status = "BLOCKED"; }
-          else if (existing.status !== "BLOCKED" && isRecent) { existing.status = "ACTIVE"; }
-        } else {
-          const srcStr = typeof e.source === 'string' ? e.source : '';
-          const devProto = srcStr.includes("5140") ? "Syslog UDP (5140)" : (srcStr.includes("5141") ? "Syslog TCP (5141)" : "HTTP REST (:8000)");
-          deviceMap.set(key, {
-            id: key,
-            name: e.device_name || srcStr || `Device-${ip}`,
-            type: e.event_type || (e.vendor && e.vendor !== "Generic" ? `${e.vendor} Appliance` : "Connected Device"),
-            vendor: e.vendor || "Generic",
-            protocol: devProto,
-            address: `${ip}:${srcStr.includes("5140") ? 5140 : 5141}`,
-            address_ip: ip,
-            status: statusVal,
-            events_received: state.events.filter(ev => ev.src_ip === ip || ev.client_ip === ip).length,
-            events_per_sec: isRecent ? 1 : 0,
-          });
-        }
-      }
-    });
-
-    const sourcesList = Array.from(deviceMap.values()).sort((a, b) => (a.name || a.id || "").localeCompare(b.name || b.id || ""));
-
-
-
-    const blockedIpsList = Array.from(state.blockedIps);
-
-    container.innerHTML = `
-      <div class="page-header flex-between">
-        <div>
-          <h1 class="page-title">IP Addresses & Connection Management</h1>
-          <p class="page-desc">Server listening interfaces, connected client device IPs, and real-time connection state enforcement (Keep Alive · Block · Resume).</p>
-        </div>
-        <div style="display:flex; gap:8px;">
-          <button class="btn btn-sm btn-secondary" onclick="window.showConnectRealDeviceModal()" style="border-color:rgba(56,189,248,0.35); color:var(--primary-main);" title="Setup instructions for physical routers, firewalls, and servers">
-            <span>Connect Real Device (Guide)</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- SECTION 1: SERVER LISTENING NETWORK INTERFACES -->
-      <div class="card p-md mb-md">
-        <div class="flex-between mb-sm">
-          <div>
-            <h3 class="component-heading" style="font-size:14px; font-weight:700;">SERVER NETWORK INTERFACES & LISTENING PORTS</h3>
-            <p class="text-muted font-sm">Core ULPF ingestion gateways and persistence sockets</p>
-          </div>
-          <span class="badge badge-teal">All Ingress Interfaces Online</span>
-        </div>
-        <div class="grid grid-3 gap-sm">
-          <div class="card p-sm" style="background:var(--bg-card-subtle); border:1px solid var(--border-color);">
-            <div class="flex-between">
-              <span style="font-weight:700; color:var(--text-main);">HTTP REST Ingestion</span>
-              <span class="badge badge-teal">ONLINE</span>
-            </div>
-            <div class="mono mt-sm" style="font-size:13px; color:var(--primary-main);">0.0.0.0 : 8000</div>
-            <div class="text-muted text-xs mt-sm">REST POST /process & /api/v1/events</div>
-          </div>
-          <div class="card p-sm" style="background:var(--bg-card-subtle); border:1px solid var(--border-color);">
-            <div class="flex-between">
-              <span style="font-weight:700; color:var(--text-main);">Syslog UDP Collector</span>
-              <span class="badge badge-teal">LISTENING</span>
-            </div>
-            <div class="mono mt-sm" style="font-size:13px; color:var(--primary-main);">0.0.0.0 : 5140 (UDP)</div>
-            <div class="text-muted text-xs mt-sm">RFC 3164/5424 & ArcSight CEF Datagrams</div>
-          </div>
-          <div class="card p-sm" style="background:var(--bg-card-subtle); border:1px solid var(--border-color);">
-            <div class="flex-between">
-              <span style="font-weight:700; color:var(--text-main);">Syslog TCP Stream</span>
-              <span class="badge badge-teal">LISTENING</span>
-            </div>
-            <div class="mono mt-sm" style="font-size:13px; color:var(--primary-main);">0.0.0.0 : 5141 (TCP)</div>
-            <div class="text-muted text-xs mt-sm">Persistent TCP Streams & LEEF Framing</div>
-          </div>
-          <div class="card p-sm" style="background:var(--bg-card-subtle); border:1px solid var(--border-color);">
-            <div class="flex-between">
-              <span style="font-weight:700; color:var(--text-main);">Redpanda Kafka Bus</span>
-              <span class="badge badge-teal">CONNECTED</span>
-            </div>
-            <div class="mono mt-sm" style="font-size:13px; color:var(--primary-main);">redpanda : 9092</div>
-            <div class="text-muted text-xs mt-sm">Distributed streaming buffer (ulpf-raw-ingress)</div>
-          </div>
-          <div class="card p-sm" style="background:var(--bg-card-subtle); border:1px solid var(--border-color);">
-            <div class="flex-between">
-              <span style="font-weight:700; color:var(--text-main);">MinIO Raw S3 Vault</span>
-              <span class="badge badge-teal">IMMUTABLE</span>
-            </div>
-            <div class="mono mt-sm" style="font-size:13px; color:var(--primary-main);">minio : 9000</div>
-            <div class="text-muted text-xs mt-sm">Bucket 'ulpf-raw' with SHA-256 byte lock</div>
-          </div>
-          <div class="card p-sm" style="background:var(--bg-card-subtle); border:1px solid var(--border-color);">
-            <div class="flex-between">
-              <span style="font-weight:700; color:var(--text-main);">OpenSearch Index</span>
-              <span class="badge badge-teal">SEARCHABLE</span>
-            </div>
-            <div class="mono mt-sm" style="font-size:13px; color:var(--primary-main);">opensearch : 9200</div>
-            <div class="text-muted text-xs mt-sm">Index 'ulpf-events' for sub-ms query</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- SECTION 2: CONNECTED CLIENT DEVICES & ACTIVE IPS -->
-      <div class="card p-md mb-md">
-        <div class="flex-between mb-sm">
-          <div>
-            <h3 style="font-size:14px; font-weight:700;">CONNECTED CLIENT IPS & GATEWAY CONNECTIONS</h3>
-            <p class="text-muted font-sm">Inspect connection states, rename/configure devices, and enforce security policy (Keep Alive · Block · Resume)</p>
-          </div>
-          <div style="display:flex; gap:8px; align-items:center;">
-            <button class="btn btn-xs btn-primary" onclick="window.openEditDeviceModal()" title="Add and configure a new network device connection on server">
-              <span>+ Configure Device</span>
-            </button>
-            <span class="badge badge-teal">${sourcesList.length} Network Connections Active</span>
-          </div>
-        </div>
-        <div style="overflow-x:auto; width:100%;">
-          <table class="table-dense" style="table-layout: fixed; width: 100%; border-collapse: separate;">
-            <thead>
-              <tr>
-                <th style="width: 13%; text-align: left; vertical-align: middle;">Client IP Address</th>
-                <th style="width: 16%; text-align: left; vertical-align: middle;">Device Identifier</th>
-                <th style="width: 13%; text-align: left; vertical-align: middle;">Vendor &amp; Type</th>
-                <th style="width: 12%; text-align: left; vertical-align: middle;">Protocol / Port</th>
-                <th style="width: 11%; text-align: right; vertical-align: middle;">Packets Ingested</th>
-                <th style="width: 9%; text-align: right; vertical-align: middle;">Ingest Rate</th>
-                <th style="width: 11%; text-align: center; vertical-align: middle;">Connection State</th>
-                <th style="width: 15%; text-align: center; vertical-align: middle; white-space: nowrap;">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${sourcesList.map((s) => {
-      const cleanAddr = (s.address || "").replace(/^https?:\/\//, "");
-      const ip = s.address_ip || cleanAddr.split(':')[0] || "127.0.0.1";
-      const isBlocked = state.blockedIps.has(ip) || s.is_blocked === 1 || s.is_blocked === true;
-      return `
-                  <tr>
-                    <td style="vertical-align:middle;"><strong class="mono" style="color:${isBlocked ? 'var(--danger-main)' : 'var(--primary-main)'}; font-size:12.5px;">${ip}</strong></td>
-                    <td style="vertical-align:middle;"><strong style="color:var(--text-main); font-size:12.5px;">${escapeHtml(s.name)}</strong></td>
-                    <td style="vertical-align:middle;">
-                      <div style="font-weight:600; font-size:12px;">${escapeHtml(s.vendor)}</div>
-                      ${s.type ? `<span class="badge badge-neutral" style="margin-top:2px; font-size:9.5px; padding:1px 5px;">${escapeHtml(s.type)}</span>` : ''}
-                    </td>
-                    <td style="vertical-align:middle;"><span class="badge badge-violet" style="font-size:10px;">${escapeHtml(s.protocol || 'Syslog')}</span></td>
-                    <td class="mono" style="text-align:right; vertical-align:middle; font-size:12px;">${(s.events_received || 0).toLocaleString()}</td>
-                    <td class="mono text-teal" style="text-align:right; vertical-align:middle; font-weight:700; font-size:12px;">${s.events_per_sec || 0} ev/s</td>
-                    <td style="text-align:center; vertical-align:middle;">
-                      <span class="badge ${isBlocked ? 'badge-red' : 'badge-teal'}" style="font-size:10px;">
-                         ${isBlocked ? 'BLOCKED' : 'ACTIVE'}
-                      </span>
-                    </td>
-                    <td style="text-align:center; vertical-align:middle; white-space:nowrap; padding:8px 6px;">
-                      <div style="display:inline-flex; gap:6px; justify-content:center; align-items:center; flex-wrap:nowrap; white-space:nowrap;">
-                        <button class="btn btn-xs btn-secondary" onclick="window.openEditDeviceModal('${s.id}', '${encodeURIComponent(s.name || '')}', '${encodeURIComponent(s.vendor || '')}', '${encodeURIComponent(s.type || '')}', '${ip}', '${encodeURIComponent(s.protocol || '')}')" title="Configure device profile" style="white-space:nowrap; padding:3px 8px; font-size:11px; line-height:1.2; min-width:48px;">
-                          Edit
-                        </button>
-                        ${isBlocked ? `
-                          <button class="btn btn-xs btn-teal" onclick="window.resumeConnection('${ip}', '${s.id}')" title="Unblock and resume packets" style="white-space:nowrap; padding:3px 8px; font-size:11px; line-height:1.2; min-width:58px;">
-                            Resume
-                          </button>
-                        ` : `
-                          <button class="btn btn-xs btn-danger" onclick="window.blockConnection('${ip}', '${s.id}')" title="Drop all incoming packets from this client" style="white-space:nowrap; padding:3px 8px; font-size:11px; line-height:1.2; min-width:48px;">
-                            Block
-                          </button>
-                        `}
-                        <button class="btn btn-xs btn-danger-outline" onclick="window.removeSource('${s.id}')" title="Remove device from registry" style="white-space:nowrap; padding:3px 8px; font-size:11px; line-height:1.2; min-width:48px; border:1px solid #f87171; color:var(--danger-main);">
-                          Remove
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                `;
-    }).join("")}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- SECTION 3: IP ACCESS CONTROL & FIREWALL BLACKLIST -->
-      <div class="card p-md">
-        <div class="flex-between mb-sm">
-          <div>
-            <h3 style="font-size:14px; font-weight:700;">ACTIVE IP BLACKLIST & PERIMETER FIREWALL POLICY</h3>
-            <p class="text-muted font-sm">Offending IP addresses blocked at ingress with instant packet drop</p>
-          </div>
-          <span class="badge badge-red">${blockedIpsList.length} Active Blacklisted IPs</span>
-        </div>
-
-        <!-- QUICK ADD IP FORM -->
-        <div class="flex-between mb-md" style="background:var(--bg-card-subtle); padding:12px; border-radius:6px; border:1px solid var(--border-color); gap:12px;">
-          <input type="text" id="blacklistIpInput" class="top-search-container" style="flex:1; height:34px;" placeholder="Enter IP address to block (e.g. 198.51.100.99, 203.0.113.50)..." />
-          <button class="btn btn-sm btn-danger" onclick="window.addBlacklistIpManual()" style="height:34px; white-space:nowrap;">
-            Block IP Address
-          </button>
-        </div>
-
-        <table class="table-dense">
-          <thead>
-            <tr>
-              <th>Blacklisted IP Address</th>
-              <th>Policy Action</th>
-              <th>Status</th>
-              <th>Packets Dropped</th>
-              <th>Reason</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${blockedIpsList.length > 0 ? blockedIpsList.map((ip) => {
-      const dropCount = state.events.filter(e => e.src_ip === ip && e.status === "blocked").length;
-      return `
-                <tr>
-                  <td><strong class="mono" style="color:var(--danger-main); font-size:13px;">${ip}</strong></td>
-                  <td><span class="badge badge-red">INGEST_DROP</span></td>
-                  <td><span class="badge badge-red"> BLOCKED</span></td>
-                  <td class="mono font-bold text-teal">${dropCount > 0 ? dropCount + ' events' : 'Active Drop'}</td>
-                  <td class="text-muted font-sm">Threat Signature / SQLi / Administrator Policy</td>
-                  <td>
-                    <button class="btn btn-sm btn-teal" onclick="window.resumeConnection('${ip}')">
-                      Resume Connection (Unblock)
-                    </button>
-                  </td>
-                </tr>
-              `;
-    }).join("") : `
-              <tr>
-                <td colspan="6" style="text-align:center; padding:20px; color:var(--text-muted);">
-                  No IP addresses currently blacklisted. All inbound connections active.
-                </td>
-              </tr>
-            `}
-          </tbody>
-        </table>
-      </div>
-    `;
-
-    // Global connection state enforcement actions
-    window.blockConnection = async (ip, sourceId) => {
-      await window.toggleBlockIp(ip);
-      if (sourceId) {
-        try { await fetch(`/api/v1/sources/${encodeURIComponent(sourceId)}/block`, { method: "POST" }); } catch (e) { }
-      }
-      renderConnectionsView(container);
-    };
-
-    window.resumeConnection = async (ip, sourceId) => {
-      if (state.blockedIps.has(ip)) {
-        await window.toggleBlockIp(ip);
-      }
-      if (sourceId) {
-        try { await fetch(`/api/v1/sources/${encodeURIComponent(sourceId)}/block`, { method: "POST" }); } catch (e) { }
-      }
-      showToast(`Connection for IP ${ip} resumed. Traffic is flowing normally.`, "success");
-      renderConnectionsView(container);
-    };
-
-    window.keepConnectionAlive = (ip) => {
-      if (state.blockedIps.has(ip)) {
-        showToast(`IP ${ip} is currently blocked. Resume connection first.`, "warning");
-        return;
-      }
-      showToast(`Connection ${ip} verified SAFE. Keep-alive heartbeat confirmed.`, "success");
-    };
-
-    window.toggleBlockSource = async (sourceId) => {
-      try {
-        const res = await fetch(`/api/v1/sources/${encodeURIComponent(sourceId)}/block`, { method: "POST" });
-        if (res.ok) {
-          const data = await res.json();
-          showToast(data.message, data.is_blocked ? "warning" : "success");
-          renderConnectionsView(container);
-        }
-      } catch (e) { }
-    };
-
-    window.removeSource = async (sourceId) => {
-      if (!confirm("Are you sure you want to completely remove this device from the registry?")) return;
-      try {
-        const res = await fetch(`/api/v1/sources/${encodeURIComponent(sourceId)}`, { method: "DELETE" });
-        if (res.ok) {
-          showToast("Device removed successfully", "success");
-          await fetchSources();
-          renderConnectionsView(container);
-        }
-      } catch (e) {
-        showToast("Failed to remove device", "error");
-      }
-    };
-
-    window.addBlacklistIpManual = () => {
-      const input = document.getElementById("blacklistIpInput");
-      if (!input || !input.value.trim()) {
-        showToast("Please enter a valid IP address", "warning");
-        return;
-      }
-      window.toggleBlockIp(input.value.trim());
-      renderConnectionsView(container);
-    };
-
-    window.openEditDeviceModal = (id = "", encodedName = "", encodedVendor = "Generic", encodedType = "Firewall", address = "", encodedProto = "HTTP REST (:8000)") => {
-      let modal = document.getElementById("editDeviceModal");
-      if (!modal) {
-        modal = document.createElement("div");
-        modal.id = "editDeviceModal";
-        modal.className = "modal-overlay";
-        modal.style.position = "fixed";
-        modal.style.top = "0";
-        modal.style.left = "0";
-        modal.style.width = "100%";
-        modal.style.height = "100%";
-        modal.style.backgroundColor = "rgba(0, 0, 0, 0.75)";
-        modal.style.zIndex = "9999";
-        modal.style.display = "flex";
-        modal.style.alignItems = "center";
-        modal.style.justifyContent = "center";
-        document.body.appendChild(modal);
-      }
-
-      const name = decodeURIComponent(encodedName || "");
-      const vendor = decodeURIComponent(encodedVendor || "Generic");
-      const type = decodeURIComponent(encodedType || "Firewall");
-      const proto = decodeURIComponent(encodedProto || "HTTP REST (:8000)");
-      const isEdit = Boolean(id);
-      const cleanAddr = (address || "").replace(/^https?:\/\//, "");
-      const currentIp = cleanAddr.split(":")[0] || (isEdit ? id : "192.168.1.100");
-      const currentName = name || (isEdit ? `Device-${currentIp}` : "New-Firewall-HQ");
-
-      modal.innerHTML = `
-        <div class="modal-content" style="max-width: 540px; width: 92%; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 20px 40px rgba(0,0,0,0.25); overflow: hidden;">
-          <div class="modal-header flex-between" style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
-            <div style="display:flex; align-items:center; gap:10px;">
-              <div>
-                <h3 style="font-size:16px; font-weight:800; color:var(--text-main); margin:0;">${isEdit ? "Update Device Profile" : "Register Network Device"}</h3>
-                <span class="text-xs text-muted">${isEdit ? `Editing server record for ID: ${id}` : "Pre-configure device identity on ULPF server"}</span>
-              </div>
-            </div>
-            <button class="btn-close" style="font-size:22px; color:var(--text-muted); cursor:pointer; background:none; border:none; line-height:1;" onclick="window.closeEditDeviceModal()">&times;</button>
-          </div>
-
-          <div class="modal-body" style="padding: 20px; display:flex; flex-direction:column; gap:14px;">
-            <div>
-              <label class="text-muted font-sm" style="display:block; margin-bottom:6px; font-weight:600;">DEVICE NAME / IDENTIFIER</label>
-              <input type="text" id="modalEditDevName" class="form-control" style="height:38px;" value="${currentName}" placeholder="e.g. PaloAlto-FW-01, Core-Switch-HQ" />
-            </div>
-
-            <div class="grid grid-2 gap-sm">
-              <div>
-                <label class="text-muted font-sm" style="display:block; margin-bottom:6px; font-weight:600;">IP / HOST ADDRESS</label>
-                <input type="text" id="modalEditDevAddress" class="form-control mono" style="height:38px;" value="${currentIp}" placeholder="192.168.1.100" />
-              </div>
-              <div>
-                <label class="text-muted font-sm" style="display:block; margin-bottom:6px; font-weight:600;">VENDOR</label>
-                <select id="modalEditDevVendor" class="form-select" style="height:38px; width:100%;">
-                  ${["Palo Alto", "Cisco", "Fortinet", "CheckPoint", "Juniper", "Linux", "MikroTik", "Ubiquiti", "Generic"].map(v => `<option value="${v}" ${v.toLowerCase() === (vendor || "").toLowerCase() ? "selected" : ""}>${v}</option>`).join("")}
-                </select>
-              </div>
-            </div>
-
-            <div class="grid grid-3 gap-sm">
-              <div>
-                <label class="text-muted font-sm" style="display:block; margin-bottom:6px; font-weight:600;">DEVICE TYPE</label>
-                <select id="modalEditDevType" class="form-select" style="height:38px; width:100%;">
-                  ${["Firewall", "Router", "Wireless AP", "Server", "Switch", "IDS/IPS", "WAF", "IoT/SCADA"].map(t => `<option value="${t}" ${t.toLowerCase() === (type || "").toLowerCase() ? "selected" : ""}>${t}</option>`).join("")}
-                </select>
-              </div>
-              <div>
-                <label class="text-muted font-sm" style="display:block; margin-bottom:6px; font-weight:600;">INGESTION PROTOCOL</label>
-                <select id="modalEditDevProtocol" class="form-select" style="height:38px; width:100%;">
-                  ${["HTTP REST (:8000)", "Syslog UDP (5140)", "Syslog TCP (5141)"].map(p => `<option value="${p}" ${(proto || "").includes(p.split(" ")[0]) ? "selected" : ""}>${p}</option>`).join("")}
-                </select>
-              </div>
-              <div>
-                <label class="text-muted font-sm" style="display:block; margin-bottom:6px; font-weight:600; color:var(--success-main);">SIMULATE EPS</label>
-                <input type="number" id="modalEditDevEps" class="form-control" style="height:38px; border-color:rgba(52, 211, 153, 0.4);" value="${(window.customDeviceSimulators || {})[isEdit ? id : currentIp]?.eps || 0}" min="0" max="1000" placeholder="0 = off" />
-              </div>
-            </div>
-
-            <div id="modalEditDeviceStatus" style="display:none; font-size:12px; padding:10px 14px; border-radius:4px;"></div>
-          </div>
-
-          <div class="modal-footer flex-between" style="padding: 14px 20px; border-top: 1px solid var(--border-color); background: var(--bg-card-subtle); display:flex; justify-content:space-between; align-items:center;">
-            <button class="btn btn-sm btn-secondary" onclick="window.closeEditDeviceModal()">Cancel</button>
-            <button class="btn btn-sm btn-primary" id="btnSaveDeviceModalAction"> Save Device to Server</button>
-          </div>
-        </div>
-      `;
-
-      modal.classList.add("open");
-
-      document.getElementById("btnSaveDeviceModalAction").onclick = async () => {
-        const newName = (document.getElementById("modalEditDevName")?.value || "").trim();
-        const newAddr = (document.getElementById("modalEditDevAddress")?.value || "").trim();
-        const newVendor = document.getElementById("modalEditDevVendor")?.value || "Generic";
-        const newType = document.getElementById("modalEditDevType")?.value || "Firewall";
-        const newProto = document.getElementById("modalEditDevProtocol")?.value || "HTTP REST (:8000)";
-        const newEps = parseInt(document.getElementById("modalEditDevEps")?.value || "0", 10);
-        const statusDiv = document.getElementById("modalEditDeviceStatus");
-
-        if (!newName) {
-          if (statusDiv) {
-            statusDiv.style.display = "block";
-            statusDiv.style.background = "rgba(239,68,68,0.15)";
-            statusDiv.style.color = "#ef4444";
-            statusDiv.innerText = "Device Name is required.";
-          }
-          return;
-        }
-
-        try {
-          const targetId = id || newAddr || newName;
-          const resp = await fetch(`/api/v1/sources/${encodeURIComponent(targetId)}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              name: newName,
-              vendor: newVendor,
-              source_type: newType,
-              address: newAddr,
-              protocol: newProto,
-            })
-          });
-
-          if (!resp.ok) {
-            const err = await resp.json().catch(() => ({ detail: "Server rejected device update" }));
-            throw new Error(err.detail || "Server error");
-          }
-
-          modal.classList.remove("open");
-          showToast(` Device "${newName}" successfully updated on server!`, "success");
-          await fetchSources();
-          if (typeof renderConnectionsView === "function" && state.currentRoute === "connections") {
-            renderConnectionsView(container);
-          }
-
-          if (!window.customDeviceSimulators) window.customDeviceSimulators = {};
-          if (window.customDeviceSimulators[targetId] && window.customDeviceSimulators[targetId].intervalId) {
-            clearInterval(window.customDeviceSimulators[targetId].intervalId);
-          }
-          if (newEps > 0) {
-            const intervalMs = Math.max(10, Math.floor(1000 / newEps));
-            const intervalId = setInterval(() => {
-              fetch("/api/v1/ingest", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  raw_log: `<134>1 ${new Date().toISOString()} ${newName} Simulator - - - Simulated traffic eps=${newEps} vendor=${newVendor}`,
-                  device_name: newName,
-                  client_ip: newAddr,
-                  vendor: newVendor,
-                  device_type: newType,
-                  protocol: newProto
-                })
-              }).catch(() => { });
-            }, intervalMs);
-            window.customDeviceSimulators[targetId] = { eps: newEps, intervalId };
-            showToast(` Started simulator for ${newName} at ${newEps} EPS`, "success");
-          } else {
-            delete window.customDeviceSimulators[targetId];
-          }
-        } catch (e) {
-          if (statusDiv) {
-            statusDiv.style.display = "block";
-            statusDiv.style.background = "rgba(239,68,68,0.15)";
-            statusDiv.style.color = "#ef4444";
-            statusDiv.innerText = `Update error: ${e.message}`;
-          }
-        }
-      };
-    };
-
-    window.showConnectRealDeviceModal = () => {
-      let modal = document.getElementById("connectRealDeviceModal");
-      if (!modal) {
-        modal = document.createElement("div");
-        modal.id = "connectRealDeviceModal";
-        modal.className = "modal-overlay";
-        document.body.appendChild(modal);
-      }
-
-      const hostIp = window.location.hostname || "127.0.0.1";
-
-      modal.innerHTML = `
-        <div class="modal-content" style="max-width: 820px; width: 92%; max-height: 90vh; overflow-y: auto; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 20px 40px rgba(0,0,0,0.85);">
-          <div class="modal-header" style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
-            <div style="display:flex; align-items:center; gap:12px;">
-              <span style="font-size:24px;"></span>
-              <div>
-                <h2 style="font-size:17px; margin:0; color:var(--text-main); font-weight:700;">Connect Real Devices to ULPF</h2>
-                <p class="text-muted text-xs" style="margin:2px 0 0 0;">Forward live telemetry from physical routers, firewalls, Linux servers, and webhooks</p>
-              </div>
-            </div>
-            <button class="btn-close" onclick="window.closeConnectRealDeviceModal()" style="background:none; border:none; color:#94a3b8; font-size:24px; cursor:pointer;">&times;</button>
-          </div>
-
-          <div class="modal-body p-md" style="padding: 20px;">
-            <!-- SERVER LISTENING INTERFACES -->
-            <div class="card p-sm mb-md" style="background:var(--bg-card-subtle); border:1px solid var(--border-color); border-radius:6px; margin-bottom:16px;">
-              <div style="font-weight:700; color:var(--primary-main); font-size:12px; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px;"> Live Ingress Listening Interfaces</div>
-              <div class="grid grid-3 gap-sm font-sm">
-                <div><strong>Syslog UDP:</strong> <code class="mono text-teal" style="font-weight:bold;">:514 & :5140</code></div>
-                <div><strong>Syslog TCP:</strong> <code class="mono text-teal" style="font-weight:bold;">:5141</code></div>
-                <div><strong>HTTP REST API:</strong> <code class="mono text-teal" style="font-weight:bold;">:8000/api/v1/ingest</code></div>
-              </div>
-              <div class="text-muted text-xs mt-sm" style="margin-top:8px;">
-                 <strong>Target LAN IP:</strong> <code class="mono text-teal" style="font-weight:bold; font-size:12px;">192.168.0.112</code> (use this IP on physical routers, firewalls, and other computers on your Wi-Fi/LAN).
-              </div>
-            </div>
-
-            <!-- DEVICE CONFIGURATION SNIPPETS -->
-            <div style="display:flex; flex-direction:column; gap:14px;">
-              <!-- 1. LINUX RSYSLOG -->
-              <div class="card p-sm" style="background:var(--bg-card-subtle); border:1px solid var(--border-color); border-radius:6px; padding:12px;">
-                <div class="flex-between mb-xs" style="display:flex; justify-content:space-between; margin-bottom:6px;">
-                  <strong style="color:var(--text-main);"> 1. Linux Hosts (Ubuntu / Debian / RHEL - rsyslog)</strong>
-                  <span class="badge badge-teal">Syslog UDP :5140 / TCP :5141</span>
-                </div>
-                <p class="text-muted text-xs mb-xs" style="margin:0 0 6px 0;">Add to <code>/etc/rsyslog.d/50-ulpf.conf</code> to forward all syslog/auth logs:</p>
-                <pre class="code-box" style="padding:8px 10px; font-size:11px; margin:0; background:var(--bg-card-solid); border-radius:4px; font-family:var(--font-mono); color:var(--primary-main);"># Forward all logs over UDP to ULPF (replace with 192.168.0.112 if sending from another PC)
-*.* @192.168.0.112:5140
-
-# Or forward over reliable TCP:
-# *.* @@192.168.0.112:5141</pre>
-                <div class="text-muted text-xs mt-xs" style="margin-top:6px;">Apply changes: <code>sudo systemctl restart rsyslog</code> (or test with <code>logger "Test message from linux host"</code>)</div>
-              </div>
-
-              <!-- 2. CISCO ROUTER & SWITCH -->
-              <div class="card p-sm" style="background:var(--bg-card-subtle); border:1px solid var(--border-color); border-radius:6px; padding:12px;">
-                <div class="flex-between mb-xs" style="display:flex; justify-content:space-between; margin-bottom:6px;">
-                  <strong style="color:var(--text-main);"> 2. Cisco IOS / ASA Routers & Switches</strong>
-                  <span class="badge badge-teal">RFC 3164 Syslog</span>
-                </div>
-                <p class="text-muted text-xs mb-xs" style="margin:0 0 6px 0;">Enter configuration mode (<code>conf t</code>):</p>
-                <pre class="code-box" style="padding:8px 10px; font-size:11px; margin:0; background:var(--bg-card-solid); border-radius:4px; font-family:var(--font-mono); color:var(--primary-main);">logging host 192.168.0.112 transport udp port 5140
-logging trap informational
-logging on</pre>
-              </div>
-
-              <!-- 3. FORTINET FORTIGATE -->
-              <div class="card p-sm" style="background:var(--bg-card-subtle); border:1px solid var(--border-color); border-radius:6px; padding:12px;">
-                <div class="flex-between mb-xs" style="display:flex; justify-content:space-between; margin-bottom:6px;">
-                  <strong style="color:var(--text-main);">3. Fortinet FortiGate Firewall</strong>
-                  <span class="badge badge-teal">CEF / Syslog UDP</span>
-                </div>
-                <p class="text-muted text-xs mb-xs" style="margin:0 0 6px 0;">Run in FortiOS CLI:</p>
-                <pre class="code-box" style="padding:8px 10px; font-size:11px; margin:0; background:var(--bg-card-solid); border-radius:4px; font-family:var(--font-mono); color:var(--primary-main);">config log syslogd setting
-    set status enable
-    set server "192.168.0.112"
-    set port 5140
-    set mode udp
-    set format default
-end</pre>
-              </div>
-
-              <!-- 4. PALO ALTO NETWORKS -->
-              <div class="card p-sm" style="background:var(--bg-card-subtle); border:1px solid var(--border-color); border-radius:6px; padding:12px;">
-                <div class="flex-between mb-xs" style="display:flex; justify-content:space-between; margin-bottom:6px;">
-                  <strong style="color:var(--text-main);">4. Palo Alto Networks NGFW</strong>
-                  <span class="badge badge-teal">PAN-OS Key=Value</span>
-                </div>
-                <p class="text-muted text-xs mb-xs" style="margin:0 0 6px 0;">In PAN-OS WebUI: <strong>Device</strong>  <strong>Server Profiles</strong>  <strong>Syslog</strong>  <strong>Add</strong>:</p>
-                <div class="text-muted text-xs" style="line-height:1.6;">
-                  • Server IP: <code class="mono text-teal">192.168.0.112</code> · Port: <code class="mono text-teal">5140</code> (UDP) or <code class="mono text-teal">5141</code> (TCP)<br>
-                  • Format: <strong>BSD</strong> or <strong>IETF</strong> · Facility: <strong>LOG_USER</strong>
-                </div>
-              </div>
-
-              <!-- 5. HTTP REST / CURL SCRIPT -->
-              <div class="card p-sm" style="background:var(--bg-card-subtle); border:1px solid var(--border-color); border-radius:6px; padding:12px;">
-                <div class="flex-between mb-xs" style="display:flex; justify-content:space-between; margin-bottom:6px;">
-                  <strong style="color:var(--text-main);">5. IoT Sensors, Python, Webhooks & cURL (HTTP REST)</strong>
-                  <span class="badge badge-teal">HTTP POST :8000</span>
-                </div>
-                <p class="text-muted text-xs mb-xs" style="margin:0 0 6px 0;">Transmit JSON, CEF, or Syslog payloads via HTTP from any device:</p>
-                <pre class="code-box" style="padding:8px 10px; font-size:11px; margin:0; background:var(--bg-card-solid); border-radius:4px; font-family:var(--font-mono); color:var(--primary-main);">curl -X POST "http://192.168.0.112:8000/api/v1/ingest" \\
-  -H "Content-Type: application/json" \\
-  -d '{"message": "&lt;13&gt;Sep 11 00:30:00 edge-router sshd[124]: Accepted publickey for admin from 10.0.0.5 port 54321 ssh2", "source": "Edge-Router-01"}'</pre>
-              </div>
-
-              <!-- 6. WINDOWS FIREWALL PERMIT -->
-              <div class="card p-sm" style="background:var(--bg-card-subtle); border:1px solid var(--border-color); border-radius:6px; padding:12px;">
-                <div style="font-weight:700; color:var(--primary-main); font-size:12px; margin-bottom:4px;">Windows Firewall Inbound Rules (If receiving traffic across LAN/Wi-Fi)</div>
-                <p class="text-muted text-xs mb-xs" style="margin:0 0 6px 0;">To permit external devices to reach ports 514, 5140, 5141, and 8000, run in PowerShell (Administrator):</p>
-                <pre class="code-box" style="padding:8px 10px; font-size:11px; margin:0; background:var(--bg-card-solid); border-radius:4px; font-family:var(--font-mono); color:var(--primary-main);">New-NetFirewallRule -DisplayName "ULPF Ingress UDP" -Direction Inbound -LocalPort 514,5140 -Protocol UDP -Action Allow
-New-NetFirewallRule -DisplayName "ULPF Ingress TCP" -Direction Inbound -LocalPort 5141,8000 -Protocol TCP -Action Allow</pre>
-              </div>
-            </div>
-          </div>
-
-          <div class="modal-footer flex-between p-sm" style="padding: 12px 20px; border-top: 1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
-            <span class="text-xs text-muted">Incoming events from any physical device appear automatically in the table above.</span>
-            <button class="btn btn-sm btn-secondary" onclick="window.closeConnectRealDeviceModal()">Close</button>
-          </div>
-        </div>
-      `;
-
-      modal.classList.add("open");
-    };
-  }
-  const renderSourcesView = renderConnectionsView;
-
-  // --- LOGS & RAW EVIDENCE VIEW ---
-  function renderLogsView(container) {
-    // Immediately trigger event refresh to ensure live data is visible
-    fetchEvents();
-
-    container.innerHTML = `
-      <div class="page-header flex-between" style="flex-wrap:wrap; gap:12px;">
-        <div>
-          <h1 class="page-title">Logs & Raw Evidence Explorer</h1>
-          <p class="page-desc">Real-time log stream, byte-accurate raw evidence preservation, SHA-256 cryptographic verification, and canonical ULPF-IR normalized records.</p>
-        </div>
-        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-          <button class="btn btn-sm btn-secondary" onclick="fetchEvents(); showToast('Refreshing live log stream...', 'info');" type="button" title="Reload recent logs from server">
-            <span>Refresh</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- FILTER & QUERY BAR -->
-      <div class="card p-md mb-md">
-        <div class="grid grid-5 gap-sm" style="align-items: flex-end;">
-          <div>
-            <label class="text-muted font-sm" style="display:block; margin-bottom:6px; font-weight:600; text-transform:uppercase; letter-spacing:0.4px;">Search Logs</label>
-            <input type="text" id="eventsTableSearchInput" class="form-control" style="height:38px;" placeholder="Search ID, IP, vendor, message..." />
-          </div>
-          <div>
-            <label class="text-muted font-sm" style="display:block; margin-bottom:6px; font-weight:600; text-transform:uppercase; letter-spacing:0.4px;">Format</label>
-            <select id="filterFormat" class="form-select" style="height:38px; width:100%;">
-              <option value="">All Formats</option>
-              <option value="cef">CEF</option>
-              <option value="syslog">Syslog</option>
-              <option value="json">JSON</option>
-              <option value="leef">LEEF</option>
-              <option value="kv">Key=Value</option>
-            </select>
-          </div>
-          <div>
-            <label class="text-muted font-sm" style="display:block; margin-bottom:6px; font-weight:600; text-transform:uppercase; letter-spacing:0.4px;">Action</label>
-            <select id="filterAction" class="form-select" style="height:38px; width:100%;">
-              <option value="">All Actions</option>
-              <option value="allow">Allow</option>
-              <option value="deny">Deny</option>
-              <option value="block">Block</option>
-              <option value="drop">Drop</option>
-              <option value="alert">Alert</option>
-            </select>
-          </div>
-          <div>
-            <label class="text-muted font-sm" style="display:block; margin-bottom:6px; font-weight:600; text-transform:uppercase; letter-spacing:0.4px;">Status</label>
-            <select id="filterStatus" class="form-select" style="height:38px; width:100%;">
-              <option value="">All Statuses</option>
-              <option value="success">Success / Normalized</option>
-              <option value="blocked">Blocked / Denied</option>
-              <option value="unparsed">Unparsed / Novel</option>
-            </select>
-          </div>
-          <div>
-            <label class="text-muted font-sm" style="display:block; margin-bottom:6px; font-weight:600;">&nbsp;</label>
-            <button class="btn btn-secondary" style="height:38px; width:100%; white-space:nowrap;" onclick="window.resetLogsFilter()">Reset Filters</button>
-          </div>
-        </div>
-
-        <!-- QUICK FILTER PILLS -->
-        <div style="display:flex; align-items:center; gap:8px; margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.05); flex-wrap:wrap;">
-          <span class="text-muted font-sm" style="font-weight:600; font-size:11px; letter-spacing:0.4px; text-transform:uppercase;">Quick Filters:</span>
-          <button class="btn btn-xs btn-secondary" onclick="window.quickFilterLogs('')" type="button">All Logs</button>
-          <button class="btn btn-xs btn-secondary" onclick="window.quickFilterLogs('allow')" type="button">Allowed</button>
-          <button class="btn btn-xs btn-secondary" onclick="window.quickFilterLogs('deny')" type="button">Denied / Blocked</button>
-          <button class="btn btn-xs btn-secondary" onclick="window.quickFilterLogs('format:cef')" type="button">CEF</button>
-          <button class="btn btn-xs btn-secondary" onclick="window.quickFilterLogs('format:syslog')" type="button">Syslog</button>
-          <button class="btn btn-xs btn-secondary" onclick="window.quickFilterLogs('format:json')" type="button">JSON</button>
-          <button class="btn btn-xs btn-secondary" onclick="window.quickFilterLogs('format:leef')" type="button">LEEF</button>
-          <button class="btn btn-xs btn-secondary" onclick="window.quickFilterLogs('threat')" type="button">Threats Only</button>
-        </div>
-      </div>
-
-      <!-- CANONICAL EVENTS TABLE -->
-      <div class="card p-md">
-        <div class="flex-between mb-sm" style="padding-bottom:10px; border-bottom:1px solid rgba(229,9,46,0.15); flex-wrap:wrap; gap:10px; align-items:center;">
-          <div>
-            <h3 style="font-size:14px; font-weight:700; margin:0; color:var(--text-main); display:flex; align-items:center; gap:8px;">
-              <span>CANONICAL ULPF-IR LOG STREAM &amp; RAW EVIDENCE</span>
-              <span class="badge badge-teal" id="logsActiveCountBadge" style="font-size:10px;">Live Stream</span>
-            </h3>
-            <p class="text-muted font-sm" style="margin:3px 0 0 0;" id="logsTableCountDesc">Showing live ingested events</p>
-          </div>
-          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-            <button class="btn btn-xs btn-secondary" onclick="window.exportLogsAsJson()" title="Download filtered events as JSON document" style="white-space:nowrap;">Export JSON</button>
-            <button class="btn btn-xs btn-secondary" onclick="window.exportLogsAsCsv()" title="Download filtered events as CSV spreadsheet" style="white-space:nowrap;">Export CSV</button>
-            <button class="btn btn-xs btn-secondary" onclick="window.clearStoredLogs()" title="Permanently delete all stored data logs" style="color:var(--danger-main); border-color:rgba(239,68,68,0.35); white-space:nowrap;">Clear Logs</button>
-          </div>
-        </div>
-
-        <div class="table-responsive" style="overflow-x: auto; width: 100%; border-radius: 6px;">
-          <table class="table-dense" id="eventsExplorerTable" style="table-layout: fixed; width: 100%; border-collapse: separate;">
-            <thead>
-              <tr>
-                <th onclick="window.sortLogsBy('event_id')" style="text-align:left; vertical-align:middle; width:13%; cursor:pointer; padding:11px 14px; white-space:nowrap;" title="Click to sort by Event ID">
-                  EVENT ID <span id="sort_icon_event_id" style="font-size:10px; opacity:0.6;"></span>
-                </th>
-                <th onclick="window.sortLogsBy('timestamp')" style="text-align:left; vertical-align:middle; width:10%; cursor:pointer; padding:11px 14px; white-space:nowrap;" title="Click to sort by Timestamp">
-                  TIMESTAMP <span id="sort_icon_timestamp" style="font-size:10px; opacity:0.6;"></span>
-                </th>
-                <th onclick="window.sortLogsBy('source')" style="text-align:left; vertical-align:middle; width:13%; cursor:pointer; padding:11px 14px; white-space:nowrap;" title="Click to sort by Source Device">
-                  SOURCE / DEVICE <span id="sort_icon_source" style="font-size:10px; opacity:0.6;"></span>
-                </th>
-                <th onclick="window.sortLogsBy('vendor')" style="text-align:left; vertical-align:middle; width:10%; cursor:pointer; padding:11px 14px; white-space:nowrap;" title="Click to sort by Vendor">
-                  VENDOR <span id="sort_icon_vendor" style="font-size:10px; opacity:0.6;"></span>
-                </th>
-                <th onclick="window.sortLogsBy('format')" style="text-align:center; vertical-align:middle; width:9%; cursor:pointer; padding:11px 8px; white-space:nowrap;" title="Click to sort by Format">
-                  FORMAT <span id="sort_icon_format" style="font-size:10px; opacity:0.6;"></span>
-                </th>
-                <th style="text-align:center; vertical-align:middle; width:9%; padding:11px 8px; white-space:nowrap;">
-                  CATEGORY
-                </th>
-                <th onclick="window.sortLogsBy('action')" style="text-align:center; vertical-align:middle; width:8%; cursor:pointer; padding:11px 14px; white-space:nowrap;" title="Click to sort by Action">
-                  ACTION <span id="sort_icon_action" style="font-size:10px; opacity:0.6;"></span>
-                </th>
-                <th onclick="window.sortLogsBy('src_ip')" style="text-align:left; vertical-align:middle; width:12%; cursor:pointer; padding:11px 14px; white-space:nowrap;" title="Click to sort by Source IP">
-                  SRC IP <span id="sort_icon_src_ip" style="font-size:10px; opacity:0.6;"></span>
-                </th>
-                <th onclick="window.sortLogsBy('status')" style="text-align:center; vertical-align:middle; width:7%; cursor:pointer; padding:11px 14px; white-space:nowrap;" title="Click to sort by Status">
-                  STATUS <span id="sort_icon_status" style="font-size:10px; opacity:0.6;"></span>
-                </th>
-                <th style="text-align:center; vertical-align:middle; width:9%; padding:11px 14px; white-space:nowrap;">
-                  INSPECT
-                </th>
-              </tr>
-            </thead>
-            <tbody id="eventsTableBody"></tbody>
-          </table>
-        </div>
-
-        <!-- PAGINATION CONTROLS -->
-        <div class="flex-between mt-sm" style="padding-top:12px; border-top:1px solid rgba(255,255,255,0.06); font-size:12px; color:var(--text-muted); align-items:center; flex-wrap:wrap; gap:8px;">
-          <div id="logsPaginationInfo">Showing 0 of 0 events</div>
-          <div style="display:flex; gap:6px; align-items:center;" id="logsPaginationControls">
-            <button class="btn btn-xs btn-secondary" id="btnLogsPrevPage" onclick="window.changeLogsPage(-1)" style="white-space:nowrap;">← Prev</button>
-            <span id="logsPageIndicator" style="font-weight:600; color:var(--text-main); padding:0 8px; font-size:11.5px;">Page 1 of 1</span>
-            <button class="btn btn-xs btn-secondary" id="btnLogsNextPage" onclick="window.changeLogsPage(1)" style="white-space:nowrap;">Next →</button>
-          </div>
-        </div>
-      </div>
-    `;
-
-    // Initialize toggle handlers
-    const togglePanelBtn = document.getElementById("btnToggleCustomLogPanel");
-    const toggleBodyBtn = document.getElementById("btnToggleCustomLogBody");
-    const formBody = document.getElementById("customLogFormBody");
-
-    const toggleFormVisibility = () => {
-      if (!formBody) return;
-      const isHidden = formBody.style.display === "none";
-      formBody.style.display = isHidden ? "block" : "none";
-      if (toggleBodyBtn) toggleBodyBtn.textContent = isHidden ? "Minimize Panel" : "Expand Panel";
-    };
-
-    if (togglePanelBtn) togglePanelBtn.onclick = toggleFormVisibility;
-    if (toggleBodyBtn) toggleBodyBtn.onclick = toggleFormVisibility;
-
-    // Direct Ingestion Handler
-    const btnSubmit = document.getElementById("btnSubmitCustomLog");
-    if (btnSubmit) {
-      btnSubmit.onclick = async () => {
-        const devName = (document.getElementById("customLogDeviceName")?.value || "").trim();
-        const devIp = (document.getElementById("customLogDeviceIp")?.value || "").trim();
-        const vendor = document.getElementById("customLogVendor")?.value || "Generic";
-        const devType = document.getElementById("customLogDeviceType")?.value || "Firewall";
-        const proto = document.getElementById("customLogProtocol")?.value || "HTTP REST (:8000)";
-        const rawLog = (document.getElementById("customLogPayload")?.value || "").trim();
-        const statusDiv = document.getElementById("customLogIngestStatus");
-
-        if (!rawLog) {
-          if (statusDiv) {
-            statusDiv.style.display = "block";
-            statusDiv.style.background = "rgba(239,68,68,0.15)";
-            statusDiv.style.color = "#ef4444";
-            statusDiv.style.border = "1px solid rgba(239,68,68,0.3)";
-            statusDiv.innerText = "Please enter a raw log payload to ingest.";
-          }
-          return;
-        }
-
-        btnSubmit.disabled = true;
-        btnSubmit.innerHTML = "<span>Ingesting...</span>";
-
-        try {
-          const resp = await fetch("/api/v1/ingest", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              raw_log: rawLog,
-              device_name: devName || undefined,
-              client_ip: devIp || undefined,
-              vendor: vendor,
-              device_type: devType,
-              protocol: proto
-            })
-          });
-
-          if (!resp.ok) {
-            const err = await resp.json().catch(() => ({ detail: "Ingestion failed" }));
-            throw new Error(err.detail || "Server error");
-          }
-
-          const data = await resp.json();
-          if (statusDiv) {
-            statusDiv.style.display = "block";
-            statusDiv.style.background = "rgba(16,185,129,0.15)";
-            statusDiv.style.color = "#34d399";
-            statusDiv.style.border = "1px solid rgba(16,185,129,0.3)";
-            statusDiv.innerHTML = ` <strong>Ingested:</strong> Event <code class="mono" style="color:var(--text-main);">${data.event_id}</code> | Format: <span class="badge badge-violet">${data.detected_format}</span> | Device: <strong style="color:var(--text-main);">${devName || 'api_client'}</strong> (${devIp || '127.0.0.1'}) | SHA: <code class="mono" style="font-size:10.5px;">${(data.raw_sha256 || '').substring(0, 16)}...</code>`;
-          }
-
-          window.showToast?.(` Event ${data.event_id} ingested for ${devName || 'device'}!`, "success");
-          await fetchEvents();
-          await fetchSources();
-          applyLogsFilters();
-        } catch (e) {
-          if (statusDiv) {
-            statusDiv.style.display = "block";
-            statusDiv.style.background = "rgba(239,68,68,0.15)";
-            statusDiv.style.color = "#ef4444";
-            statusDiv.style.border = "1px solid rgba(239,68,68,0.3)";
-            statusDiv.innerText = `Ingestion error: ${e.message}`;
-          }
-          window.showToast?.(`Ingestion error: ${e.message}`, "error");
-        } finally {
-          btnSubmit.disabled = false;
-          btnSubmit.innerHTML = "<span> Send & Ingest Log</span>";
-        }
-      };
-    }
-
-    // Save Device Config on Server Handler
-    const btnSaveDev = document.getElementById("btnSaveDeviceConfigOnly");
-    if (btnSaveDev) {
-      btnSaveDev.onclick = async () => {
-        const devName = (document.getElementById("customLogDeviceName")?.value || "").trim();
-        const devIp = (document.getElementById("customLogDeviceIp")?.value || "").trim();
-        const vendor = document.getElementById("customLogVendor")?.value || "Generic";
-        const devType = document.getElementById("customLogDeviceType")?.value || "Firewall";
-        const proto = document.getElementById("customLogProtocol")?.value || "HTTP REST (:8000)";
-        const statusDiv = document.getElementById("customLogIngestStatus");
-
-        if (!devName) {
-          if (statusDiv) {
-            statusDiv.style.display = "block";
-            statusDiv.style.background = "rgba(239,68,68,0.15)";
-            statusDiv.style.color = "#ef4444";
-            statusDiv.innerText = "Device Name is required.";
-          }
-          return;
-        }
-
-        try {
-          const sourceId = devIp || devName;
-          const resp = await fetch(`/api/v1/sources/${encodeURIComponent(sourceId)}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              name: devName,
-              vendor: vendor,
-              source_type: devType,
-              address: devIp,
-              protocol: proto
-            })
-          });
-
-          if (!resp.ok) {
-            const err = await resp.json().catch(() => ({ detail: "Save failed" }));
-            throw new Error(err.detail || "Server error");
-          }
-
-          if (statusDiv) {
-            statusDiv.style.display = "block";
-            statusDiv.style.background = "rgba(16,185,129,0.15)";
-            statusDiv.style.color = "#34d399";
-            statusDiv.innerHTML = ` <strong>Saved:</strong> Device profile <strong style="color:var(--text-main);">${devName}</strong> (${devIp || 'no-ip'}) registered on server!`;
-          }
-          window.showToast?.(` Device "${devName}" updated on server!`, "success");
-          await fetchSources();
-        } catch (e) {
-          if (statusDiv) {
-            statusDiv.style.display = "block";
-            statusDiv.style.background = "rgba(239,68,68,0.15)";
-            statusDiv.style.color = "#ef4444";
-            statusDiv.innerText = `Save error: ${e.message}`;
-          }
-        }
-      };
-    }
-
-    // Attach search and filter listeners
-    const searchInp = document.getElementById("eventsTableSearchInput");
-    const formatSel = document.getElementById("filterFormat");
-    const actionSel = document.getElementById("filterAction");
-    const statusSel = document.getElementById("filterStatus");
-
-    if (searchInp) searchInp.addEventListener("input", () => { logsCurrentPage = 1; applyLogsFilters(); });
-    if (formatSel) formatSel.addEventListener("change", () => { logsCurrentPage = 1; applyLogsFilters(); });
-    if (actionSel) actionSel.addEventListener("change", () => { logsCurrentPage = 1; applyLogsFilters(); });
-    if (statusSel) statusSel.addEventListener("change", () => { logsCurrentPage = 1; applyLogsFilters(); });
-
-    applyLogsFilters();
-  }
-
-  let logsSortCol = "timestamp";
-  let logsSortAsc = false;
-
-  window.sortLogsBy = function (col) {
-    if (logsSortCol === col) {
-      logsSortAsc = !logsSortAsc;
-    } else {
-      logsSortCol = col;
-      logsSortAsc = true;
-    }
-    applyLogsFilters();
-  };
-
-  window.changeLogsPage = function (delta) {
-    logsCurrentPage += delta;
-    applyLogsFilters();
-  };
-
-  window.quickFilterLogs = function (val) {
-    const searchInp = document.getElementById("eventsTableSearchInput");
-    const formatSel = document.getElementById("filterFormat");
-    const actionSel = document.getElementById("filterAction");
-    const statusSel = document.getElementById("filterStatus");
-    if (!val) {
-      if (searchInp) searchInp.value = "";
-      if (formatSel) formatSel.value = "";
-      if (actionSel) actionSel.value = "";
-      if (statusSel) statusSel.value = "";
-    } else if (val.startsWith("format:")) {
-      if (formatSel) formatSel.value = val.replace("format:", "");
-    } else if (val === "allow" || val === "deny" || val === "block") {
-      if (actionSel) actionSel.value = val;
-    } else if (val === "threat") {
-      if (searchInp) searchInp.value = "threat";
-    }
-    logsCurrentPage = 1;
-    applyLogsFilters();
-  };
-
-  window.exportLogsAsJson = function () {
-    let filtered = state.events || [];
-    if (filtered.length === 0) {
-      showToast("No logs to export.", "warning");
-      return;
-    }
-    const blob = new Blob([JSON.stringify(filtered, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `ulpf_logs_${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast(`Exported ${filtered.length} logs as JSON!`, "success");
-  };
-
-  window.exportLogsAsCsv = function () {
-    let filtered = state.events || [];
-    if (filtered.length === 0) {
-      showToast("No logs to export.", "warning");
-      return;
-    }
-    const headers = ["Event_ID", "Timestamp", "Device_Name", "Source", "Vendor", "Format", "Category", "Action", "Src_IP", "Status", "SHA256"];
-    const rows = filtered.map(e => [
-      e.event_id || "",
-      e.timestamp || "",
-      e.device_name || "",
-      e.source || "",
-      e.vendor || "",
-      e.format || "",
-      e.event_type || e.category || "",
-      e.action || "",
-      e.src_ip || "",
-      e.status || "",
-      e.original?.sha256 || e.raw_sha256 || ""
-    ]);
-    const csvContent = [headers.join(","), ...rows.map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(","))].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `ulpf_logs_${Date.now()}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast(`Exported ${filtered.length} logs as CSV!`, "success");
-  };
-
-  window.updateLogsPagination = function (totalEvents) {
-    const pageInfo = document.getElementById("logsPaginationInfo");
-    const pageInd = document.getElementById("logsPageIndicator");
-    const prevBtn = document.getElementById("btnLogsPrevPage");
-    const nextBtn = document.getElementById("btnLogsNextPage");
-    if (!pageInfo) return;
-
-    if (totalEvents === 0) {
-      pageInfo.innerText = "Showing 0 of 0 events";
-      if (pageInd) pageInd.innerText = "Page 1 of 1";
-      if (prevBtn) prevBtn.disabled = true;
-      if (nextBtn) nextBtn.disabled = true;
-      return;
-    }
-
-    const totalPages = Math.ceil(totalEvents / logsPageSize);
-    const start = (logsCurrentPage - 1) * logsPageSize + 1;
-    const end = Math.min(totalEvents, logsCurrentPage * logsPageSize);
-    pageInfo.innerText = `Showing ${start}–${end} of ${totalEvents} events`;
-    if (pageInd) pageInd.innerText = `Page ${logsCurrentPage} of ${totalPages}`;
-    if (prevBtn) prevBtn.disabled = logsCurrentPage <= 1;
-    if (nextBtn) nextBtn.disabled = logsCurrentPage >= totalPages;
-  };
-
-  // Multi-attribute Log Filtering & Sorting
-  async function applyLogsFilters() {
-    const searchInp = document.getElementById("eventsTableSearchInput");
-    const formatSel = document.getElementById("filterFormat");
-    const actionSel = document.getElementById("filterAction");
-    const statusSel = document.getElementById("filterStatus");
-    const tbody = document.getElementById("eventsTableBody");
-    if (!tbody) return;
-
-    const q = searchInp ? searchInp.value.trim() : "";
-    const formatVal = formatSel ? formatSel.value.trim() : "";
-    const actionVal = actionSel ? actionSel.value.trim() : "";
-    const statusVal = statusSel ? statusSel.value.trim() : "";
-
-    const offset = (logsCurrentPage - 1) * logsPageSize;
-    let url = `/api/v1/events?limit=${logsPageSize}&offset=${offset}`;
-    if (q) url += `&search=${encodeURIComponent(q)}`;
-    if (formatVal) url += `&format=${encodeURIComponent(formatVal)}`;
-    if (actionVal) url += `&action=${encodeURIComponent(actionVal)}`;
-    if (statusVal) url += `&status=${encodeURIComponent(statusVal)}`;
-
-    try {
-      const res = await fetch(url);
-      if (res.ok) {
-        const data = await res.json();
-        let filtered = data.events || [];
-        const totalEvents = data.total || filtered.length;
-
-        // Sort logs (page level)
-        if (logsSortCol) {
-          filtered = [...filtered].sort((a, b) => {
-            let valA = a[logsSortCol] || "";
-            let valB = b[logsSortCol] || "";
-            if (logsSortCol === "timestamp") {
-              valA = new Date(valA).getTime() || 0;
-              valB = new Date(valB).getTime() || 0;
-            } else if (typeof valA === "string") {
-              valA = valA.toLowerCase();
-              valB = (valB || "").toLowerCase();
-            }
-            if (valA < valB) return logsSortAsc ? -1 : 1;
-            if (valA > valB) return logsSortAsc ? 1 : -1;
-            return 0;
-          });
-        }
-
-        // Update sort header icons
-        ["event_id", "timestamp", "source", "vendor", "format", "action", "src_ip", "status"].forEach(col => {
-          const iconEl = document.getElementById(`sort_icon_${col}`);
-          if (iconEl) {
-            if (logsSortCol === col) {
-              iconEl.innerText = logsSortAsc ? " " : " ";
-              iconEl.style.opacity = "1";
-              iconEl.style.color = "#38bdf8";
-            } else {
-              iconEl.innerText = "";
-              iconEl.style.opacity = "0.4";
-            }
-          }
-        });
-
-        const countDesc = document.getElementById("logsTableCountDesc");
-        if (countDesc) {
-          countDesc.innerText = `Showing ${filtered.length} logs from database`;
-        }
-
-        renderFilteredEvents(tbody, filtered, true);
-        window.updateLogsPagination(totalEvents);
-      }
-    } catch (e) {
-      console.error("Failed to fetch paginated logs", e);
-    }
-  }
-
-  window.applyLogsFilters = applyLogsFilters;
-
-  window.resetLogsFilter = function () {
-    const searchInp = document.getElementById("eventsTableSearchInput");
-    const formatSel = document.getElementById("filterFormat");
-    const actionSel = document.getElementById("filterAction");
-    const statusSel = document.getElementById("filterStatus");
-    if (searchInp) searchInp.value = "";
-    if (formatSel) formatSel.value = "";
-    if (actionSel) actionSel.value = "";
-    if (statusSel) statusSel.value = "";
-    logsCurrentPage = 1;
-    applyLogsFilters();
-  };
-
-  window.loadCustomLogTemplate = function (type) {
-    const nameInp = document.getElementById("customLogDeviceName");
-    const ipInp = document.getElementById("customLogDeviceIp");
-    const vendorSel = document.getElementById("customLogVendor");
-    const typeSel = document.getElementById("customLogDeviceType");
-    const protoSel = document.getElementById("customLogProtocol");
-    const payloadInp = document.getElementById("customLogPayload");
-
-    if (type === "cef") {
-      if (nameInp) nameInp.value = "PaloAlto-FW-01";
-      if (ipInp) ipInp.value = "192.168.1.100";
-      if (vendorSel) vendorSel.value = "Palo Alto";
-      if (typeSel) typeSel.value = "Firewall";
-      if (protoSel) protoSel.value = "HTTP REST (:8000)";
-      if (payloadInp) payloadInp.value = "CEF:0|Palo Alto Networks|PAN-OS|10.1.0|TRAFFIC|drop|5|src=192.168.1.100 dst=10.0.0.50 spt=44332 dpt=443 proto=TCP act=drop reason=policy-violation";
-    } else if (type === "syslog") {
-      if (nameInp) nameInp.value = "Core-Edge-Router-01";
-      if (ipInp) ipInp.value = "10.0.1.1";
-      if (vendorSel) vendorSel.value = "Cisco";
-      if (typeSel) typeSel.value = "Router";
-      if (protoSel) protoSel.value = "Syslog UDP (5140)";
-      if (payloadInp) payloadInp.value = "<134>1 2026-09-11T22:45:00Z Core-Edge-Router-01 sshd 1245 ID47 - Failed password for invalid user root from 192.168.1.200 port 51234 ssh2";
-    } else if (type === "kv") {
-      if (nameInp) nameInp.value = "Ubuntu-AppServer-01";
-      if (ipInp) ipInp.value = "172.16.0.25";
-      if (vendorSel) vendorSel.value = "Linux";
-      if (typeSel) typeSel.value = "Server";
-      if (protoSel) protoSel.value = "Syslog TCP (5141)";
-      if (payloadInp) payloadInp.value = 'timestamp="2026-09-11T22:45:00Z" host="Ubuntu-AppServer-01" service="auth" event="login_failure" user="admin" src_ip="172.16.0.25" status="failed" message="Invalid password attempt"';
-    } else if (type === "json") {
-      if (nameInp) nameInp.value = "Cloud-WAF-Gateway";
-      if (ipInp) ipInp.value = "10.100.5.2";
-      if (vendorSel) vendorSel.value = "Fortinet";
-      if (typeSel) typeSel.value = "WAF";
-      if (protoSel) protoSel.value = "HTTP REST (:8000)";
-      if (payloadInp) payloadInp.value = '{"timestamp":"2026-09-11T22:45:00Z","device_name":"Cloud-WAF-Gateway","src_ip":"10.100.5.2","dst_ip":"10.0.0.80","vendor":"Fortinet","action":"deny","rule":"SQLi-Shield-901","msg":"Blocked SQL injection attempt in URI param id=1 OR 1=1"}';
-    } else if (type === "scada") {
-      if (nameInp) nameInp.value = "Substation-RTU-Gateway";
-      if (ipInp) ipInp.value = "192.168.99.45";
-      if (vendorSel) vendorSel.value = "Generic";
-      if (typeSel) typeSel.value = "IoT/SCADA";
-      if (protoSel) protoSel.value = "HTTP REST (:8000)";
-      if (payloadInp) payloadInp.value = "RTU_MODBUS_V4 id=9041 seq=10499 unit=1 func=ReadHoldingRegs addr=40001 val=0x4A2F status=CRITICAL_ALARM src=192.168.99.45 dst=10.200.0.10 proto=tcp sport=502 dport=5020";
-    }
-  };
-
-  function refreshEventsTable() {
-    applyLogsFilters();
-  }
-  const renderEventsExplorerView = renderLogsView;
-
-  // --- AI PARSER ONBOARDING & UNKNOWN LOG REVIEW QUEUE ---
-
-  // ==========================================================================
-  // PHASE 3 — AI PARSER ONBOARDING & SOVEREIGN INTELLIGENCE STUDIO
-  // ==========================================================================
-  // ==========================================================================
-  // HUMAN VERIFICATION & AI PARSER REVIEW QUEUE
-  // ==========================================================================
-  window.acknowledgeTamper = function(alertId) {
-     const idx = state.unknownLogs.findIndex(u => u.id === alertId);
-     if (idx > -1) {
-        state.unknownLogs.splice(idx, 1);
-        state.selectedUnknownLog = null;
-        renderHumanVerificationView(document.getElementById("mainContent"));
-        window.showToast("Tamper alert acknowledged and isolated.", "success");
-     }
-  };
-
-  async function renderHumanVerificationView(container) {
-    await fetchUnknownLogs();
-
-    // Default sample if empty
-    if (!state.unknownLogs || state.unknownLogs.length === 0) {
-      container.innerHTML = `
-        <div class="page-header flex-between">
-          <div>
-            <h1 class="page-title">Human Verification & AI Parser Review Queue</h1>
-            <p class="page-desc">Review quarantined mystery formats and suspicious connections held for human sign-off before connection resumption.</p>
-          </div>
-        </div>
-        <div class="card p-xl flex-center flex-col mt-md" style="height: 400px; text-align: center;">
-          <h2 style="color:var(--text-muted); font-size: 20px;">No quarantined logs awaiting review</h2>
-          <p class="text-muted mt-sm">All parsed connections are actively forwarding. The pipeline is clear.</p>
-        </div>
-      `;
-      return;
-    }
-
-    const selectedLog = state.selectedUnknownLog || state.unknownLogs[0];
-
-    container.innerHTML = `
-      <div class="page-header flex-between">
-        <div>
-          <h1 class="page-title">Human Verification & AI Parser Review Queue</h1>
-          <p class="page-desc">Review quarantined mystery formats and suspicious connections held for human sign-off before connection resumption.</p>
-        </div>
-        <div style="display:flex; gap:8px; align-items:center;">
-          <button id="btnInjectSampleUnknown" class="btn btn-sm btn-secondary">
-            <span>+ Inject Mystery Device Log</span>
-          </button>
-          <span class="badge badge-amber" style="font-size:12px; padding:6px 12px;">
-            ${state.unknownLogs.length} HELD IN REVIEW
-          </span>
-        </div>
-      </div>
-
-      <div class="unknown-logs-container">
-        <!-- LEFT COLUMN: UNKNOWN LOGS QUEUE -->
-        <div class="unknown-list-pane">
-          <div class="unknown-list-header">
-            <div>
-              <strong style="font-size:13px; color:var(--text-main);">Quarantine Review Queue</strong>
-              <div class="text-muted text-xs">Select a quarantined connection to inspect</div>
-            </div>
-            <span class="badge badge-neutral">${state.unknownLogs.length} Pending</span>
-          </div>
-
-          <div class="unknown-items-scroll">
-            ${state.unknownLogs.map((u) => {
-      const isActive = selectedLog && selectedLog.id === u.id;
-      if (u.is_tamper_alert) {
-          return `
-                <div class="unknown-item-card ${isActive ? 'active' : ''}" style="border-left: 4px solid var(--danger-main); background: rgba(239,68,68,0.05);" onclick="window.selectUnknownLog('${u.id}')">
-                  <div class="flex-between">
-                    <strong class="mono" style="color:var(--danger-main); font-size:12px;">${u.id}</strong>
-                    <span class="badge badge-rose" style="font-size:9.5px;">TAMPER ALERT</span>
-                  </div>
-                  <div class="text-muted mt-sm" style="font-size:11px;">
-                    <strong style="color: var(--danger-main);">Affected Event:</strong> <span class="mono">${u.event_id}</span>
-                  </div>
-                  <div class="mono text-muted mt-sm" style="font-size:10.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--text-main);">
-                    ${u.raw_message}
-                  </div>
-                </div>
-              `;
-      } else {
-          return `
-                <div class="unknown-item-card ${isActive ? 'active' : ''}" onclick="window.selectUnknownLog('${u.id}')">
-                  <div class="flex-between">
-                    <strong class="mono" style="color:var(--text-main); font-size:12px;">${u.id}</strong>
-                    <span class="badge badge-amber" style="font-size:9.5px;">Human Sign-Off</span>
-                  </div>
-                  <div class="text-muted mt-sm" style="font-size:11px;">
-<<<<<<< HEAD
-                    <strong style="color: var(--primary-main);">Device:</strong> ${u.source}
-=======
-                    <strong style="color: #6457cdff;">Device:</strong> ${u.source}
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
                   </div>
                   <div class="mono text-muted mt-sm" style="font-size:10.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--text-main);">
                     ${u.raw_message}
@@ -3832,11 +1316,7 @@ New-NetFirewallRule -DisplayName "ULPF Ingress TCP" -Direction Inbound -LocalPor
             <!-- RAW LOG PREVIEW WITH CRYPTOGRAPHIC SHA-256 SEAL -->
             <div class="mt-md">
               <div class="code-box-header" style="background:var(--bg-card-subtle); padding:8px 12px; border-radius:6px 6px 0 0; display:flex; justify-content:space-between; align-items:center;">
-<<<<<<< HEAD
                 <span style="font-size:11.5px; font-weight:700; color: var(--text-muted); letter-spacing:0.03em;">Raw Log</span>
-=======
-                <span style="font-size:11.5px; font-weight:700; color: #45509fff; letter-spacing:0.03em;">Raw Log</span>
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
                 <span class="mono text-muted" style="font-size:11px;">SHA-256: <code class="text-teal" style="font-size:10.5px;">${(selectedLog.sha256 || '4b227777d4dd1fc61c6f884f48641d02b4d121d3fd328cb08b5531fcacdabf8a').substring(0, 24)}...</code></span>
               </div>
               <pre class="code-box" style="max-height:80px; margin-bottom:0; color:var(--text-main); font-size:12px; border-radius:0 0 6px 6px; overflow-x:auto;">${selectedLog.raw_message}</pre>
@@ -3852,11 +1332,7 @@ New-NetFirewallRule -DisplayName "ULPF Ingress TCP" -Direction Inbound -LocalPor
             <!-- STREAMLINED HUMAN DECISION ACTION BAR -->
             <div class="mt-md" style="padding-top:14px; border-top:1px solid var(--border-color); background:var(--bg-card-subtle); padding:12px; border-radius:6px;">
               <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px; flex-wrap:wrap;">
-<<<<<<< HEAD
                 <label style="font-size:12px; color: var(--primary-main); font-weight:700;">Custom Parser Name:</label>
-=======
-                <label style="font-size:12px; color: #4257b5ff; font-weight:700;">Custom Parser Name:</label>
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
                 <input type="text" id="aiParserCustomName" class="form-control" style="background: var(--bg-card); border:1px solid #334155; color:var(--primary-main); font-family:monospace; padding:6px 10px; border-radius:4px; min-width:260px;" value="parser_${selectedLog.source.toLowerCase().replace(/[^a-z0-9]/g, '_')}_v1" placeholder="e.g. parser_myvendor_custom_v1" />
                 <span class="text-muted text-xs">Assign a custom identifier to compile into server registry</span>
               </div>
@@ -5306,7 +2782,6 @@ normalization:
   };
 
   window.explainSpecificThreat = async (threatTitle, ip, mitreId) => {
-<<<<<<< HEAD
     const popupModal = document.getElementById("aiReviewPopupModal");
     const bodyEl = document.getElementById("aiReviewModalBody");
     const badgeEl = document.getElementById("aiReviewModalBadge");
@@ -5315,19 +2790,10 @@ normalization:
       popupModal.classList.remove("hidden");
     }
 
-=======
-    const containerEl = document.getElementById("aiIncidentReportContainer");
-    const bodyEl = document.getElementById("aiIncidentReportBody");
-    const badgeEl = document.getElementById("aiAuditBadge");
-    if (!containerEl || !bodyEl) return;
-
-    containerEl.style.display = "block";
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
     if (badgeEl) {
       badgeEl.className = "badge badge-amber";
       badgeEl.innerText = "REASONING...";
     }
-<<<<<<< HEAD
     
     if (bodyEl) {
       bodyEl.innerHTML = `
@@ -5341,9 +2807,6 @@ normalization:
         </div>
       `;
     }
-=======
-    bodyEl.innerHTML = `<div style="padding:15px; color:var(--primary-main); font-family:var(--font-mono); font-size:12px;"><span class="pulse-dot teal"></span> Consulting sovereign AI engine for incident reasoning on ${ip} (${threatTitle})...</div>`;
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
 
     try {
       const res = await fetch("/api/v1/ai/explain", {
@@ -5358,7 +2821,6 @@ normalization:
         badgeEl.innerText = `CONFIDENCE: ${Math.round((data.confidence || 0.95) * 100)}%`;
       }
 
-<<<<<<< HEAD
       if (bodyEl) {
         bodyEl.innerHTML = `
           <div style="display:flex; flex-direction:column; gap:16px;">
@@ -5420,49 +2882,14 @@ normalization:
           </div>
         `;
       }
-=======
-      bodyEl.innerHTML = `
-        <div class="grid grid-2 gap-md mt-sm" style="border-top:1px solid rgba(255,255,255,0.08); padding-top:12px;">
-          <div>
-            <div style="font-weight:700; color:var(--text-main); font-size:13px; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
-              <span>Executive Threat Assessment:</span>
-              <span class="badge ${data.severity === 'critical' ? 'badge-red' : 'badge-amber'}">${(data.severity || 'HIGH').toUpperCase()}</span>
-            </div>
-            <div style="font-size:12px; color: #445697ff; line-height:1.5;">${escapeHtml(data.summary || 'Malicious security incident detected and quarantined by ULPF.')}</div>
-            <div class="mt-sm" style="font-size:11.5px;">
-              <span class="text-muted">MITRE:</span> <strong class="mono" style="color:var(--warning-main);">${data.mitre_attack_id} — ${data.mitre_attack_name}</strong>
-            </div>
-          </div>
-          <div>
-            <div style="font-weight:700; color:var(--text-main); font-size:13px; margin-bottom:4px;">Recommended SOC Remediation:</div>
-            <ul style="padding-left:18px; font-size:11.5px; color:var(--text-main); line-height:1.5;">
-              ${(data.recommended_actions || [
-          "Verify source IP against perimeter firewall blacklist.",
-          "Enforce automated connection drop at gateway.",
-          "Check legal raw SHA-256 evidence chain in MinIO vault."
-        ]).map(a => `<li>${escapeHtml(a)}</li>`).join('')}
-            </ul>
-            <div class="mt-sm">
-              <button class="btn btn-xs btn-danger" onclick="window.blockConnection('${ip}')">
-                Block Connection &amp; Blacklist ${ip}
-              </button>
-            </div>
-          </div>
-        </div>
-      `;
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
     } catch (e) {
       if (badgeEl) {
         badgeEl.className = "badge badge-red";
         badgeEl.innerText = "OFFLINE";
       }
-<<<<<<< HEAD
       if (bodyEl) {
         bodyEl.innerHTML = `<div style="padding:20px; color:var(--danger-main); text-align:center;">Could not load AI explanation: ${escapeHtml(e.message)}</div>`;
       }
-=======
-      bodyEl.innerHTML = `<div style="padding:15px; color:var(--danger-main);">Could not load AI explanation: ${escapeHtml(e.message)}</div>`;
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
     }
   };
 
@@ -6632,11 +4059,7 @@ normalization:
     }
   };
 
-<<<<<<< HEAD
   // --- TELEMETRY CHART LOGIC (GLOWING AREA GRADIENT) ---
-=======
-  // --- TELEMETRY CHART LOGIC ---
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
   let telemetryChart = null;
   let telemetryInterval = null;
   const maxDataPoints = 60;
@@ -6644,17 +4067,10 @@ normalization:
   const parsedData = new Array(maxDataPoints).fill(0);
 
   function initTelemetryChart() {
-<<<<<<< HEAD
     const canvas = document.getElementById("liveEpsChart");
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx || typeof Chart === "undefined") return;
-=======
-    const ctx = document.getElementById("liveEpsChart");
-    if (!ctx) return;
-
-    if (typeof Chart === "undefined") return;
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
 
     if (telemetryChart) {
       telemetryChart.destroy();
@@ -6663,7 +4079,6 @@ normalization:
     const labels = new Array(maxDataPoints).fill("");
 
     const style = getComputedStyle(document.documentElement);
-<<<<<<< HEAD
     const isLight = document.documentElement.getAttribute("data-theme") === "light";
     const textColor = style.getPropertyValue('--text-muted').trim() || (isLight ? '#64748b' : '#94a3b8');
     const gridColor = isLight ? 'rgba(15, 23, 42, 0.06)' : 'rgba(255, 255, 255, 0.06)';
@@ -6680,35 +4095,6 @@ normalization:
     gradientParsed.addColorStop(1, 'rgba(139, 92, 246, 0.0)');
 
     Chart.defaults.font.family = "'Plus Jakarta Sans', 'Inter', sans-serif";
-=======
-    const textColor = style.getPropertyValue('--text-muted').trim() || '#94a3b8';
-    const gridColor = style.getPropertyValue('--border-color').trim() || 'rgba(255,255,255,0.05)';
-    const primaryColor = style.getPropertyValue('--primary-main').trim() || '#38bdf8';
-    const successColor = style.getPropertyValue('--success-main').trim() || '#34d399';
-
-    document.addEventListener('themeChanged', () => {
-      if (telemetryChart) {
-        const newStyle = getComputedStyle(document.documentElement);
-        const newTextColor = newStyle.getPropertyValue('--text-muted').trim() || '#94a3b8';
-        const newGridColor = newStyle.getPropertyValue('--border-color').trim() || 'rgba(255,255,255,0.05)';
-        
-        telemetryChart.data.datasets[0].borderColor = newStyle.getPropertyValue('--primary-main').trim() || '#38bdf8';
-        telemetryChart.data.datasets[1].borderColor = newStyle.getPropertyValue('--success-main').trim() || '#34d399';
-
-        telemetryChart.options.plugins.tooltip.backgroundColor = newStyle.getPropertyValue('--bg-dropdown').trim() || 'rgba(20, 6, 11, 0.9)';
-        telemetryChart.options.plugins.tooltip.titleColor = newStyle.getPropertyValue('--text-main').trim() || '#fff';
-        telemetryChart.options.plugins.tooltip.bodyColor = newTextColor;
-        telemetryChart.options.plugins.tooltip.borderColor = telemetryChart.data.datasets[0].borderColor;
-        
-        // Update axes and legend text color for theme switching
-        telemetryChart.options.scales.y.ticks.color = newTextColor;
-        telemetryChart.options.scales.y.grid.color = newGridColor;
-        telemetryChart.options.plugins.legend.labels.color = newTextColor;
-
-        telemetryChart.update();
-      }
-    });
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
 
     telemetryChart = new Chart(ctx, {
       type: 'line',
@@ -6719,7 +4105,6 @@ normalization:
             label: 'Events Received/sec',
             data: epsData,
             borderColor: primaryColor,
-<<<<<<< HEAD
             backgroundColor: gradientReceived,
             borderWidth: 2.5,
             pointRadius: 0,
@@ -6729,19 +4114,10 @@ normalization:
             pointHoverBorderWidth: 2,
             fill: true,
             tension: 0.42
-=======
-            backgroundColor: 'rgba(56, 189, 248, 0.15)',
-            borderWidth: 2,
-            pointRadius: 0,
-            pointHoverRadius: 0,
-            fill: true,
-            tension: 0.4
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
           },
           {
             label: 'Events Parsed/sec',
             data: parsedData,
-<<<<<<< HEAD
             borderColor: accentPurple,
             backgroundColor: gradientParsed,
             borderWidth: 2.5,
@@ -6752,15 +4128,6 @@ normalization:
             pointHoverBorderWidth: 2,
             fill: true,
             tension: 0.42
-=======
-            borderColor: successColor,
-            backgroundColor: 'rgba(52, 211, 153, 0.15)',
-            borderWidth: 2,
-            pointRadius: 0,
-            pointHoverRadius: 0,
-            fill: true,
-            tension: 0.4
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
           }
         ]
       },
@@ -6768,7 +4135,6 @@ normalization:
         responsive: true,
         maintainAspectRatio: false,
         animation: false,
-<<<<<<< HEAD
 =======
         hover: { mode: null },
 >>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
@@ -6785,13 +4151,6 @@ normalization:
           },
           x: {
             grid: { display: false, drawBorder: false },
-=======
-            grid: { color: gridColor },
-            ticks: { color: textColor, maxTicksLimit: 5 }
-          },
-          x: {
-            grid: { display: false },
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
             ticks: { display: false }
           }
         },
@@ -6799,7 +4158,6 @@ normalization:
           legend: {
             display: true,
             position: 'top',
-<<<<<<< HEAD
             align: 'end',
             labels: {
               color: textColor,
@@ -6809,15 +4167,11 @@ normalization:
               boxHeight: 8,
               font: { weight: '600', size: 11.5 }
             }
-=======
-            labels: { color: textColor }
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
           },
           tooltip: {
             enabled: true,
             mode: 'index',
             intersect: false,
-<<<<<<< HEAD
             backgroundColor: isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(15, 23, 42, 0.95)',
             titleColor: isLight ? '#0F172A' : '#FFFFFF',
             bodyColor: textColor,
@@ -6827,13 +4181,6 @@ normalization:
             padding: 10,
             boxPadding: 4,
             usePointStyle: true
-=======
-            backgroundColor: style.getPropertyValue('--bg-dropdown').trim() || 'rgba(20, 6, 11, 0.9)',
-            titleColor: style.getPropertyValue('--text-main').trim() || '#fff',
-            bodyColor: style.getPropertyValue('--text-muted').trim() || '#e2e8f0',
-            borderColor: primaryColor,
-            borderWidth: 1
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
           }
         }
       }
@@ -6843,7 +4190,6 @@ normalization:
     telemetryInterval = setInterval(() => {
       if (state.currentRoute !== "overview") return;
       const currentEps = calculateLiveClientEps();
-<<<<<<< HEAD
 =======
       // Assume parsed rate is very close to received rate in normal conditions.
       // Ideally this would be fetched from backend metric 'events_processed_rate'
@@ -6867,12 +4213,6 @@ normalization:
     }
   });
 
-=======
-      if (telemetryChart) telemetryChart.update();
-    }, 1000);
-  }
-
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
   // --- ANALYTICS STUDIO VIEW ---
   function renderAnalyticsStudioView(container) {
     container.innerHTML = `
@@ -6884,7 +4224,6 @@ normalization:
       </div>
       
       <!-- S3 Storage Insights Widget -->
-<<<<<<< HEAD
       <div id="minioInsightsWidget" class="card" style="padding: 16px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid var(--primary-main);">
          <div>
             <h4 style="margin: 0; color: var(--text-main); font-size: 14px; font-weight:700;">S3 Storage Connectivity</h4>
@@ -6893,23 +4232,12 @@ normalization:
          <div style="text-align: right;">
             <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing:0.5px;">Bucket / Fallback</div>
             <div id="minioBucketText" style="font-weight: 700; color:var(--primary-main); font-family:var(--font-mono);">---</div>
-=======
-      <div id="minioInsightsWidget" class="card" style="padding: 16px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid #10b981;">
-         <div>
-            <h4 style="margin: 0; color: #f8fafc; font-size: 14px;">S3 Storage Connectivity</h4>
-            <div id="minioStatusText" style="font-size: 12px; color: #94a3b8; margin-top: 4px;">Checking status...</div>
-         </div>
-         <div style="text-align: right;">
-            <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase;">Bucket / Fallback</div>
-            <div id="minioBucketText" style="font-weight: 600; color:var(--primary-main);">---</div>
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
          </div>
       </div>
 
       <!-- Analytics Grid -->
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
         <div class="card" style="grid-column: 1 / -1; padding: 20px;">
-<<<<<<< HEAD
           <h3 style="font-size:14px; font-weight:700; margin-bottom:12px; color:var(--text-main);">Real-Time Throughput (EPS)</h3>
           <div style="height: 250px;"><canvas id="epsChart"></canvas></div>
         </div>
@@ -6923,27 +4251,11 @@ normalization:
         </div>
         <div class="card" style="grid-column: 1 / -1; padding: 20px;">
           <h3 style="font-size:14px; font-weight:700; margin-bottom:12px; color:var(--text-main);">Threat Logs</h3>
-=======
-          <h3>Real-Time Throughput (EPS)</h3>
-          <div style="height: 250px;"><canvas id="epsChart"></canvas></div>
-        </div>
-        <div class="card" style="padding: 20px;">
-          <h3>Severity Distribution</h3>
-          <div style="height: 250px;"><canvas id="severityChart"></canvas></div>
-        </div>
-        <div class="card" style="padding: 20px;">
-          <h3>Top Log Types / Formats</h3>
-          <div style="height: 250px;"><canvas id="sourceChart"></canvas></div>
-        </div>
-        <div class="card" style="grid-column: 1 / -1; padding: 20px;">
-          <h3>Threat Logs</h3>
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
           <div style="height: 250px;"><canvas id="threatChart"></canvas></div>
         </div>
       </div>
 
       <!-- MinIO Storage Insights & Forensics -->
-<<<<<<< HEAD
       <div class="card" style="padding: 20px; margin-bottom: 24px;">
         <h3 style="font-size:14px; font-weight:700; color:var(--text-main);">Raw Evidence & Parsed Telemetry Forensics</h3>
         <p class="text-secondary" style="font-size: 13px; margin: 4px 0 16px 0; color:var(--text-muted);">Retrieve exact, unmodified byte-for-byte original logs directly from immutable MinIO storage and inspect cryptographic verification.</p>
@@ -6951,21 +4263,11 @@ normalization:
         <div style="display: flex; gap: 10px; margin-bottom: 16px;">
           <input type="text" id="forensicEventIdInput" class="form-control mono" placeholder="Enter Event ID (e.g. EVT-1002)..." style="flex: 1; height:38px;">
           <button class="btn btn-sm btn-primary" id="btnSearchForensics" style="height:38px; font-weight: 700;">Fetch Evidence</button>
-=======
-      <div class="card" style="padding: 20px;">
-        <h3>Raw Evidence & Parsed Telemetry Forensics</h3>
-        <p class="text-secondary" style="font-size: 13px; margin-bottom: 16px;">Retrieve exact, unmodified byte-for-byte original logs directly from the immutable MinIO storage and view their structured nested key-value pairs side-by-side.</p>
-        
-        <div style="display: flex; gap: 8px; margin-bottom: 16px;">
-          <input type="text" id="forensicEventIdInput" class="input-modern" placeholder="Enter Event ID (e.g. EVT-1002)..." style="flex: 1; padding: 8px 12px; border: 1px solid var(--border-color); background: var(--bg-main); color: var(--text-main); border-radius: 4px;">
-          <button class="btn btn-sm btn-primary" id="btnSearchForensics" style="padding: 8px 16px; font-weight: 600;">Fetch Evidence</button>
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
         </div>
       </div>
 
       <!-- Cryptographic Evidence Ledger (Merkle Graph) -->
       <div class="card" style="padding: 20px; margin-bottom: 24px;">
-<<<<<<< HEAD
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap:wrap; gap:12px;">
            <div>
              <h3 style="display:flex; align-items:center; gap:8px; font-size:14px; font-weight:700; color:var(--text-main);">
@@ -6978,20 +4280,6 @@ normalization:
              <button class="btn btn-sm btn-secondary" id="btnPrevMerkleBlock" onclick="window.changeMerkleBlock(1)">← Older Block</button>
              <button class="btn btn-sm btn-secondary" id="btnNextMerkleBlock" onclick="window.changeMerkleBlock(-1)">Newer Block →</button>
              <button class="btn btn-sm btn-primary" id="btnRefreshMerkle" onclick="window.fetchAndDrawMerkleGraph()">Refresh</button>
-=======
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-           <div>
-             <h3 style="display:flex; align-items:center; gap:8px;">
-               Cryptographic Evidence Ledger (Merkle Forest)
-               <span id="merkleBlockLabel" class="badge badge-teal">Block 0</span>
-             </h3>
-             <p class="text-secondary" style="font-size: 13px;">Time-Series Pagination: Browse historical blocks of 1,000 logs.</p>
-           </div>
-           <div style="display: flex; gap: 8px;">
-             <button class="btn btn-sm btn-secondary" id="btnPrevMerkleBlock" style="padding: 6px 12px; font-weight: 600;" onclick="window.changeMerkleBlock(1)">← Older Block</button>
-             <button class="btn btn-sm btn-secondary" id="btnNextMerkleBlock" style="padding: 6px 12px; font-weight: 600;" onclick="window.changeMerkleBlock(-1)">Newer Block →</button>
-             <button class="btn btn-sm btn-primary" id="btnRefreshMerkle" style="padding: 6px 12px; font-weight: 600;" onclick="window.fetchAndDrawMerkleGraph()">Refresh</button>
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
            </div>
         </div>
         <div id="merkleGraphArea" class="merkle-graph-container">
@@ -7007,7 +4295,6 @@ normalization:
       const btext = document.getElementById('minioBucketText');
 
       if (data.status === 'healthy') {
-<<<<<<< HEAD
         if (widget) widget.style.borderLeftColor = 'var(--primary-main)';
         if (stext) stext.innerHTML = `<span style="color:var(--primary-main); font-weight:600;">${data.mode}</span> (${data.endpoint})`;
         if (btext) btext.textContent = data.bucket;
@@ -7039,26 +4326,6 @@ normalization:
       grad.addColorStop(1, 'rgba(0, 208, 132, 0.0)');
       epsGradient = grad;
     }
-=======
-        widget.style.borderLeftColor = '#10b981';
-        stext.innerHTML = `<span style="color:#10b981;">${data.mode}</span> (${data.endpoint})`;
-        btext.textContent = data.bucket;
-      } else {
-        widget.style.borderLeftColor = '#f59e0b';
-        stext.innerHTML = `<span style="color:var(--warning-main);">${data.mode}</span> (Fallback Active)`;
-        btext.textContent = 'local_fallback_dir';
-      }
-    }).catch(e => console.error("Failed to fetch MinIO stats"));
-
-    // Initialize Charts
-    const epsCtx = document.getElementById('epsChart').getContext('2d');
-    const sevCtx = document.getElementById('severityChart').getContext('2d');
-    const srcCtx = document.getElementById('sourceChart').getContext('2d');
-    const threatCtx = document.getElementById('threatChart').getContext('2d');
-
-    Chart.defaults.color = '#94a3b8';
-    Chart.defaults.font.family = "'Inter', sans-serif";
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
 
     let epsHistory = Array(60).fill(0);
     const epsChart = new Chart(epsCtx, {
@@ -7068,21 +4335,14 @@ normalization:
         datasets: [{
           label: 'Events Per Second',
           data: epsHistory,
-<<<<<<< HEAD
           borderColor: isLight ? '#0284C7' : '#00D084',
           backgroundColor: epsGradient,
           borderWidth: 2.5,
-=======
-          borderColor: '#38bdf8',
-          backgroundColor: 'rgba(56, 189, 248, 0.1)',
-          borderWidth: 2,
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
           fill: true,
           tension: 0.4,
           pointRadius: 0
         }]
       },
-<<<<<<< HEAD
       options: {
         responsive: true,
         maintainAspectRatio: false,
@@ -7093,16 +4353,12 @@ normalization:
         },
         plugins: { legend: { display: false } }
       }
-=======
-      options: { responsive: true, maintainAspectRatio: false, animation: { duration: 0 }, scales: { y: { beginAtZero: true, grid: { color: '#334155' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } }
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
     });
 
     const severityChart = new Chart(sevCtx, {
       type: 'doughnut',
       data: {
         labels: ['Critical', 'High', 'Medium', 'Low', 'Info'],
-<<<<<<< HEAD
         datasets: [{
           data: [0, 0, 0, 0, 0],
           backgroundColor: ['#EF4444', '#F59E0B', '#FBBF24', '#10B981', '#38BDF8'],
@@ -7127,18 +4383,12 @@ normalization:
           }
         }
       }
-=======
-        datasets: [{ data: [0, 0, 0, 0, 0], backgroundColor: ['#ef4444', '#f97316', '#eab308', '#3b82f6', '#64748b'], borderWidth: 0 }]
-      },
-      options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'right' } } }
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
     });
 
     const sourceChart = new Chart(srcCtx, {
       type: 'bar',
       data: {
         labels: [],
-<<<<<<< HEAD
         datasets: [{
           label: 'Format Count',
           data: [],
@@ -7157,18 +4407,12 @@ normalization:
         },
         plugins: { legend: { display: false } }
       }
-=======
-        datasets: [{ label: 'Format Count', data: [], backgroundColor: '#38bdf8', borderRadius: 4 }]
-      },
-      options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', scales: { x: { beginAtZero: true, grid: { color: '#334155' } }, y: { grid: { display: false } } }, plugins: { legend: { display: false } } }
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
     });
 
     const threatChart = new Chart(threatCtx, {
       type: 'bar',
       data: {
         labels: [],
-<<<<<<< HEAD
         datasets: [{
           label: 'Threat Count',
           data: [],
@@ -7184,14 +4428,6 @@ normalization:
           y: { beginAtZero: true, grid: { color: chartGridColor } },
           x: { grid: { display: false } }
         },
-=======
-        datasets: [{ label: 'Threat Count', data: [], backgroundColor: '#ef4444', borderRadius: 4 }]
-      },
-      options: { 
-        responsive: true, 
-        maintainAspectRatio: false, 
-        scales: { y: { beginAtZero: true, grid: { color: '#334155' } }, x: { grid: { display: false } } }, 
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
         plugins: { legend: { display: false } },
         onClick: (evt, activeElements) => {
           if (activeElements.length > 0) {
@@ -7322,7 +4558,6 @@ normalization:
          
          tree.reverse(); // Root at index 0
          
-<<<<<<< HEAD
          const activeTheme = document.documentElement.getAttribute("data-theme") || "dark";
          const isLuxury = (activeTheme === "luxury");
          const isLight = (activeTheme === "light");
@@ -7334,9 +4569,6 @@ normalization:
          const tooltipBorder = isLuxury ? "1px solid rgba(217, 119, 6, 0.4)" : (isLight ? "none" : "1px solid rgba(0, 208, 132, 0.4)");
 
          graphArea.innerHTML = `<div style="position:relative; width:100%; height:450px; background:${containerBg}; border-radius:12px; border: 1px solid ${containerBorder}; cursor: crosshair; overflow:hidden;" id="canvasContainer"><canvas id="merkleCanvas" style="display:block;"></canvas><div id="graphTooltip" style="position:absolute; display:none; background:${tooltipBg}; color:${tooltipColor}; border:${tooltipBorder}; padding:6px 12px; border-radius:6px; font-size:11px; pointer-events:none; z-index:10; font-family:var(--font-mono); white-space:nowrap; box-shadow:0 8px 24px rgba(0,0,0,0.4);"></div></div>`;
-=======
-         graphArea.innerHTML = '<div style="position:relative; width:100%; height:450px; background:#f8fafc; border-radius:8px; border: 1px solid #e2e8f0; cursor: crosshair;" id="canvasContainer"><canvas id="merkleCanvas" style="display:block;"></canvas><div id="graphTooltip" style="position:absolute; display:none; background:rgba(0,0,0,0.8); color:#fff; padding:6px 10px; border-radius:4px; font-size:11px; pointer-events:none; z-index:10; font-family:monospace; white-space:nowrap;"></div></div>';
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
          
          const container = document.getElementById('canvasContainer');
          const canvas = document.getElementById('merkleCanvas');
@@ -7369,7 +4601,6 @@ normalization:
              positions.push(levelPos);
          }
          
-<<<<<<< HEAD
          // Theme Palette Variables for Canvas
          const edgeColor = isLuxury ? "rgba(217, 119, 6, 0.25)" : (isLight ? "rgba(2, 132, 199, 0.22)" : "rgba(0, 208, 132, 0.20)");
          const rootColor = isLuxury ? "#B45309" : (isLight ? "#DC2626" : "#EF4444");
@@ -7379,22 +4610,6 @@ normalization:
          const lensBg = isLuxury ? "#FCFAF1" : (isLight ? "#F8FAFC" : "#080C14");
          const lensBorder = isLuxury ? "rgba(217, 119, 6, 0.85)" : (isLight ? "rgba(2, 132, 199, 0.85)" : "rgba(0, 208, 132, 0.85)");
 
-=======
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
-         // 1. Main render loop (Vector Magnifier)
-         let mouseX = -1000;
-         let mouseY = -1000;
-         let activeNode = null;
-         const lensRadius = 80;
-         const zoom = 3.0; // 3x true vector magnification
-         
-         function drawGraphPaths(isMagnified = false) {
-             // Draw Edges
-<<<<<<< HEAD
-             ctx.strokeStyle = edgeColor;
-=======
-             ctx.strokeStyle = 'rgba(100, 116, 139, 0.2)';
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
              ctx.lineWidth = isMagnified ? 1.5 / zoom : 1; // Keep lines crisp
              
              ctx.beginPath();
@@ -7429,21 +4644,12 @@ normalization:
                      }
                      
                      ctx.beginPath();
-<<<<<<< HEAD
                      const radius = p.isRoot ? 4.5 : (p.isLeaf ? 2 : 2.5);
                      ctx.arc(p.x, p.y, radius, 0, 2 * Math.PI);
                      
                      if (p.isRoot) ctx.fillStyle = rootColor;
                      else if (p.isLeaf) ctx.fillStyle = p.hash === '0000000000000000000000000000000000000000000000000000000000000000' ? (isLuxury ? 'rgba(217,119,6,0.2)' : 'rgba(0,208,132,0.15)') : leafColor;
                      else ctx.fillStyle = innerColor;
-=======
-                     const radius = p.isRoot ? 4 : (p.isLeaf ? 1.5 : 2);
-                     ctx.arc(p.x, p.y, radius, 0, 2 * Math.PI);
-                     
-                     if (p.isRoot) ctx.fillStyle = '#ef4444';
-                     else if (p.isLeaf) ctx.fillStyle = p.hash === '0000000000000000000000000000000000000000000000000000000000000000' ? 'rgba(16, 185, 129, 0.1)' : '#10b981';
-                     else ctx.fillStyle = '#475569';
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
                      
                      ctx.fill();
                      
@@ -7451,11 +4657,7 @@ normalization:
                      if (isMagnified && activeNode && activeNode.x === p.x && activeNode.y === p.y) {
                          ctx.beginPath();
                          ctx.arc(p.x, p.y, radius + 2/zoom, 0, 2 * Math.PI);
-<<<<<<< HEAD
                          ctx.strokeStyle = activeHighlight;
-=======
-                         ctx.strokeStyle = '#3b82f6';
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
                          ctx.lineWidth = 2 / zoom;
                          ctx.stroke();
                      }
@@ -7479,11 +4681,7 @@ normalization:
                  ctx.clip();
                  
                  // 2. Fill background inside lens to hide base graph
-<<<<<<< HEAD
                  ctx.fillStyle = lensBg;
-=======
-                 ctx.fillStyle = '#f8fafc';
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
                  ctx.fill();
                  
                  // 3. Apply mathematical transformation for infinite resolution zooming
@@ -7496,22 +4694,11 @@ normalization:
                  
                  ctx.restore();
                  
-<<<<<<< HEAD
                  // Draw lens glass border
                  ctx.beginPath();
                  ctx.arc(mouseX, mouseY, lensRadius, 0, 2 * Math.PI);
                  ctx.lineWidth = 3;
                  ctx.strokeStyle = lensBorder;
-=======
-                 // Draw lens glass border & shadow
-                 ctx.beginPath();
-                 ctx.arc(mouseX, mouseY, lensRadius, 0, 2 * Math.PI);
-                 ctx.lineWidth = 4;
-                 ctx.strokeStyle = 'rgba(255,255,255,0.8)';
-                 ctx.stroke();
-                 ctx.lineWidth = 1;
-                 ctx.strokeStyle = 'rgba(0,0,0,0.2)';
->>>>>>> 3831b7383e78d54d129d8499c87cadb87be6e6c0
                  ctx.stroke();
              }
          }
