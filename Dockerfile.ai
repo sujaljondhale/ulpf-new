@@ -1,4 +1,3 @@
-
 FROM ollama/ollama:latest
 
 # Expose Ollama local API port

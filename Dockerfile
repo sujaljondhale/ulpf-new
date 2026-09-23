@@ -1,3 +1,8 @@
+# ==============================================================================
+# ULPF — Universal Log Pre-processing Framework
+# Production Container Image (FastAPI Backend + Web Dashboard)
+# ==============================================================================
+
 FROM python:3.12-slim AS base
 
 # Set environment variables for non-interactive and unbuffered python execution

@@ -1,0 +1,14 @@
+attachSihDemoEventHandlers
+clearTourHighlights
+goToTourStep
+highlightAndScrollTarget
+initDemoGuideController
+renderParserRegistryView
+renderSihDemoView
+startAutoStep
+startDemoTour
+stopAutoStep
+stopDemoTour
+toggleAutoStep
+toggleTourAutoPlay
+updateDemoGuideUI

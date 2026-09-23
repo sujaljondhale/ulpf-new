@@ -95,20 +95,7 @@
 
       </nav>
 
-      <div class="sidebar-footer">
-        <a href="http://localhost:8050/" target="_blank" class="btn btn-sm btn-primary sidebar-simulator-btn" style="width:100%; margin-bottom:12px; display:flex; align-items:center; justify-content:center; gap:8px; text-decoration:none; font-weight:700;" title="Open Protocol Simulator and Custom Log Studio on port 8050">
-          <svg class="svg-icon" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-          <span>Testing Simulator (:8050)</span>
-        </a>
-        <div class="status-indicator">
-          <span class="pulse-dot"></span>
-          <span class="status-text">ULPF ONLINE</span>
-        </div>
-        <div class="sidebar-info">
-          <div>Version: 1.0.0 Enterprise (Phase 8)</div>
-          <div>Environment: Production</div>
-        </div>
-      </div>
+
     </aside>
 
     <!-- MAIN CONTENT AREA -->
@@ -122,16 +109,18 @@
           <input type="text" id="globalSearchInput" placeholder="Search by Event ID, IP, SHA-256, Vendor, Raw text..." />
         </div>
         <div class="top-bar-controls">
-          <a href="http://localhost:8050/" target="_blank" class="btn btn-sm btn-primary" style="text-decoration: none; font-weight:700;" title="Open Protocol Simulator & Testing Hub on port 8050">
-            <svg class="svg-icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-            <span>Testing Hub (:8050)</span>
-          </a>
+
           <div class="theme-selector-wrap" style="display:flex; align-items:center; gap:6px;">
             <select id="themeSelector" class="theme-select-btn" title="Switch SOC Theme (Dark / Light / Luxury)">
               <option value="dark" selected>Dark (Emerald Glow)</option>
               <option value="light">Light (Crystal Glass)</option>
               <option value="luxury">Luxury (Champagne Gold)</option>
             </select>
+            <button id="btnThemeToggle" class="btn btn-sm btn-secondary" title="Switch Theme">
+              <span id="themeToggleIcon">🌙</span>
+              <span id="themeToggleText">Dark</span>
+            </button>
+
           </div>
           <a href="#/human-verification" class="btn btn-sm btn-secondary" style="text-decoration: none; border-color: rgba(56, 189, 248, 0.35); color: var(--amber-main);" title="Human Verification Review Queue">
             <span>Human Review</span>
@@ -314,6 +303,29 @@
 
   <!-- DEDICATED HIGH-RESOLUTION PRINTABLE REPORT CONTAINER FOR PDF DOWNLOAD -->
   <div id="printableReportContainer"></div>
+
+  <!-- DEMO TOUR DOCK -->
+  <div id="demoExplanationDock" class="modal-overlay hidden" style="align-items: flex-end; padding-bottom: 20px;">
+    <div class="modal-card" style="width: 600px; max-width: 90%; background: var(--bg-card); border: 1px solid var(--primary-main); box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+      <div class="modal-header" style="border-bottom: 1px solid var(--border-color); padding: 12px 20px;">
+        <h3 style="margin: 0; font-size: 16px; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+          <span style="color: var(--primary-main);">🎯</span> <span id="tourStepTitle">Demo Tour</span>
+        </h3>
+        <button id="btnCloseDemoTour" class="btn-close" style="font-size: 20px;">&times;</button>
+      </div>
+      <div class="modal-body" style="padding: 20px; font-size: 14px; line-height: 1.6; color: var(--text-muted);" id="tourStepContent">
+        Welcome to the ULPF SIH Demo Tour.
+      </div>
+      <div class="modal-footer" style="padding: 12px 20px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+        <button id="btnTourAutoPlay" class="btn btn-sm btn-secondary">▶ Auto-Play</button>
+        <div style="display: flex; gap: 8px;">
+          <button id="btnTourPrev" class="btn btn-sm btn-secondary">Previous</button>
+          <button id="btnTourAction" class="btn btn-sm btn-primary">Try it</button>
+          <button id="btnTourNext" class="btn btn-sm btn-secondary">Next</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script src="app.js?v=1.0.6_phase12"></script>
 </body>
