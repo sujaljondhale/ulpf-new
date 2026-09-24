@@ -1216,13 +1216,24 @@ document.addEventListener("DOMContentLoaded", () => {
   // ==============================================================================
   // SETTINGS & REMOTE SERVER API CONTROLLER (PERSISTENT VIA LOCALSTORAGE)
   // ==============================================================================
+  const isCloudHost = (typeof window !== "undefined" && window.location)
+    ? (window.location.hostname.endsWith(".onrender.com") || window.location.protocol === "https:")
+    : false;
+  const initialHost = isCloudHost
+    ? (window.location.hostname || "ulpf-new-dlri.onrender.com")
+    : "ulpf-new-dlri.onrender.com";
+  const initialScheme = (typeof window !== "undefined" && window.location && window.location.protocol === "https:")
+    ? "https"
+    : (isCloudHost ? "https" : "http");
+  const initialApiPort = (initialScheme === "https") ? 443 : 8000;
+
   const DEFAULT_SETTINGS = {
-    scheme: "http",
-    host: "127.0.0.1",
-    apiPort: 8000,
+    scheme: initialScheme,
+    host: initialHost,
+    apiPort: initialApiPort,
     udpPort: 5140,
     tcpPort: 5141,
-    timeout: 3000,
+    timeout: 5000,
     logsInterval: 50,
     autoProbe: 5000,
   };
@@ -1383,10 +1394,13 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const saved = localStorage.getItem("ulpf_testbed_settings");
       if (saved) {
-        testbedSettings = { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
-        if (testbedSettings.host === "host.docker.internal") {
-          testbedSettings.host = "127.0.0.1";
+        const parsed = JSON.parse(saved);
+        if (isCloudHost && (parsed.host === "127.0.0.1" || parsed.host === "localhost" || parsed.host === "host.docker.internal")) {
+          parsed.host = window.location.hostname || "ulpf-new-dlri.onrender.com";
+          parsed.scheme = "https";
+          parsed.apiPort = 443;
         }
+        testbedSettings = { ...DEFAULT_SETTINGS, ...parsed };
       }
     } catch (e) { }
 
@@ -2540,11 +2554,12 @@ print("Ingestion Ack:", resp.json())`,
       fileToUpload = new File([blob], fname, { type: "text/plain" });
     }
 
-    const host = uploadTargetHost ? uploadTargetHost.value.trim() : "127.0.0.1";
-    const port = uploadTargetPort ? parseInt(uploadTargetPort.value.trim(), 10) : 8000;
+    const host = uploadTargetHost ? uploadTargetHost.value.trim() : (testbedSettings.host || "ulpf-new-dlri.onrender.com");
+    const port = uploadTargetPort ? parseInt(uploadTargetPort.value.trim(), 10) : (testbedSettings.apiPort || 443);
     const modeEl = document.querySelector('input[name="uploadTransportMode"]:checked');
     const mode = modeEl ? modeEl.value : "http_upload";
     const delay = streamingDelaySlider ? parseInt(streamingDelaySlider.value, 10) : 0;
+    const scheme = testbedSettings.scheme || (window.location.protocol === "https:" ? "https" : "http");
 
     if (uploadStatusBadge) {
       uploadStatusBadge.className = "pipeline-status-badge running";
@@ -2552,7 +2567,8 @@ print("Ingestion Ack:", resp.json())`,
     }
     if (btnUploadFileSubmit) btnUploadFileSubmit.disabled = true;
 
-    logUploadConsole(`Initiating ${mode.toUpperCase()} for "${fileToUpload.name}" (${(fileToUpload.size / 1024).toFixed(1)} KB) to ${host}:${port}...`, "info");
+    const t0 = performance.now();
+    logUploadConsole(`Initiating ${mode.toUpperCase()} for "${fileToUpload.name}" (${(fileToUpload.size / 1024).toFixed(1)} KB) to ${scheme}://${host}:${port}...`, "info");
 
     const formData = new FormData();
     formData.append("file", fileToUpload);
@@ -2560,19 +2576,60 @@ print("Ingestion Ack:", resp.json())`,
     formData.append("port", port);
     formData.append("mode", mode);
     formData.append("delay_ms", delay);
-    formData.append("scheme", testbedSettings.scheme || "http");
+    formData.append("scheme", scheme);
 
     try {
-      const res = await fetch("/api/test/upload-file", {
-        method: "POST",
-        body: formData,
-      });
+      let data = null;
+      let res = null;
 
-      const data = await res.json();
-      if (btnUploadFileSubmit) btnUploadFileSubmit.disabled = false;
+      // Strategy 1: Attempt ingestion through /api/test/upload-file
+      try {
+        res = await fetch("/api/test/upload-file", {
+          method: "POST",
+          body: formData,
+        });
+        if (res.ok) {
+          data = await res.json();
+        }
+      } catch (err) {
+        // Fallback to direct upload API
+      }
 
-      if (!res.ok || data.status === "error") {
-        throw new Error(data.error || data.detail || `HTTP ${res.status}`);
+      // Strategy 2: If /api/test/upload-file is not available (e.g. direct cloud deployment or static host),
+      // post directly to /api/v1/upload
+      if ((!data || data.status === "error") && mode === "http_upload") {
+        const directFormData = new FormData();
+        directFormData.append("file", fileToUpload);
+        
+        let targetUploadUrl = "/api/v1/upload";
+        const cleanHost = host.replace(/^https?:\/\//, "").replace(/\/+$/, "");
+        if (cleanHost && cleanHost !== window.location.hostname && cleanHost !== "127.0.0.1" && cleanHost !== "localhost") {
+          const portSuffix = (scheme === "https" && (port === 443 || port === 8000)) || (scheme === "http" && port === 80) ? "" : `:${port}`;
+          targetUploadUrl = `${scheme}://${cleanHost}${portSuffix}/api/v1/upload`;
+        }
+
+        const directRes = await fetch(targetUploadUrl, {
+          method: "POST",
+          body: directFormData,
+        });
+        if (directRes.ok) {
+          const directData = await directRes.json();
+          data = {
+            status: "success",
+            lines_processed: directData.lines_processed || directData.count || 0,
+            success_count: directData.success_count || directData.lines_processed || 0,
+            unparsed_count: directData.unparsed_count || 0,
+            latency_ms: directData.latency_ms || Math.round(performance.now() - t0),
+            sample_events: directData.sample_events || [],
+          };
+        } else {
+          const errText = await directRes.text();
+          throw new Error(`Upload API Error (${directRes.status}): ${errText}`);
+        }
+      }
+
+      if (!data || data.status === "error") {
+        throw new Error((data && (data.error || data.detail)) || "Failed to process log file upload");
       }
 
       // Success
@@ -2581,12 +2638,13 @@ print("Ingestion Ack:", resp.json())`,
         uploadStatusBadge.textContent = "PROCESSED [OK]";
       }
 
+      const latency = data.latency_ms !== undefined ? data.latency_ms : Math.round(performance.now() - t0);
       if (uploadStatProcessed) uploadStatProcessed.textContent = data.lines_processed || 0;
       if (uploadStatSuccess) uploadStatSuccess.textContent = data.success_count || 0;
       if (uploadStatUnparsed) uploadStatUnparsed.textContent = data.unparsed_count || data.failed_count || 0;
-      if (uploadStatLatency) uploadStatLatency.textContent = `${data.latency_ms || 0} ms`;
+      if (uploadStatLatency) uploadStatLatency.textContent = `${latency} ms`;
 
-      logUploadConsole(`Ingestion complete in ${data.latency_ms} ms. Lines: ${data.lines_processed}, Success: ${data.success_count}, Unparsed/Errors: ${data.unparsed_count || data.failed_count || 0}`, "success");
+      logUploadConsole(`Ingestion complete in ${latency} ms. Lines: ${data.lines_processed}, Success: ${data.success_count}, Unparsed/Errors: ${data.unparsed_count || data.failed_count || 0}`, "success");
 
       // Render sample parsed events if available
       if (data.sample_events && data.sample_events.length > 0 && sampleEventsWrapper && sampleEventsList) {
@@ -2613,13 +2671,14 @@ print("Ingestion Ack:", resp.json())`,
       if (window.renderAuditHistoryTable) window.renderAuditHistoryTable();
 
     } catch (e) {
-      if (btnUploadFileSubmit) btnUploadFileSubmit.disabled = false;
       if (uploadStatusBadge) {
         uploadStatusBadge.className = "pipeline-status-badge fail";
         uploadStatusBadge.textContent = "FAILED [ERROR]";
       }
       logUploadConsole(`Upload failed: ${e.message}`, "error");
       showToast(`Upload failed: ${e.message}`);
+    } finally {
+      if (btnUploadFileSubmit) btnUploadFileSubmit.disabled = false;
     }
   }
 

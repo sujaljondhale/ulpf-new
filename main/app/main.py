@@ -142,3 +142,10 @@ def read_root():
 dashboard_dir = Path(__file__).parent.parent / "dashboard"
 if dashboard_dir.exists():
     app.mount("/dashboard", StaticFiles(directory=str(dashboard_dir), html=True), name="dashboard")
+
+# Mount Testing Website Hub static directory if present
+testing_dir = Path(__file__).parent.parent.parent / "testing" / "web"
+if not testing_dir.exists():
+    testing_dir = Path(__file__).parent.parent / "testing" / "web"
+if testing_dir.exists():
+    app.mount("/testing", StaticFiles(directory=str(testing_dir), html=True), name="testing_web")
