@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ULPF Virtual Device Simulator & Testbed</title>
+  <title>Kosmoporos Virtual Device Simulator & Testbed</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -31,7 +31,7 @@
           <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
         </svg></div>
       <div class="brand-text-wrap">
-        <div class="brand-title">ULPF Virtual Device Simulator &amp; Testbed</div>
+        <div class="brand-title">Kosmoporos Virtual Device Simulator &amp; Testbed</div>
         <div class="brand-subtitle-row">
           <span class="brand-badge">CORE 2</span>
           <span class="brand-badge"
@@ -1477,7 +1477,7 @@
           <div>
             <h2
               style="font-size:18px; font-weight:800; color:var(--text-primary); margin:0; display:flex; align-items:center; gap:8px;">
-              <span>ULPF Automated Testing & Verification Pipeline</span>
+              <span>Kosmoporos Automated Testing & Verification Pipeline</span>
             </h2>
             <p style="font-size:12.5px; color:var(--text-secondary); margin-top:4px;">
               Direct integration of <code>test_pipeline.bat</code> / <code>testing/run_pipeline.py</code>. Run full
@@ -1797,15 +1797,8 @@
               recognition, replay streams, or drop into monitored folders.
             </p>
           </div>
-          <div style="display:flex; gap:8px;">
-            <button type="button" class="btn-secondary" id="btnUploadFileReset"
-              style="font-size:12px; padding:6px 14px;">
-              <span>Reset / Clear</span>
-            </button>
-            <button type="button" class="btn-primary" id="btnUploadFileSubmit"
-              style="font-size:12px; padding:6px 18px;">
-              <span>Start Ingestion / Upload</span>
-            </button>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <span class="badge badge-cyan badge-sm" style="font-weight:600;">BATCH &amp; STREAM INGESTION</span>
           </div>
         </div>
       </div>
@@ -1900,7 +1893,7 @@
               <div style="display:flex; align-items:center; gap:8px;">
                 <span id="metaDetectedFormat" class="badge badge-cyan">DETECTED: CEF</span>
                 <button type="button" class="btn-secondary" id="btnRemoveSelectedFile"
-                  style="font-size:11px; padding:3px 8px;" title="Clear selected file"></button>
+                  style="font-size:11px; padding:4px 10px; border-radius:6px;" title="Clear selected file">&times; Clear</button>
               </div>
             </div>
           </div>
@@ -1909,7 +1902,7 @@
           <div class="card p-md">
             <h3 class="section-title" style="margin-bottom:8px;">Ingestion Transport Mode</h3>
             <p class="section-subtitle" style="margin-bottom:14px;">Select how the log file contents should be
-              transmitted to ULPF Core:</p>
+              transmitted to Kosmoporos Core:</p>
 
             <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:16px;">
               <label
@@ -2008,8 +2001,23 @@
             </div>
             <div class="editor-wrapper">
               <textarea id="uploadContentEditor" class="editor-textarea"
-                style="height:220px; font-family:var(--font-mono); font-size:12px;"
+                style="height:200px; font-family:var(--font-mono); font-size:12px;"
                 placeholder="Upload a log file or click a sample dataset above to inspect and edit lines here..."></textarea>
+            </div>
+            <!-- ACTION BUTTONS: Positioned directly under Raw Payload Editor for immediate, easy sending -->
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px; gap:12px; flex-wrap:wrap; border-top:1px solid var(--border-subtle); padding-top:14px;">
+              <button type="button" class="btn-secondary" id="btnUploadFileReset"
+                style="font-size:12px; padding:8px 16px;">
+                <span>Reset / Clear</span>
+              </button>
+              <button type="button" class="btn-primary" id="btnUploadFileSubmit"
+                style="font-size:13px; font-weight:700; padding:10px 24px; box-shadow:0 0 16px rgba(56,189,248,0.35); display:inline-flex; align-items:center; gap:8px; cursor:pointer;">
+                <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:16px; height:16px;">
+                  <line x1="22" y1="2" x2="11" y2="13"/>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                </svg>
+                <span>Start Ingestion / Upload</span>
+              </button>
             </div>
           </div>
 
@@ -2018,7 +2026,7 @@
             <div class="section-header" style="margin-bottom:12px;">
               <div>
                 <h3 class="section-title">Server Ingestion Receipt & Results</h3>
-                <p class="section-subtitle">Real-time confirmation returned by ULPF processing pipeline</p>
+                <p class="section-subtitle">Real-time confirmation returned by Kosmoporos processing pipeline</p>
               </div>
               <span id="uploadStatusBadge" class="pipeline-status-badge idle">IDLE</span>
             </div>
@@ -2244,7 +2252,7 @@
   <footer
     style="margin-top:48px; padding:24px 20px; text-align:center; border-top:1px solid var(--border-subtle); color:var(--text-secondary); font-size:12px; background:var(--bg-card);">
     <div style="display:flex; justify-content:center; align-items:center; gap:12px; flex-wrap:wrap;">
-      <span style="font-weight:600; color:var(--text-primary);">ULPF — Universal Log Pre-processing Framework</span>
+      <span style="font-weight:600; color:var(--text-primary);">Kosmoporos — Universal Log Pre-processing Framework</span>
       <span>•</span>
       <span style="font-weight:700; color:var(--accent-cyan);">Version 1.0.0 Enterprise (Phase 8 Production)</span>
       <span>•</span>
