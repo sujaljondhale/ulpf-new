@@ -1,6 +1,6 @@
 # ==============================================================================
-# ULPF — Universal Log Pre-processing Framework
-# Production Container Image (FastAPI Backend + Web Dashboard)
+# ULPF Testing Simulator & Protocol Testing Hub
+# Production Container Image for Render Cloud Deployment (Testing Site)
 # ==============================================================================
 
 FROM python:3.12-slim AS base
@@ -9,9 +9,8 @@ FROM python:3.12-slim AS base
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
-    ULPF_ENV=production \
-    ULPF_API_HOST=0.0.0.0 \
-    ULPF_API_PORT=8000
+    TESTING_HOST=0.0.0.0 \
+    TESTING_PORT=8050
 
 WORKDIR /app
 
@@ -25,27 +24,24 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Create non-root system user for security
-RUN groupadd -r ulpfgroup && useradd -r -g ulpfgroup -d /app -s /sbin/nologin ulpfuser
+RUN groupadd -r appuser && useradd -r -u 1000 -g appuser appuser
 
-# Create persistent storage directory and set permissions
-RUN mkdir -p /app/storage/raw && chown -R ulpfuser:ulpfgroup /app
+# Create persistent storage directories and set permissions
+RUN mkdir -p /app/storage/raw /app/storage/logs && chown -R appuser:appuser /app
 
-# Copy application source code from main/ and testing/
-COPY --chown=ulpfuser:ulpfgroup main/ .
-COPY --chown=ulpfuser:ulpfgroup testing/ ./testing/
+# Copy application source code
+COPY --chown=appuser:appuser . .
 
 # Switch to non-root user
-USER ulpfuser
+USER appuser
 
-# Expose API/UI port and Syslog network collector ports
-EXPOSE 8000
-EXPOSE 5140/udp
-EXPOSE 5141
+# Expose Simulator Web Application Port
+EXPOSE 8050
 
-# Docker Healthcheck against liveness endpoint
-HEALTHCHECK --interval=20s --timeout=5s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:8000/api/v1/health/live || exit 1
+# Docker Healthcheck against testing web root
+HEALTHCHECK --interval=15s --timeout=5s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:${PORT:-8050}/ || exit 1
 
-# Start ULPF Unified API Server & Web Dashboard
-# PORT env var is used by Render; defaults to ULPF_API_PORT (8000) on other platforms
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-${ULPF_API_PORT:-8000}} --no-access-log"]
+# Launch the Simulator Web Application & API Hub
+# PORT env var is dynamically injected by Render
+CMD ["sh", "-c", "python testing/run_testing.py"]

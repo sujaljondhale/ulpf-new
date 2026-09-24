@@ -8,16 +8,16 @@ import sys
 import os
 from pathlib import Path
 
-# Add testing/ and testing/server to sys.path
+# Add root, testing/, testing/server, and main/ to sys.path
 TESTING_DIR = Path(__file__).resolve().parent
 SERVER_DIR = TESTING_DIR / "server"
+ROOT_DIR = TESTING_DIR.parent
 
-if str(TESTING_DIR) not in sys.path:
-    sys.path.insert(0, str(TESTING_DIR))
-if str(SERVER_DIR) not in sys.path:
-    sys.path.insert(0, str(SERVER_DIR))
+for p in [ROOT_DIR, TESTING_DIR, SERVER_DIR, ROOT_DIR / "main"]:
+    if str(p) not in sys.path:
+        sys.path.insert(0, str(p))
 
-os.chdir(TESTING_DIR)
+os.chdir(ROOT_DIR)
 
 # Silence Windows asyncio ProactorEventLoop WinError 10054 on sudden client socket disconnects
 if sys.platform == "win32":

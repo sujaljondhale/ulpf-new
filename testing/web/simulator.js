@@ -1216,21 +1216,10 @@ document.addEventListener("DOMContentLoaded", () => {
   // ==============================================================================
   // SETTINGS & REMOTE SERVER API CONTROLLER (PERSISTENT VIA LOCALSTORAGE)
   // ==============================================================================
-  const isCloudHost = (typeof window !== "undefined" && window.location)
-    ? (window.location.hostname.endsWith(".onrender.com") || window.location.protocol === "https:")
-    : false;
-  const initialHost = isCloudHost
-    ? (window.location.hostname || "ulpf-new-dlri.onrender.com")
-    : "ulpf-new-dlri.onrender.com";
-  const initialScheme = (typeof window !== "undefined" && window.location && window.location.protocol === "https:")
-    ? "https"
-    : (isCloudHost ? "https" : "http");
-  const initialApiPort = (initialScheme === "https") ? 443 : 8000;
-
   const DEFAULT_SETTINGS = {
-    scheme: initialScheme,
-    host: initialHost,
-    apiPort: initialApiPort,
+    scheme: "http",
+    host: "127.0.0.1",
+    apiPort: 8000,
     udpPort: 5140,
     tcpPort: 5141,
     timeout: 5000,
@@ -1275,7 +1264,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Dynamically update server redirect links (e.g. Nav and Inspect on Server buttons)
-  // to match the exact protocol, host, and port configured in target-server-banner
+  // to match the exact protocol, host, and port configured in target-server-banner (targeting VM backend)
   function updateServerRedirectLinks() {
     const protoEl = document.getElementById("targetProtocolSelect");
     const hostEl = document.getElementById("targetHostInput");
@@ -1284,18 +1273,22 @@ document.addEventListener("DOMContentLoaded", () => {
     const scheme = (protoEl?.value || testbedSettings.scheme || "http").toLowerCase();
     const host = (hostEl?.value.trim() || testbedSettings.host || "127.0.0.1");
     const port = portEl?.value || testbedSettings.apiPort || 8000;
-    const serverBaseUrl = `${scheme}://${host}:${port}`;
+    const serverBaseUrl = (scheme === "https" && port == 443) || (scheme === "http" && port == 80)
+      ? `${scheme}://${host}`
+      : `${scheme}://${host}:${port}`;
 
     const navDashboardLink = document.getElementById("linkNavMainDashboard") || document.querySelector(".nav-link-server");
     if (navDashboardLink) {
       navDashboardLink.href = `${serverBaseUrl}/dashboard/index.html#/overview`;
-      navDashboardLink.title = `Open Main Server SOC Dashboard at ${serverBaseUrl}`;
+      navDashboardLink.title = `Open VM Main SOC Dashboard at ${serverBaseUrl}`;
+      navDashboardLink.target = "_blank";
     }
 
     const inspectServerLink = document.getElementById("linkInspectOnServer") || document.querySelector('a[href*="/dashboard/index.html#/logs"]');
     if (inspectServerLink) {
       inspectServerLink.href = `${serverBaseUrl}/dashboard/index.html#/logs`;
-      inspectServerLink.title = `Inspect on Server at ${serverBaseUrl}`;
+      inspectServerLink.title = `Inspect on VM Server at ${serverBaseUrl}`;
+      inspectServerLink.target = "_blank";
     }
   }
 
