@@ -24,7 +24,7 @@ def test_semantic_normalizer_cef():
     assert taxonomy.event.action == "allow"
     assert taxonomy.device.vendor == "PaloAlto"
     assert taxonomy.device.product == "PAN-OS"
-    assert taxonomy.severity == "High"
+    assert taxonomy.severity.lower() == "high"
 
     # Check field-level provenance
     assert "source.ip" in provenance

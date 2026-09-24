@@ -1972,7 +1972,7 @@ print("Ingestion Ack:", resp.json())`,
     box.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px; margin-bottom:12px;">
         <div>
-          <h3 style="font-size:15px; font-weight:700; color:#F1F5F9; margin-bottom:4px;">${g.title}</h3>
+          <h3 style="font-size:15px; font-weight:700; color:var(--text-primary); margin-bottom:4px; font-family:var(--font-heading);">${g.title}</h3>
           <p style="font-size:12px; color:var(--text-secondary); margin:0;">${g.description}</p>
         </div>
         <span class="badge badge-teal" style="font-size:11px; font-family:var(--font-mono);">${g.protocol}</span>
@@ -2454,7 +2454,7 @@ print("Ingestion Ack:", resp.json())`,
             card.innerHTML = `
               <div class="sample-file-title">
                 <span>${escapeHtml(s.name)}</span>
-                <span class="badge" style="background:rgba(56,189,248,0.2); color:var(--accent-blue);">${escapeHtml(s.format)}</span>
+                <span class="badge badge-cyan badge-sm">${escapeHtml(s.format)}</span>
               </div>
               <div class="sample-file-desc">${escapeHtml(s.description)}</div>
             `;

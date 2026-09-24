@@ -234,7 +234,7 @@ def build_pdf(filename="ULPF_SIH26156_Master_Report.pdf"):
     elements.append(Paragraph("7. Complete User & Operational Guide", h1_style))
     cmd_guide = (
         "# 1. Install Dependencies & Run Tests<br/>"
-        "cd C:\\Users\\tommy\\.gemini\\antigravity-ide\\scratch\\ulpf<br/>"
+        "cd /app/ulpf-platform<br/>"
         "python -m pip install -r requirements.txt<br/>"
         "python -m pytest -v tests/<br/><br/>"
         "# 2. Run Synthetic Log Simulator & CLI Engine<br/>"

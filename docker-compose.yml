@@ -1,11 +1,28 @@
+version: "3.9"
+
+# ==============================================================================
+# ULPF (Universal Log Pre-processing Framework) Enterprise Production Stack
+# Production Microservices Architecture:
+#   - ulpf-api: FastAPI Unified SOC Ingestion Gateway (Port 8000, 5140/udp, 5141)
+#   - ulpf-worker: Scale-Out Distributed Log Streaming & Parsing Worker
+#   - redpanda: Ultra High-Throughput Event Streaming Bus (Kafka API, Port 9092)
+#   - redpanda-console: Visual Event Stream, Partition & Topic Explorer (Port 8085)
+#   - redis: In-Memory High-Speed Cache, Rate Limiter & Message Broker (Port 6379)
+#   - minio: Immutable S3 Raw Evidence Storage & Forensics (Port 9000/9001)
+#   - opensearch: Normalized Analytics & Search Cluster (Port 9200)
+#   - opensearch-dashboards: SIEM Visualization Console (Port 5601, profile: analytics)
+#   - ulpf-ai: Sovereign Local LLM AI Engine (Ollama Qwen 7B, Port 11434, profile: ai)
+# ==============================================================================
+
 services:
   # ----------------------------------------------------------------------------
-  # 1. ULPF Unified API Engine & Web Dashboard
+  # 1. ULPF Unified Ingestion Gateway & Dashboard (FastAPI Core)
   # ----------------------------------------------------------------------------
   ulpf-api:
     build:
       context: .
       dockerfile: Dockerfile
+    image: ulpf-api:latest
     container_name: ulpf-api
     ports:
       - "8000:8000"
@@ -13,10 +30,12 @@ services:
       - "5141:5141"
     environment:
       - ULPF_ENV=production
-      - ANYIO_MAX_THREADS=10
+      - ANYIO_MAX_THREADS=16
       - ULPF_DEBUG=false
       - ULPF_API_HOST=0.0.0.0
       - ULPF_API_PORT=8000
+      - REDIS_ENABLED=true
+      - REDIS_URL=redis://redis:6379/0
       - MINIO_ENDPOINT=minio:9000
       - MINIO_ACCESS_KEY=ulpf_admin
       - MINIO_SECRET_KEY=ulpf_password_2026
@@ -31,7 +50,7 @@ services:
       - REDPANDA_CONSUMER_GROUP=ulpf-workers
       - REDPANDA_ADMIN_URL=http://redpanda:9644
       - OLLAMA_URL=http://ulpf-ai:11434
-      - OLLAMA_MODEL=qwen2.5-coder:3b
+      - OLLAMA_MODEL=qwen2.5:7b
       - STORAGE_DIR=/app/storage/raw
       - DB_SQLITE_PATH=/app/storage/ulpf_metadata.db
     env_file:
@@ -40,6 +59,8 @@ services:
       - ulpf_metadata:/app/storage
     depends_on:
       minio:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - ulpf-net
@@ -61,7 +82,9 @@ services:
     container_name: ulpf-worker
     environment:
       - ULPF_ENV=production
-      - ANYIO_MAX_THREADS=10
+      - ANYIO_MAX_THREADS=16
+      - REDIS_ENABLED=true
+      - REDIS_URL=redis://redis:6379/0
       - REDPANDA_ENABLED=true
       - REDPANDA_BROKERS=redpanda:9092
       - REDPANDA_INPUT_TOPIC=ulpf-raw-ingress
@@ -83,10 +106,11 @@ services:
         condition: service_healthy
       redpanda:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - ulpf-net
     restart: unless-stopped
-
 
   # ----------------------------------------------------------------------------
   # 3. Redpanda — High-Speed Kafka Streaming Bus (~400MB RAM, C++ Raft)
@@ -157,7 +181,28 @@ services:
     restart: unless-stopped
 
   # ----------------------------------------------------------------------------
-  # 5. MinIO — Immutable Raw Log S3 Object Storage (~150MB RAM)
+  # 5. Redis — High-Performance In-Memory Cache, Rate Limiter & Message Broker
+  # ----------------------------------------------------------------------------
+  redis:
+    image: redis:7.2-alpine
+    container_name: ulpf-redis
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - ulpf-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+
+  # ----------------------------------------------------------------------------
+  # 6. MinIO — Immutable Raw Log S3 Object Storage (~150MB RAM)
   # ----------------------------------------------------------------------------
   minio:
     image: quay.io/minio/minio:latest
@@ -182,7 +227,7 @@ services:
     restart: unless-stopped
 
   # ----------------------------------------------------------------------------
-  # 6. OpenSearch — Normalized Search & Analytics Node (512MB Heap)
+  # 7. OpenSearch — Normalized Search & Analytics Node (512MB Heap)
   # ----------------------------------------------------------------------------
   opensearch:
     image: opensearchproject/opensearch:2.11.1
@@ -209,7 +254,7 @@ services:
     networks:
       - ulpf-net
     healthcheck:
-      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"\\|\"status\":\"yellow\"' || exit 1"]
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q '"status":"green"\\|"status":"yellow"' || exit 1"]
       interval: 15s
       timeout: 10s
       retries: 5
@@ -217,7 +262,7 @@ services:
     restart: unless-stopped
 
   # ----------------------------------------------------------------------------
-  # 7. OpenSearch Dashboards — Analytics & SIEM Console (Optional Profile: analytics)
+  # 8. OpenSearch Dashboards — Analytics & SIEM Console (Optional Profile: analytics)
   # ----------------------------------------------------------------------------
   opensearch-dashboards:
     image: opensearchproject/opensearch-dashboards:2.11.1
@@ -237,7 +282,7 @@ services:
     restart: unless-stopped
 
   # ----------------------------------------------------------------------------
-  # 8. Local AI / Ollama Engine (Optional Profile: ai)
+  # 9. Local AI / Ollama Engine (Optional Profile: ai)
   # ----------------------------------------------------------------------------
   ulpf-ai:
     build:
@@ -262,6 +307,8 @@ volumes:
     name: ulpf_opensearch_data
   redpanda_data:
     name: ulpf_redpanda_data
+  redis_data:
+    name: ulpf_redis_data
   ulpf_metadata:
     name: ulpf_metadata_store
   ollama_storage:

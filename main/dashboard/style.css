@@ -90,8 +90,8 @@
 
   /* Typography */
   --font-sans: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', Consolas, Monaco, monospace;
-  --font-heading: 'Plus Jakarta Sans', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', Consolas, Monaco, monospace;
+  --font-heading: 'Outfit', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
 }
 
 /* LIGHT THEME — Clean Crystal */
@@ -520,7 +520,28 @@ body {
   font-weight: 700;
 }
 
+.sidebar-footer {
+  padding: 14px 18px;
+  border-top: 1px solid var(--border-color);
+  background: rgba(0, 0, 0, 0.1);
+}
 
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--primary-main);
+  letter-spacing: 0.5px;
+}
+
+.sidebar-info {
+  margin-top: 6px;
+  font-size: 10.5px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
 
 /* MAIN CONTENT WRAPPER */
 .main-wrapper {
@@ -1611,7 +1632,83 @@ body {
    14. HERO ENGINE CARD & FINTECH-INSPIRED WIDGETS
    -------------------------------------------------------------------------- */
 
+.hero-engine-card {
+  background: linear-gradient(135deg, rgba(16, 24, 40, 0.85) 0%, rgba(10, 15, 26, 0.95) 100%);
+  border: 1px solid var(--primary-border);
+  border-radius: 20px;
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.6), 0 0 30px rgba(0, 208, 132, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
 
+[data-theme="light"] .hero-engine-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(241, 245, 249, 0.95) 100%);
+  border: 1px solid var(--primary-border);
+  box-shadow: 0 16px 40px -10px rgba(2, 132, 199, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+[data-theme="luxury"] .hero-engine-card {
+  background: linear-gradient(135deg, #FFFDF8 0%, #F9F1D7 50%, #EEDBBB 100%);
+  border: 1px solid rgba(217, 119, 6, 0.35);
+  box-shadow: 0 16px 40px -10px rgba(217, 119, 6, 0.18), 0 0 30px rgba(245, 158, 11, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  color: #1C1917;
+}
+
+[data-theme="luxury"] .hero-engine-card:hover {
+  box-shadow: 0 20px 50px -10px rgba(217, 119, 6, 0.25), 0 0 40px rgba(245, 158, 11, 0.22);
+}
+
+[data-theme="luxury"] .hero-engine-card .hero-stat-value,
+[data-theme="luxury"] .hero-engine-card .hero-engine-title,
+[data-theme="luxury"] .hero-engine-card h3 {
+  color: #1C1917;
+}
+
+[data-theme="luxury"] .hero-engine-card .hero-stat-label,
+[data-theme="luxury"] .hero-engine-card p {
+  color: #57534E;
+}
+
+.hero-engine-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.7), 0 0 40px rgba(0, 208, 132, 0.25);
+}
+
+.hero-card-glow {
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  width: 160px;
+  height: 160px;
+  background: radial-gradient(circle, var(--primary-glow) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.hero-stat-value {
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  margin: 12px 0 6px 0;
+  font-family: var(--font-sans);
+}
+
+.hero-subpill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-card-subtle);
+  border: 1px solid var(--border-color);
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
 
 /* PILL FILTER TABS */
 .pill-filter-group {

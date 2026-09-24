@@ -7,9 +7,8 @@
   <title>ULPF Virtual Device Simulator & Testbed</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
-    rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css?v=1.0.0_phase12">
   <script>
     (function () {
@@ -36,7 +35,7 @@
         <div class="brand-subtitle-row">
           <span class="brand-badge">CORE 2</span>
           <span class="brand-badge"
-            style="background:rgba(52, 211, 153, 0.15); color:#10b981; border-color:rgba(52, 211, 153, 0.35);">v1.0.0
+            style="background:rgba(52, 211, 153, 0.15); color:var(--accent-emerald); border-color:rgba(52, 211, 153, 0.35);">v1.0.0
             Enterprise</span>
           <span class="brand-desc">Network Telemetry &amp; Validation Studio</span>
           <span class="brand-live-dot" title="Testbed Engine Ready"></span>
@@ -506,9 +505,9 @@
             <div id="simFeedbackBox"
               style="display:none; padding:14px 18px; background:rgba(45,212,191,0.15); border:1px solid var(--border-subtle); border-radius:8px;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                <span style="font-weight:700; font-size:13px; color:#a7f3d0;" id="simFeedbackTitle"> Ingested &
+                <span style="font-weight:700; font-size:13px; color:var(--accent-emerald);" id="simFeedbackTitle"> Ingested &
                   Normalized by Server</span>
-                <span style="font-family:var(--font-mono); font-size:12px; color:#F1F5F9; font-weight:700;"
+                <span style="font-family:var(--font-mono); font-size:12px; color:var(--text-primary); font-weight:700;"
                   id="simFeedbackLatency">0.42 ms RTT</span>
               </div>
               <div style="font-family:var(--font-mono); font-size:12px; color:var(--text-secondary); margin-bottom:6px;"
@@ -518,7 +517,7 @@
                 <span class="badge badge-neutral badge-sm" id="receiptShaBadge">SHA-256: 4b2277...</span>
                 <a href="http://localhost:8000/dashboard/index.html#/logs" target="_blank"
                   id="linkInspectOnServer"
-                  style="margin-left:auto; font-size:11px; color:#38BDF8; text-decoration:underline;">Inspect on Server
+                  style="margin-left:auto; font-size:11px; color:var(--accent-cyan); text-decoration:underline;">Inspect on Server
                 </a>
               </div>
             </div>
@@ -767,7 +766,7 @@
               <span>Engine: Local Qwen 7B AI</span>
             </div>
             <button type="button" class="btn-secondary"
-              style="width:100%; justify-content:center; border-color:#38BDF8; color:#38BDF8; font-weight:700;"
+              style="width:100%; justify-content:center; border-color:var(--accent-cyan); color:var(--accent-cyan); font-weight:700;"
               onclick="window.runAttackScenario('unknown_scada')">
               <span>Inject Unknown SCADA (Test AI)</span>
             </button>
@@ -785,7 +784,7 @@
             <span>Clear Feed</span>
           </button>
         </div>
-        <div id="attackConsoleFeed" class="terminal-feed" style="height:200px; color:#7dd3fc;">
+        <div id="attackConsoleFeed" class="terminal-feed" style="height:200px; color:var(--accent-cyan);">
           <div style="color:var(--text-secondary); padding:20px; text-align:center;">Select any scenario above to launch
             an
             attack simulation and trace server defense responses.</div>
@@ -860,9 +859,9 @@
         <div
           style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:16px;">
           <div>
-            <h2 style="font-size:18px; font-weight:800; color:#F1F5F9; margin:0;"> Speed &amp; High-Volume Ingestion
+            <h2 style="font-size:18px; font-weight:800; color:var(--text-primary); margin:0;"> Speed &amp; High-Volume Ingestion
               Stress Tester</h2>
-            <p style="font-size:12.5px; color:#94a3b8; margin-top:4px;">
+            <p style="font-size:12.5px; color:var(--text-secondary); margin-top:4px;">
               Simulate high-velocity packet storms across UDP, TCP, and HTTP sockets to test ingestion speed and system
               resilience.
             </p>
@@ -923,7 +922,7 @@
             <div class="loadgen-stat-lbl">Packets Sent</div>
           </div>
           <div class="loadgen-stat-card">
-            <div class="loadgen-stat-val" id="statBurstDelivered" style="color:#2DD4BF;">0</div>
+            <div class="loadgen-stat-val" id="statBurstDelivered" style="color:var(--accent-emerald);">0</div>
             <div class="loadgen-stat-lbl">Received OK</div>
           </div>
           <div class="loadgen-stat-card">
@@ -950,7 +949,7 @@
             <span>Clear Log</span>
           </button>
         </div>
-        <div id="loadgenConsoleFeed" class="terminal-feed" style="height:220px; color:#a7f3d0;">
+        <div id="loadgenConsoleFeed" class="terminal-feed" style="height:220px; color:var(--accent-emerald);">
           <div style="color:var(--text-secondary); padding:20px; text-align:center;">Configure packet count above and
             click
             "Execute Load Storm" to test high-throughput ingestion.</div>
@@ -1029,15 +1028,15 @@
           <div>
             <div style="display:flex; align-items:center; gap:10px;">
               <span class="badge-status-dot online" id="heroStatusDot" style="width:12px; height:12px;"></span>
-              <h2 id="serverHeroStatus" style="font-size:18px; font-weight:800; color:#2DD4BF; margin:0;">ONLINE ·
+              <h2 id="serverHeroStatus" style="font-size:18px; font-weight:800; color:var(--accent-emerald); margin:0;">ONLINE ·
                 SERVER READY FOR INGESTION</h2>
             </div>
             <div
               style="font-size:12px; color:var(--text-secondary); margin-top:6px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
               <span>Target Host: <b id="serverHeroTarget"
-                  style="font-family:var(--font-mono); color:#38BDF8;">http://127.0.0.1:8000</b></span>
+                  style="font-family:var(--font-mono); color:var(--accent-cyan);">http://127.0.0.1:8000</b></span>
               <span>Round-Trip Latency: <b id="serverHeroLatency"
-                  style="font-family:var(--font-mono); color:#a7f3d0;">&lt; 1 ms</b></span>
+                  style="font-family:var(--font-mono); color:var(--accent-emerald);">&lt; 1 ms</b></span>
               <span>Subsystems: <b id="serverHeroSubsystems" style="color:var(--text-primary);">8/8 Ready</b></span>
             </div>
           </div>
@@ -1070,103 +1069,103 @@
         <!-- Card 1: HTTP API -->
         <div class="card p-sm" style="background:var(--bg-card); border:1px solid var(--border-subtle);">
           <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
-            <span style="font-weight:700; font-size:13px; color:#F1F5F9;">FastAPI REST Ingest &amp; Dashboard</span>
+            <span style="font-weight:700; font-size:13px; color:var(--text-primary);">FastAPI REST Ingest &amp; Dashboard</span>
             <span class="badge badge-teal" id="badge_http_api">ONLINE</span>
           </div>
-          <div style="font-family:var(--font-mono); font-size:11px; color:#38BDF8; margin-bottom:4px;">TCP :8000 ·
+          <div style="font-family:var(--font-mono); font-size:11px; color:var(--accent-cyan); margin-bottom:4px;">TCP :8000 ·
             /api/v1/health/live</div>
           <p style="font-size:11.5px; color:var(--text-secondary); margin-bottom:8px;">Synchronous JSON, CEF &amp; Batch
             Ingestion Endpoint</p>
-          <div style="font-size:11px; font-family:var(--font-mono); color:#94a3b8;" id="detail_http_api">RTT: 0.65 ms ·
+          <div style="font-size:11px; font-family:var(--font-mono); color:var(--text-secondary);" id="detail_http_api">RTT: 0.65 ms ·
             HTTP 200 OK</div>
         </div>
 
         <!-- Card 2: Syslog UDP -->
         <div class="card p-sm" style="background:var(--bg-card); border:1px solid var(--border-subtle);">
           <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
-            <span style="font-weight:700; font-size:13px; color:#F1F5F9;">Syslog UDP Ingress Collector</span>
+            <span style="font-weight:700; font-size:13px; color:var(--text-primary);">Syslog UDP Ingress Collector</span>
             <span class="badge badge-teal" id="badge_syslog_udp">READY</span>
           </div>
-          <div style="font-family:var(--font-mono); font-size:11px; color:#38BDF8; margin-bottom:4px;">UDP :5140 · RFC
+          <div style="font-family:var(--font-mono); font-size:11px; color:var(--accent-cyan); margin-bottom:4px;">UDP :5140 · RFC
             3164 / 5424</div>
           <p style="font-size:11.5px; color:var(--text-secondary); margin-bottom:8px;">High-speed stateless datagram
             ingestion for network firewalls</p>
-          <div style="font-size:11px; font-family:var(--font-mono); color:#94a3b8;" id="detail_syslog_udp">Datagram
+          <div style="font-size:11px; font-family:var(--font-mono); color:var(--text-secondary);" id="detail_syslog_udp">Datagram
             socket open &amp; accepting</div>
         </div>
 
         <!-- Card 3: Syslog TCP -->
         <div class="card p-sm" style="background:var(--bg-card); border:1px solid var(--border-subtle);">
           <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
-            <span style="font-weight:700; font-size:13px; color:#F1F5F9;">Syslog TCP Stream Collector</span>
+            <span style="font-weight:700; font-size:13px; color:var(--text-primary);">Syslog TCP Stream Collector</span>
             <span class="badge badge-teal" id="badge_syslog_tcp">ONLINE</span>
           </div>
-          <div style="font-family:var(--font-mono); font-size:11px; color:#38BDF8; margin-bottom:4px;">TCP :5141 ·
+          <div style="font-family:var(--font-mono); font-size:11px; color:var(--accent-cyan); margin-bottom:4px;">TCP :5141 ·
             Multi-Threaded Acceptor</div>
           <p style="font-size:11.5px; color:var(--text-secondary); margin-bottom:8px;">Connection-oriented streaming
             with
             newline &amp; octet framing</p>
-          <div style="font-size:11px; font-family:var(--font-mono); color:#94a3b8;" id="detail_syslog_tcp">TCP 3-way
+          <div style="font-size:11px; font-family:var(--font-mono); color:var(--text-secondary);" id="detail_syslog_tcp">TCP 3-way
             handshake established</div>
         </div>
 
         <!-- Card 4: Local Sovereign AI Qwen 7B -->
         <div class="card p-sm" style="background:var(--bg-card); border:1px solid var(--border-subtle);">
           <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
-            <span style="font-weight:700; font-size:13px; color:#d8b4fe;">Sovereign AI Engine (Qwen 7B)</span>
+            <span style="font-weight:700; font-size:13px; color:var(--accent-purple);">Sovereign AI Engine (Qwen 7B)</span>
             <span class="badge badge-purple" id="badge_ai_engine">READY</span>
           </div>
-          <div style="font-family:var(--font-mono); font-size:11px; color:#c084fc; margin-bottom:4px;">TCP :11434 ·
+          <div style="font-family:var(--font-mono); font-size:11px; color:var(--accent-purple); margin-bottom:4px;">TCP :11434 ·
             Ollama qwen2.5:7b</div>
           <p style="font-size:11.5px; color:var(--text-secondary); margin-bottom:8px;">Air-gapped GPU-accelerated model
             for
             unknown log structure inference</p>
-          <div style="font-size:11px; font-family:var(--font-mono); color:#94a3b8;" id="detail_ai_engine">Local Model
+          <div style="font-size:11px; font-family:var(--font-mono); color:var(--text-secondary);" id="detail_ai_engine">Local Model
             Resident in VRAM (Ready)</div>
         </div>
 
         <!-- Card 5: Redpanda Kafka Bus -->
         <div class="card p-sm" style="background:var(--bg-card); border:1px solid var(--border-subtle);">
           <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
-            <span style="font-weight:700; font-size:13px; color:#F1F5F9;">Redpanda Streaming Message Bus</span>
+            <span style="font-weight:700; font-size:13px; color:var(--text-primary);">Redpanda Streaming Message Bus</span>
             <span class="badge badge-teal" id="badge_redpanda">ACTIVE</span>
           </div>
-          <div style="font-family:var(--font-mono); font-size:11px; color:#38BDF8; margin-bottom:4px;">TCP :9092 · Kafka
+          <div style="font-family:var(--font-mono); font-size:11px; color:var(--accent-cyan); margin-bottom:4px;">TCP :9092 · Kafka
             Raft Engine</div>
           <p style="font-size:11.5px; color:var(--text-secondary); margin-bottom:8px;">Sub-millisecond stream buffer
             between
             ingress &amp; workers</p>
-          <div style="font-size:11px; font-family:var(--font-mono); color:#94a3b8;" id="detail_redpanda">Topic:
+          <div style="font-size:11px; font-family:var(--font-mono); color:var(--text-secondary);" id="detail_redpanda">Topic:
             ulpf-raw-ingress (Ready)</div>
         </div>
 
         <!-- Card 6: MinIO S3 -->
         <div class="card p-sm" style="background:var(--bg-card); border:1px solid var(--border-subtle);">
           <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
-            <span style="font-weight:700; font-size:13px; color:#F1F5F9;">MinIO Immutable S3 Storage</span>
+            <span style="font-weight:700; font-size:13px; color:var(--text-primary);">MinIO Immutable S3 Storage</span>
             <span class="badge badge-teal" id="badge_minio_s3">SECURE</span>
           </div>
-          <div style="font-family:var(--font-mono); font-size:11px; color:#38BDF8; margin-bottom:4px;">TCP :9000 · S3
+          <div style="font-family:var(--font-mono); font-size:11px; color:var(--accent-cyan); margin-bottom:4px;">TCP :9000 · S3
             Object API</div>
           <p style="font-size:11.5px; color:var(--text-secondary); margin-bottom:8px;">Forensically intact raw bit
             storage
             with SHA-256 evidence</p>
-          <div style="font-size:11px; font-family:var(--font-mono); color:#94a3b8;" id="detail_minio_s3">Bucket:
+          <div style="font-size:11px; font-family:var(--font-mono); color:var(--text-secondary);" id="detail_minio_s3">Bucket:
             ulpf-raw · SHA-256 Verified</div>
         </div>
 
         <!-- Card 7: OpenSearch -->
         <div class="card p-sm" style="background:var(--bg-card); border:1px solid var(--border-subtle);">
           <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
-            <span style="font-weight:700; font-size:13px; color:#F1F5F9;">OpenSearch Normalized Index</span>
+            <span style="font-weight:700; font-size:13px; color:var(--text-primary);">OpenSearch Normalized Index</span>
             <span class="badge badge-teal" id="badge_opensearch">INDEXING</span>
           </div>
-          <div style="font-family:var(--font-mono); font-size:11px; color:#38BDF8; margin-bottom:4px;">TCP :9200 · OCSF
+          <div style="font-family:var(--font-mono); font-size:11px; color:var(--accent-cyan); margin-bottom:4px;">TCP :9200 · OCSF
             &amp; ECS Schema</div>
           <p style="font-size:11.5px; color:var(--text-secondary); margin-bottom:8px;">Fast query engine for SIEM
             dashboards
             &amp; threat hunting</p>
-          <div style="font-size:11px; font-family:var(--font-mono); color:#94a3b8;" id="detail_opensearch">Index:
+          <div style="font-size:11px; font-family:var(--font-mono); color:var(--text-secondary);" id="detail_opensearch">Index:
             ulpf-events (Cluster OK)</div>
         </div>
       </div>
@@ -1184,7 +1183,7 @@
             <span>Clear Log</span>
           </button>
         </div>
-        <div id="diagnosticConsoleFeed" class="terminal-feed" style="height:180px; color:#a7f3d0;">
+        <div id="diagnosticConsoleFeed" class="terminal-feed" style="height:180px; color:var(--accent-emerald);">
           <div>[INFO] Diagnostic engine initialized. Click "Test Connection Now" or "Run Full Diagnostic" to probe the
             live server pipeline.</div>
         </div>
@@ -1351,7 +1350,7 @@
             <h3 class="section-title">
               <span>Transmission Audit Ledger</span>
               <span id="auditCountBadge"
-                style="font-size:11px; padding:2px 8px; background:rgba(56,189,248,0.2); border-radius:10px; color:#38BDF8; font-family:var(--font-mono); font-weight:700;">0
+                style="font-size:11px; padding:2px 8px; background:rgba(56,189,248,0.2); border-radius:10px; color:var(--accent-cyan); font-family:var(--font-mono); font-weight:700;">0
                 Entries</span>
             </h3>
             <p class="section-subtitle">Permanent record of synthetic logs transmitted during this session</p>
@@ -1372,7 +1371,7 @@
               onclick="window.exportAuditData('json')">
               <span>Export JSON</span>
             </button>
-            <button type="button" class="btn-secondary" style="font-size:11px; padding:6px 10px; color:#f87171;"
+            <button type="button" class="btn-secondary" style="font-size:11px; padding:6px 10px; color:var(--accent-rose);"
               onclick="window.clearAuditHistory()">
               <span>Clear</span>
             </button>
@@ -1462,7 +1461,7 @@
             <ul class="guide-steps-list">
               <li><span class="guide-step-num">1</span> Click <b>" Fast Smoke Check"</b> for a quick 5-second health
                 check.</li>
-              <li><span class="guide-step-num">2</span> Watch each stage card below turn <b style="color:#2DD4BF;">GREEN
+              <li><span class="guide-step-num">2</span> Watch each stage card below turn <b style="color:var(--accent-emerald);">GREEN
                   (PASSED)</b>.</li>
               <li><span class="guide-step-num">3</span> Check the summary report at the bottom for pass rates and
                 latency numbers.</li>
@@ -1477,10 +1476,10 @@
           style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:16px;">
           <div>
             <h2
-              style="font-size:18px; font-weight:800; color:#F1F5F9; margin:0; display:flex; align-items:center; gap:8px;">
+              style="font-size:18px; font-weight:800; color:var(--text-primary); margin:0; display:flex; align-items:center; gap:8px;">
               <span>ULPF Automated Testing & Verification Pipeline</span>
             </h2>
-            <p style="font-size:12.5px; color:#94a3b8; margin-top:4px;">
+            <p style="font-size:12.5px; color:var(--text-secondary); margin-top:4px;">
               Direct integration of <code>test_pipeline.bat</code> / <code>testing/run_pipeline.py</code>. Run full
               regression suites, unit tests, security resilience attacks, and throughput benchmarks directly from this
               testing studio.
@@ -1502,24 +1501,24 @@
         <div
           style="display:flex; gap:16px; align-items:center; flex-wrap:wrap; margin-bottom:12px; background:var(--bg-secondary); padding:10px 14px; border-radius:8px; border:1px solid var(--border-subtle);">
           <div style="display:flex; align-items:center; gap:8px;">
-            <label style="font-size:11.5px; font-weight:700; color:#94a3b8;">Device Timeout (s):</label>
+            <label style="font-size:11.5px; font-weight:700; color:var(--text-secondary);">Device Timeout (s):</label>
             <input type="number" id="pipelineDeviceTimeout" class="input-field" value="3.0" step="0.5" min="0.1"
               max="60" style="width:75px; height:30px; font-size:12px; padding:2px 8px;"
               title="Network connection & datagram transmission timeout per device">
           </div>
           <div style="display:flex; align-items:center; gap:8px;">
-            <label style="font-size:11.5px; font-weight:700; color:#94a3b8;">Logs Sent Interval (ms):</label>
+            <label style="font-size:11.5px; font-weight:700; color:var(--text-secondary);">Logs Sent Interval (ms):</label>
             <input type="number" id="pipelineLogsInterval" class="input-field" value="10" step="5" min="0" max="5000"
               style="width:80px; height:30px; font-size:12px; padding:2px 8px;"
               title="Inter-log transmission delay pacing across batch streams">
           </div>
           <div style="display:flex; align-items:center; gap:8px;">
-            <label style="font-size:11.5px; font-weight:700; color:#94a3b8;">Benchmark Events:</label>
+            <label style="font-size:11.5px; font-weight:700; color:var(--text-secondary);">Benchmark Events:</label>
             <input type="number" id="pipelineBenchEvents" class="input-field" value="1000" step="100" min="50"
               max="50000" style="width:90px; height:30px; font-size:12px; padding:2px 8px;"
               title="Number of events generated during throughput stage">
           </div>
-          <span style="font-size:11px; color:#64748b; font-style:italic;">Propagated to ULPF_DEVICE_TIMEOUT &
+          <span style="font-size:11px; color:var(--text-muted); font-style:italic;">Propagated to ULPF_DEVICE_TIMEOUT &
             ULPF_LOGS_INTERVAL_MS</span>
         </div>
 
@@ -1562,23 +1561,23 @@
           <span
             style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px; font-weight:700;">Overall
             Verdict</span>
-          <div style="font-size:16px; font-weight:800; color:#38BDF8; margin-top:2px;" id="pipelineVerdictText">PIPELINE
+          <div style="font-size:16px; font-weight:800; color:var(--accent-cyan); margin-top:2px;" id="pipelineVerdictText">PIPELINE
             IDLE · READY FOR EXECUTION</div>
         </div>
         <div style="display:flex; gap:20px; align-items:center; flex-wrap:wrap;">
           <div>
             <span style="font-size:11px; color:var(--text-secondary);">Stages Passed:</span>
-            <div style="font-family:var(--font-mono); font-weight:700; font-size:13px; color:#3d599a;"
+            <div style="font-family:var(--font-mono); font-weight:700; font-size:13px; color:var(--text-secondary);"
               id="pipelineStagesSummary">0/6 Stages</div>
           </div>
           <div>
             <span style="font-size:11px; color:var(--text-secondary);">Total Duration:</span>
-            <div style="font-family:var(--font-mono); font-weight:700; font-size:13px; color:#a7f3d0;"
+            <div style="font-family:var(--font-mono); font-weight:700; font-size:13px; color:var(--accent-emerald);"
               id="pipelineTotalDuration">0.00s</div>
           </div>
           <div>
             <span style="font-size:11px; color:var(--text-secondary);">Active Filter:</span>
-            <div style="font-family:var(--font-mono); font-weight:700; font-size:13px; color:#7dd3fc;"
+            <div style="font-family:var(--font-mono); font-weight:700; font-size:13px; color:var(--accent-cyan);"
               id="pipelineActiveFilter">ALL</div>
           </div>
         </div>
@@ -1712,7 +1711,7 @@
             </button>
           </div>
         </div>
-        <div id="pipelineConsoleFeed" class="terminal-feed" style="height:260px; color:#a7f3d0;">
+        <div id="pipelineConsoleFeed" class="terminal-feed" style="height:260px; color:var(--accent-emerald);">
           <div style="color:var(--text-secondary); padding:20px; text-align:center;">Click "Run Full Pipeline" or "Fast
             Smoke Check" above to trigger automated testing.</div>
         </div>
@@ -1789,12 +1788,12 @@
       <div class="card p-md" style="margin-bottom:20px; border-left:4px solid #38BDF8;">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
           <div>
-            <h2 style="font-size:17px; font-weight:700; color:#F1F5F9; margin-bottom:4px;"> Multi-Format Log File
+            <h2 style="font-size:17px; font-weight:700; color:var(--text-primary); margin-bottom:4px;"> Multi-Format Log File
               Ingestion & Parser Lab</h2>
-            <p style="font-size:12px; color:#94a3b8; margin:0;">
-              Upload raw log files (<code style="color:#38BDF8;">.log</code>, <code style="color:#38BDF8;">.txt</code>,
-              <code style="color:#38BDF8;">.raw</code>, <code style="color:#38BDF8;">.json</code>, <code
-                style="color:#38BDF8;">.csv</code>, <code style="color:#38BDF8;">.cef</code>) to evaluate parser
+            <p style="font-size:12px; color:var(--text-secondary); margin:0;">
+              Upload raw log files (<code style="color:var(--accent-cyan);">.log</code>, <code style="color:var(--accent-cyan);">.txt</code>,
+              <code style="color:var(--accent-cyan);">.raw</code>, <code style="color:var(--accent-cyan);">.json</code>, <code
+                style="color:var(--accent-cyan);">.csv</code>, <code style="color:var(--accent-cyan);">.cef</code>) to evaluate parser
               recognition, replay streams, or drop into monitored folders.
             </p>
           </div>
@@ -1875,10 +1874,10 @@
                   stroke="currentColor" stroke-width="2">
                   <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
                 </svg></div>
-              <div style="font-size:14px; font-weight:700; color:#F1F5F9;">
-                Drag & drop your log file here, or <span style="color:#38BDF8; text-decoration:underline;">Browse</span>
+              <div style="font-size:14px; font-weight:700; color:var(--text-primary);">
+                Drag & drop your log file here, or <span style="color:var(--accent-cyan); text-decoration:underline;">Browse</span>
               </div>
-              <div style="font-size:11px; color:#94a3b8;">
+              <div style="font-size:11px; color:var(--text-secondary);">
                 Supported extensions: .log, .txt, .raw, .json, .csv, .xml, .cef, .leef, .syslog (Max 10 MB)
               </div>
             </div>
@@ -1892,8 +1891,8 @@
                   <polyline points="14 2 14 8 20 8" />
                 </svg>
                 <div>
-                  <div id="metaFileName" style="font-size:13px; font-weight:700; color:#F1F5F9;">logfile.log</div>
-                  <div style="font-size:11px; color:#a7f3d0;">
+                  <div id="metaFileName" style="font-size:13px; font-weight:700; color:var(--text-primary);">logfile.log</div>
+                  <div style="font-size:11px; color:var(--accent-emerald);">
                     <span id="metaFileSize">0 KB</span> &bull; <span id="metaLineCount">0 lines</span>
                   </div>
                 </div>
@@ -1916,11 +1915,11 @@
               <label
                 style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; background:var(--bg-card); padding:10px 12px; border-radius:8px; border:1px solid var(--border-subtle);">
                 <input type="radio" name="uploadTransportMode" value="http_upload" checked
-                  style="margin-top:3px; accent-color:#38BDF8;">
+                  style="margin-top:3px; accent-color:var(--accent-cyan);">
                 <div>
-                  <div style="font-size:13px; font-weight:700; color:#F1F5F9;"> Direct HTTP REST Upload (FastAPI
+                  <div style="font-size:13px; font-weight:700; color:var(--text-primary);"> Direct HTTP REST Upload (FastAPI
                     /api/v1/upload)</div>
-                  <div style="font-size:11px; color:#94a3b8;">Multipart batch POST. Full normalization, OpenSearch
+                  <div style="font-size:11px; color:var(--text-secondary);">Multipart batch POST. Full normalization, OpenSearch
                     indexing, SQLite persistence, and returns parsed events.</div>
                 </div>
               </label>
@@ -1928,11 +1927,11 @@
               <label
                 style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; background:var(--bg-card); padding:10px 12px; border-radius:8px; border:1px solid var(--border-subtle);">
                 <input type="radio" name="uploadTransportMode" value="udp_stream"
-                  style="margin-top:3px; accent-color:#38BDF8;">
+                  style="margin-top:3px; accent-color:var(--accent-cyan);">
                 <div>
-                  <div style="font-size:13px; font-weight:700; color:#F1F5F9;"> Sequential UDP Syslog Stream (Port
+                  <div style="font-size:13px; font-weight:700; color:var(--text-primary);"> Sequential UDP Syslog Stream (Port
                     5140)</div>
-                  <div style="font-size:11px; color:#94a3b8;">Simulates real-time network stream by sending each log
+                  <div style="font-size:11px; color:var(--text-secondary);">Simulates real-time network stream by sending each log
                     line as a UDP Syslog datagram.</div>
                 </div>
               </label>
@@ -1940,11 +1939,11 @@
               <label
                 style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; background:var(--bg-card); padding:10px 12px; border-radius:8px; border:1px solid var(--border-subtle);">
                 <input type="radio" name="uploadTransportMode" value="tcp_stream"
-                  style="margin-top:3px; accent-color:#38BDF8;">
+                  style="margin-top:3px; accent-color:var(--accent-cyan);">
                 <div>
-                  <div style="font-size:13px; font-weight:700; color:#F1F5F9;"> Persistent TCP Syslog Stream (Port
+                  <div style="font-size:13px; font-weight:700; color:var(--text-primary);"> Persistent TCP Syslog Stream (Port
                     5141)</div>
-                  <div style="font-size:11px; color:#94a3b8;">Streams lines over persistent TCP RFC 5424 octet framing.
+                  <div style="font-size:11px; color:var(--text-secondary);">Streams lines over persistent TCP RFC 5424 octet framing.
                   </div>
                 </div>
               </label>
@@ -1952,11 +1951,11 @@
               <label
                 style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; background:var(--bg-card); padding:10px 12px; border-radius:8px; border:1px solid var(--border-subtle);">
                 <input type="radio" name="uploadTransportMode" value="file_drop"
-                  style="margin-top:3px; accent-color:#38BDF8;">
+                  style="margin-top:3px; accent-color:var(--accent-cyan);">
                 <div>
-                  <div style="font-size:13px; font-weight:700; color:#F1F5F9;"> File Collector Drop
+                  <div style="font-size:13px; font-weight:700; color:var(--text-primary);"> File Collector Drop
                     (main/storage/logs/)</div>
-                  <div style="font-size:11px; color:#94a3b8;">Writes file to the watched directory for real-time tailing
+                  <div style="font-size:11px; color:var(--text-secondary);">Writes file to the watched directory for real-time tailing
                     by the File Tail Collector.</div>
                 </div>
               </label>
@@ -1966,12 +1965,12 @@
             <div id="streamingPacingRow"
               style="display:none; background:var(--bg-card); padding:10px 14px; border-radius:8px; border:1px solid var(--border-subtle); margin-bottom:14px;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                <label style="font-size:12px; font-weight:600; color:#F1F5F9;">Inter-Line Pacing Delay:</label>
+                <label style="font-size:12px; font-weight:600; color:var(--text-primary);">Inter-Line Pacing Delay:</label>
                 <span id="streamingDelayVal"
-                  style="font-family:var(--font-mono); font-size:12px; color:#38BDF8; font-weight:700;">10 ms</span>
+                  style="font-family:var(--font-mono); font-size:12px; color:var(--accent-cyan); font-weight:700;">10 ms</span>
               </div>
               <input type="range" id="streamingDelaySlider" min="0" max="200" step="5" value="10"
-                style="width:100%; accent-color:#38BDF8;">
+                style="width:100%; accent-color:var(--accent-cyan);">
             </div>
 
             <!-- Target Host & Port Info -->
@@ -2031,22 +2030,22 @@
                 <div class="upload-stat-lbl">Lines Processed</div>
               </div>
               <div class="upload-stat-box">
-                <div class="upload-stat-val" id="uploadStatSuccess" style="color:#2DD4BF;">0</div>
+                <div class="upload-stat-val" id="uploadStatSuccess" style="color:var(--accent-emerald);">0</div>
                 <div class="upload-stat-lbl">Normalized OK</div>
               </div>
               <div class="upload-stat-box">
-                <div class="upload-stat-val" id="uploadStatUnparsed" style="color:#7dd3fc;">0</div>
+                <div class="upload-stat-val" id="uploadStatUnparsed" style="color:var(--accent-cyan);">0</div>
                 <div class="upload-stat-lbl">AI / Unparsed</div>
               </div>
               <div class="upload-stat-box">
-                <div class="upload-stat-val" id="uploadStatLatency" style="color:#38BDF8;">0 ms</div>
+                <div class="upload-stat-val" id="uploadStatLatency" style="color:var(--accent-cyan);">0 ms</div>
                 <div class="upload-stat-lbl">Duration</div>
               </div>
             </div>
 
             <!-- Sample Parsed Events List -->
             <div id="sampleEventsWrapper" style="display:none; margin-bottom:12px;">
-              <div style="font-size:12px; font-weight:700; color:#F1F5F9; margin-bottom:6px;">
+              <div style="font-size:12px; font-weight:700; color:var(--text-primary); margin-bottom:6px;">
                 Sample Normalized Canonical Events (First 5):
               </div>
               <div id="sampleEventsList" style="display:flex; flex-direction:column; gap:6px;">
@@ -2055,7 +2054,7 @@
             </div>
 
             <!-- Console Feed for Upload Log -->
-            <div style="font-size:11px; font-weight:700; color:#94a3b8; margin-bottom:4px; text-transform:uppercase;">
+            <div style="font-size:11px; font-weight:700; color:var(--text-secondary); margin-bottom:4px; text-transform:uppercase;">
               Ingestion Execution Trace:
             </div>
             <div id="uploadConsoleFeed" class="terminal-feed" style="height:120px; font-size:11px;">
@@ -2084,14 +2083,14 @@
             <path
               d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
           </svg>
-          <h3 style="font-size:15px; font-weight:700; color:#F1F5F9; margin:0;">Remote Server Network Endpoints</h3>
+          <h3 style="font-size:15px; font-weight:700; color:var(--text-primary); margin:0;">Remote Server Network Endpoints</h3>
         </div>
         <button type="button" class="btn-secondary" id="btnCloseEndpointsModal"
           style="padding:4px 10px; font-size:12px; cursor:pointer;"
           onclick="document.getElementById('endpointsModal').classList.remove('active')"> Close</button>
       </div>
       <div class="modal-body">
-        <p style="font-size:12px; color:#94a3b8; margin-bottom:16px;">
+        <p style="font-size:12px; color:var(--text-secondary); margin-bottom:16px;">
           Configure target network transport ports when the ULPF server is hosted on another machine, Docker host, LAN
           IP, or cloud VM:
         </p>
@@ -2251,7 +2250,7 @@
       <span>•</span>
       <span>Dual-Engine Architecture: Core 1 (:8000) &amp; Core 2 (:8050)</span>
       <span>•</span>
-      <span style="color:#10b981;">Deterministic C-Engine Ready</span>
+      <span style="color:var(--accent-emerald);">Deterministic C-Engine Ready</span>
     </div>
   </footer>
 
