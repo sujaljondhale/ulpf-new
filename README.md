@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🛡️ ULPF (Universal Log Pre-processing Framework)
+#  ULPF (Universal Log Pre-processing Framework)
 ### *Next-Generation High-Throughput Wire Ingress, Lossless Normalization & Cryptographic Merkle Provenance*
 
 **Smart India Hackathon 2026 | Problem Statement ID: 26156 (NTRO)**  
@@ -16,13 +16,13 @@
 
 ---
 
-### [📄 View Official Master Presentation PDF (6-Slide Blueprint)](docs/SIH_2026_PS26156_ULPF_Master_Deck.pdf)
+### [ View Official Master Presentation PDF (6-Slide Blueprint)](docs/SIH_2026_PS26156_ULPF_Master_Deck.pdf)
 
 </div>
 
 ---
 
-## 🌟 Executive Summary & Core Differentiator
+##  Executive Summary & Core Differentiator
 
 > **"ULPF is not another SIEM — it is the vendor-independent, air-gapped preprocessing and cryptographic interoperability layer between heterogeneous network log sources and the analytical platforms that consume them."**
 
@@ -35,7 +35,7 @@ In modern enterprise and defense Security Operations Centers (SOCs), security te
 
 ---
 
-## 💎 Key Innovations & Uniqueness of ULPF
+##  Key Innovations & Uniqueness of ULPF
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -43,31 +43,31 @@ In modern enterprise and defense Security Operations Centers (SOCs), security te
 └────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 1. ⚡ Ultra-High Throughput Wire Sockets (184.4k+ Packets/Sec)
+### 1.  Ultra-High Throughput Wire Sockets (184.4k+ Packets/Sec)
 * Non-blocking asynchronous kernel sockets supporting pure **Syslog UDP (Port 5140)**, **Syslog TCP (Port 5141)**, **REST API (Port 8000)**, and multi-part raw file streams.
 * Eliminates heavy client-side forwarder agents on network switches, firewalls, and routers.
 
-### 2. 🔍 Byte-Exact Raw Preservation & Field-Level Provenance
+### 2.  Byte-Exact Raw Preservation & Field-Level Provenance
 * Retains **100% of the raw byte string** alongside the canonical representation.
 * Generates a bidirectional character-slice pointer map linking every extracted normalized field back to its exact byte offset in the original payload.
 
-### 3. ⛓️ Cryptographic SHA-256 Merkle Ledger (Blockchain Theme Link)
+### 3.  Cryptographic SHA-256 Merkle Ledger (Blockchain Theme Link)
 * Batches logs into fixed **125-event blocks** and generates an immutable SHA-256 Merkle tree root hash.
 * Any unauthorized modification, deletion, or bit-flip of historical logs triggers an **instant cryptographic validation mismatch alert**.
 
-### 4. 🧠 Sovereign Air-Gapped AI Parser Onboarding (Zero-Cloud Leakage)
+### 4.  Sovereign Air-Gapped AI Parser Onboarding (Zero-Cloud Leakage)
 * Mutated or zero-day log formats automatically fall through to an **air-gapped local LLM** (Qwen 2.5 / Ollama).
 * The AI analyzes structural syntax, generates a deterministic Pydantic/Regex parser, validates against test samples, and presents it to the SOC administrator for single-click approval.
 
-### 5. 🎯 Multi-Target Standardized Egress Adapters
+### 5.  Multi-Target Standardized Egress Adapters
 * Translates the internal canonical representation (**ULPF-IR v1.0**) simultaneously into **OCSF v1.1.0** (Open Cybersecurity Schema Framework), **Elastic Common Schema (ECS v8.x)**, **MinIO Object Vault**, **SQLite Metadata**, and **OpenSearch**.
 
-### 6. 📡 Real-Time Socket Radar Scope & 8-Threat Cyber Arsenal
+### 6.  Real-Time Socket Radar Scope & 8-Threat Cyber Arsenal
 * Integrated visual radar scope with real-time socket sweeping, latency ping blips, and an active Red-Team simulation engine covering **8 cyberattack vectors** (SYN Flood, SQLi, SSH Brute-force, DNS Tunneling, Ransomware, Auth Bypass, XSS Polyglot, and Data Exfiltration).
 
 ---
 
-## 📊 Empirical Performance Benchmarks (Live Verified)
+##  Empirical Performance Benchmarks (Live Verified)
 
 All metrics were captured via our automated benchmark suite (`python scripts/run_benchmarks.py`) against live operational wire sockets:
 
@@ -83,7 +83,7 @@ All metrics were captured via our automated benchmark suite (`python scripts/run
 
 ---
 
-## 🏗️ 5-Tier End-to-End System Architecture
+##  5-Tier End-to-End System Architecture
 
 ```
                                       NETWORK WIRE INGRESS
@@ -119,7 +119,7 @@ All metrics were captured via our automated benchmark suite (`python scripts/run
 
 ---
 
-## 🚀 Quick-Start & Deployment
+##  Quick-Start & Deployment
 
 ### 1. Prerequisites
 * Python 3.10+ (Standard Library + FastAPI + Uvicorn + Pydantic V2)
@@ -151,7 +151,7 @@ python scripts/run_benchmarks.py
 
 ---
 
-## 🇮🇳 National Security & Statutory Compliance
+##  National Security & Statutory Compliance
 
 | Regulation / Standard | Scope | ULPF Architectural Alignment |
 | :--- | :--- | :--- |
@@ -163,7 +163,7 @@ python scripts/run_benchmarks.py
 
 ---
 
-## 🛣️ Strategic 4-Phase Roadmap
+##  Strategic 4-Phase Roadmap
 
 * **Phase 1 (Completed)**: Core multi-socket ingestion, C-Fast parser, SHA-256 Merkle vault, 8 red-team attack scenarios, live socket radar.
 * **Phase 2 (Q3 2026)**: eBPF / XDP kernel-bypass socket ingestion layer targeting **500,000+ EPS** on single CPU socket.
