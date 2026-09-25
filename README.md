@@ -17,10 +17,6 @@
 [![Memory](https://img.shields.io/badge/Memory%20RSS-42.14%20MB-8B5CF6.svg?style=for-the-badge)](scripts/run_benchmarks.py)
 [![Architecture](https://img.shields.io/badge/Pipeline-10--Stage%20Decoupled-F59E0B.svg?style=for-the-badge)](#-end-to-end-10-stage-system-architecture)
 
----
-
-### [📄 View Official Master Presentation PDF (6-Slide Blueprint)](docs/SIH_2026_PS26156_ULPF_Master_Deck.pdf)
-
 </div>
 
 ---
@@ -59,87 +55,140 @@ Unlike legacy log forwarders (Logstash, Fluentd, Vector, FluentBit) or monolithi
 
 ## 🏛️ End-to-End 10-Stage System Architecture
 
-<div align="center">
-<img src="docs/architecture.png" alt="Kosmoporos Full System Architecture" width="100%" style="border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 12px 40px rgba(0,0,0,0.5); margin: 20px 0;" />
-</div>
+### 📐 Interactive Mermaid Architecture Diagram
 
-Kosmoporos implements a **10-stage decoupled pipeline** engineered for zero data loss, sub-millisecond end-to-end latency, and cryptographic immutability:
+```mermaid
+flowchart TB
+    %% STYLES & DEFINITIONS
+    classDef sourceStyle fill:#1e293b,stroke:#38bdf8,stroke-width:2px,color:#f8fafc;
+    classDef ingressStyle fill:#0f172a,stroke:#00D084,stroke-width:2px,color:#f8fafc;
+    classDef bufferStyle fill:#1e1b4b,stroke:#818cf8,stroke-width:2px,color:#f8fafc;
+    classDef triageStyle fill:#311042,stroke:#c084fc,stroke-width:2px,color:#f8fafc;
+    classDef parseFast fill:#064e3b,stroke:#34d399,stroke-width:2px,color:#f8fafc;
+    classDef parseAI fill:#450a0a,stroke:#f87171,stroke-width:2px,color:#f8fafc;
+    classDef secStyle fill:#1e293b,stroke:#f59e0b,stroke-width:2px,color:#f8fafc;
+    classDef cryptoStyle fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#f8fafc;
+    classDef storageStyle fill:#172554,stroke:#60a5fa,stroke-width:2px,color:#f8fafc;
+    classDef egressStyle fill:#134e4a,stroke:#2dd4bf,stroke-width:2px,color:#f8fafc;
+    classDef destStyle fill:#0f172a,stroke:#a78bfa,stroke-width:2px,color:#f8fafc;
 
-```
-┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                       KOSMOPOROS END-TO-END DATA PROCESSING FLOW                                       │
-└────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+    %% 1. LOG SOURCES
+    subgraph S1 ["1. HETEROGENEOUS LOG SOURCES"]
+        SRC_FW["🔥 Enterprise Firewalls<br/>(Palo Alto, Fortinet, Cisco ASA, CheckPoint)"]:::sourceStyle
+        SRC_ROUTER["🌐 Routers & Core Switches<br/>(Cisco, Juniper, MikroTik)"]:::sourceStyle
+        SRC_SRV["💻 Linux / Windows Servers<br/>(Syslog, Auth.log, WinEvent 4624)"]:::sourceStyle
+        SRC_EDR["🛡️ Endpoint EDR & Sensors<br/>(CrowdStrike, SentinelOne, Suricata)"]:::sourceStyle
+        SRC_CLOUD["☁️ Cloud Workloads<br/>(AWS CloudTrail, GCP Audit, Azure)"]:::sourceStyle
+        SRC_IOT["⚡ SCADA / Modbus & IoT Devices"]:::sourceStyle
+    end
 
- [1. LOG SOURCES & ENDPOINTS]
-  ├── Web / App Servers · Firewalls · Routers · Switches · Endpoint EDRs · SCADA/IoT · Databases · Cloud Workloads
-        │
-        ▼ (Live Telemetry over Network Wire)
- [2. MULTI-PROTOCOL INGRESS GATEWAY]
-  ├── Syslog UDP Socket :5140 (Non-blocking async datagram listener)
-  ├── Syslog TCP Socket :5141 (3-way handshake persistent stream listener)
-  ├── Syslog TLS Socket :6514 (Encrypted TLS transport)
-  ├── REST API Gateway :8000 (FastAPI high-speed JSON/raw ingestion endpoint)
-  ├── Log File Drop Watcher (Local disk directory monitoring)
-  ├── Redpanda / Kafka Consumer (Ingress topic: ulpf.raw.logs)
-  └── Ingress Rate Limiting & DoS Shield (Token-bucket throttling & autonomous IP blacklist)
-        │
-        ▼
- [3. RAW INGESTION RING BUFFER & FLOW CONTROL]
-  ├── Shared In-Memory Micro-Ring Buffer (Zero-drop burst absorption)
-  ├── Redis Fast Ingress Queue (High-throughput intermediate buffering)
-  └── Backpressure Controller (Zero packet loss under extreme burst storms)
-        │
-        ▼
- [4. FORMAT DETECTION & TRIAGE]
-  ├── Magic-Byte & Header Signature Scanner (Deterministic regex fast-matcher)
-  ├── Format Classifier: CEF · LEEF · Syslog RFC 5424 · RFC 3164 · W3C · JSON · Key=Value · CSV · PAN-OS · Cisco ASA
-  └── Triage Router:
-        ├── Known Schemas ──────► [5A. Fast-Path C/Python Parser Engine]
-        └── Unknown / Drifted ──► [5B. Air-Gapped Sovereign AI Parser Compiler]
-        │
-        ▼
- [5. DUAL-PATH PARSING & NORMALIZATION ENGINE]
-  ├── [5A. Fast Path]: Zero-copy C fast parser + regex tokenizer -> Extract structured AST key-values
-  ├── [5B. AI Path]: Sovereign Local LLM (Qwen 7B) -> Synthesizes RFC parser -> Validates AST -> Pydantic Schema
-  └── Universal Normalizer: Transforms vendor-specific tokens into canonical ULPF-IR Event Schema
-        │
-        ▼
- [6. SECURITY VALIDATION, PII MASKING & THREAT TRIAGE]
-  ├── PII Masking & Regex Redaction (Credit cards, SSN, passwords, API tokens, sensitive keys)
-  ├── Data Sanitization & Bounds Checking (IPv4/IPv6 validation, port 1..65535 bounds, UTC ISO-8601 normalization)
-  └── Real-Time Threat Scorer (Heuristic rule matching for SQLi, XSS, Path Traversal, Brute Force, Port Scan)
-        │
-        ▼
- [7. CRYPTOGRAPHIC PROVENANCE & MERKLE LEDGER VAULT]
-  ├── Byte-Exact Raw Pinning (Calculates immutable SHA-256 digest of original raw log string)
-  ├── Bidirectional Token Offset Pointer Map (Raw character slices ◄─► Normalized ULPF-IR field values)
-  └── Merkle Forest Block Ledger:
-        ├── Batches logs into fixed 125-event blocks
-        ├── Builds balanced binary SHA-256 hash trees
-        └── Commits Merkle Root Anchors to persistent metadata ledger for Zero-Knowledge tamper verification
-        │
-        ▼
- [8. MULTI-BACKEND PERSISTENCE LAYER]
-  ├── Structured Metadata Vault: SQLite (WAL Mode + synchronous=NORMAL) / Enterprise PostgreSQL
-  ├── Immutable Raw Evidence Lake: MinIO S3 Object Storage (`ulpf-raw-evidence` bucket) / Disk Fallback
-  └── Quarantine & Dead-Letter Queue (DLQ): Isolates malformed or corrupted payloads
-        │
-        ▼
- [9. CANONICAL STANDARDIZATION & MULTI-SINK EGRESS]
-  ├── ULPF-IR (Universal Log Pre-processing Framework Internal Representation v1.0)
-  ├── OCSF v1.1.0 Egress Adapter (Open Cybersecurity Schema Framework - Class 4001 / Class 3001)
-  ├── Elastic Common Schema (ECS v8.x) Egress Adapter
-  ├── OpenSearch / Elasticsearch Indexer (`ulpf-canonical-events-v1`)
-  ├── Redpanda / Apache Kafka Publisher (`ulpf.canonical.events` topic)
-  └── Real-Time Server-Sent Events (SSE) Broadcast Stream (`/api/v1/events/stream`)
-        │
-        ▼
- [10. DOWNSTREAM CONSUMERS & FORENSIC CONSOLES]
-  ├── Enterprise SIEMs: Splunk · Microsoft Sentinel · IBM QRadar · Elastic Security
-  ├── Cloud Data Lakes: Snowflake · Databricks · ClickHouse · AWS S3
-  ├── Main SOC Command & Log Intelligence Dashboard (`http://127.0.0.1:8000/dashboard/`)
-  ├── Cyber Protocol Simulator & Testbed Hub (`http://localhost:8050/`)
-  └── CERT-In 6-Hour Incident Compliance Exporter
+    %% 2. MULTI-PROTOCOL INGRESS GATEWAY
+    subgraph S2 ["2. MULTI-PROTOCOL WIRE INGRESS GATEWAY"]
+        ING_UDP["📡 Syslog UDP Socket<br/>Port 5140 (Async Kernel)"]:::ingressStyle
+        ING_TCP["🔌 Syslog TCP Socket<br/>Port 5141 (Persistent Stream)"]:::ingressStyle
+        ING_TLS["🔒 Syslog TLS Socket<br/>Port 6514 (Encrypted)"]:::ingressStyle
+        ING_REST["⚡ REST API Ingestion Gateway<br/>Port 8000 (FastAPI JSON/Raw)"]:::ingressStyle
+        ING_FILE["📁 Log File Drop Watcher<br/>(Local Directory Monitor)"]:::ingressStyle
+        ING_KAFKA["📨 Redpanda / Kafka Ingress<br/>Topic: ulpf.raw.logs (:9092)"]:::ingressStyle
+        ING_DOS["🛡️ Ingress Shield & Rate Limiter<br/>(Token-Bucket Throttling & Autonomous IP Blacklist)"]:::secStyle
+    end
+
+    S1 -->|Raw Network Wire Packets| S2
+
+    %% 3. RAW BUFFER & FLOW CONTROL
+    subgraph S3 ["3. RAW INGESTION RING BUFFER & QUEUE"]
+        BUF_MEM["⚡ In-Memory Micro-Ring Buffer<br/>(Zero-Drop Burst Absorption)"]:::bufferStyle
+        BUF_REDIS["📦 Redis Fast Ingress Queue<br/>(High-Throughput Buffer)"]:::bufferStyle
+        BUF_FLOW["🔄 Zero-Loss Flow Controller<br/>(Backpressure Management)"]:::bufferStyle
+    end
+
+    S2 --> S3
+
+    %% 4. FORMAT DETECTION & TRIAGE
+    subgraph S4 ["4. FORMAT DETECTION & SIGNATURE TRIAGE"]
+        TRI_SCAN["🔍 Magic-Byte & Header Signature Scanner"]:::triageStyle
+        TRI_KNOWN{"Format<br/>Recognized?"}:::triageStyle
+        TRI_FORMATS["Recognized Schemas:<br/>CEF · LEEF · RFC 5424 · RFC 3164 · W3C<br/>JSON · Key=Value · CSV/TSV · PAN-OS · Cisco"]:::triageStyle
+    end
+
+    S3 --> S4
+    TRI_SCAN --> TRI_KNOWN
+
+    %% 5. DUAL-PATH PARSING ENGINE
+    subgraph S5 ["5. DUAL-PATH PARSING & CANONICAL NORMALIZATION"]
+        subgraph S5A ["Fast-Path Parsing (Known Schemas)"]
+            PARSE_FAST["⚡ Zero-Copy C-Fast Parser & Regex Tokenizer<br/>(Sub-Millisecond AST Extraction)"]:::parseFast
+        end
+
+        subgraph S5B ["Slow-Path AI Onboarding (Unknown / Zero-Day)"]
+            AI_LLM["🧠 Air-Gapped Sovereign AI Compiler<br/>(Local Qwen 2.5 7B / Ollama Engine)"]:::parseAI
+            AI_AST["📐 AST Structural Token Analysis"]:::parseAI
+            AI_CODE["⚙️ Automated Parser Code Synthesis<br/>(Pydantic / Regex Generation)"]:::parseAI
+            AI_SANDBOX["🧪 Compiler Sandbox & Validation Matrix"]:::parseAI
+            AI_REG["📚 Dynamic Parser Registry Update"]:::parseAI
+        end
+
+        NORM_CANON["🔄 Universal Canonical Normalizer<br/>(Maps AST Tokens to ULPF-IR Schema)"]:::parseFast
+    end
+
+    TRI_KNOWN -->|YES| S5A
+    TRI_KNOWN -->|NO / Mutated| S5B
+
+    S5A --> NORM_CANON
+    AI_LLM --> AI_AST --> AI_CODE --> AI_SANDBOX --> AI_REG --> NORM_CANON
+
+    %% 6. SECURITY & DATA VALIDATION
+    subgraph S6 ["6. SECURITY VALIDATION, PII MASKING & THREAT TRIAGE"]
+        SEC_PII["🎭 PII Regex Anonymizer<br/>(Masks Credit Cards, SSN, Passwords, API Tokens)"]:::secStyle
+        SEC_BOUNDS["✅ Data Sanitization & Bounds Checking<br/>(IPv4/IPv6 Validation, Port 1..65535, UTC ISO-8601)"]:::secStyle
+        SEC_THREAT["🚨 Heuristic Threat Analyzer<br/>(SQLi, XSS, Path Traversal, Brute Force, Port Scans)"]:::secStyle
+    end
+
+    NORM_CANON --> S6
+
+    %% 7. CRYPTOGRAPHIC PROVENANCE & MERKLE LEDGER
+    subgraph S7 ["7. CRYPTOGRAPHIC PROVENANCE & MERKLE VAULT"]
+        CRYPTO_RAW["📌 Byte-Exact Raw Preservation<br/>(SHA-256 Digest of Unmodified Raw Log)"]:::cryptoStyle
+        CRYPTO_MAP["🗺️ Bidirectional Token Offset Pointer Map<br/>(Raw Character Slices ◄─► ULPF-IR Fields)"]:::cryptoStyle
+        CRYPTO_TREE["🌳 Cryptographic SHA-256 Merkle Ledger<br/>(Fixed 125 Logs / Block Binary Hash Tree)"]:::cryptoStyle
+        CRYPTO_VERIFY["🛡️ Zero-Knowledge Tamper Verification<br/>(Root Anchor Verification & Instant Mismatch Alerts)"]:::cryptoStyle
+    end
+
+    S6 --> S7
+    CRYPTO_RAW --> CRYPTO_MAP --> CRYPTO_TREE --> CRYPTO_VERIFY
+
+    %% 8. MULTI-BACKEND PERSISTENCE
+    subgraph S8 ["8. MULTI-BACKEND PERSISTENCE LAYER"]
+        STORE_DB["🗄️ Structured Metadata DB<br/>(SQLite WAL / Enterprise PostgreSQL)"]:::storageStyle
+        STORE_MINIO["🪣 Immutable Raw Evidence Lake<br/>(MinIO S3 Bucket: ulpf-raw-evidence)"]:::storageStyle
+        STORE_DLQ["⚠️ Quarantine & Dead-Letter Queue (DLQ)<br/>(Corrupted & Malformed Packet Store)"]:::storageStyle
+    end
+
+    S7 --> S8
+
+    %% 9. UNIVERSAL CANONICAL EGRESS
+    subgraph S9 ["9. CANONICAL STANDARDIZATION & MULTI-SINK EGRESS"]
+        EG_IR["📄 ULPF-IR Schema (v1.0 Canonical JSON)"]:::egressStyle
+        EG_OCSF["🛡️ OCSF v1.1.0 Egress Adapter<br/>(Class 4001 Network / Class 3001 System)"]:::egressStyle
+        EG_ECS["📊 Elastic Common Schema (ECS v8.x) Adapter"]:::egressStyle
+        EG_OS["🔎 OpenSearch / Elasticsearch Indexer<br/>(Index: ulpf-canonical-events-v1)"]:::egressStyle
+        EG_KAFKA["📨 Redpanda / Kafka Egress Stream<br/>(Topic: ulpf.canonical.events)"]:::egressStyle
+        EG_SSE["📡 Real-Time SSE Stream Gateway<br/>(/api/v1/events/stream)"]:::egressStyle
+    end
+
+    S8 --> S9
+    EG_IR --> EG_OCSF & EG_ECS & EG_OS & EG_KAFKA & EG_SSE
+
+    %% 10. DOWNSTREAM CONSUMERS & SOC
+    subgraph S10 ["10. DOWNSTREAM CONSUMERS & FORENSIC CONSOLES"]
+        DEST_SIEM["🏢 Enterprise SIEM Platforms<br/>(Splunk, Microsoft Sentinel, IBM QRadar, Elastic Security)"]:::destStyle
+        DEST_LAKE["❄️ Cloud Data Lakes<br/>(Snowflake, Databricks, ClickHouse, AWS S3)"]:::destStyle
+        DEST_SOC["🛡️ Kosmoporos SOC Command Console (:8000)<br/>(Live Intelligence & Forensics Dashboard)"]:::destStyle
+        DEST_SIM["⚡ Cyber Simulator & Testbed Hub (:8050)<br/>(Protocol Radar & Red-Team Arsenal)"]:::destStyle
+        DEST_CERT["📜 CERT-In 6-Hour Incident Compliance Reporter"]:::destStyle
+    end
+
+    S9 --> S10
 ```
 
 ---
