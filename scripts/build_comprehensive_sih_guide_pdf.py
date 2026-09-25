@@ -31,7 +31,7 @@ class NumberedCanvas(canvas.Canvas):
         self.saveState()
         w, h = self._pagesize
         
-        # Header banner
+        # Top banner accent line
         self.setStrokeColor(colors.HexColor('#00D084'))
         self.setLineWidth(1.5)
         self.line(40, h - 35, w - 40, h - 35)
@@ -41,9 +41,9 @@ class NumberedCanvas(canvas.Canvas):
         self.drawString(40, h - 28, "SMART INDIA HACKATHON 2026  |  PS-26156: ULPF  |  TEAM: MEGABYTES (CMRU025)")
         self.setFont("Helvetica", 8)
         self.setFillColor(colors.HexColor('#64748B'))
-        self.drawRightString(w - 40, h - 28, "MASTER PPT RESTRUCTURING & BENCHMARK REPORT")
+        self.drawRightString(w - 40, h - 28, "MASTER PPT BLUEPRINT & VIDEO DEMO PLAYBOOK")
         
-        # Footer
+        # Bottom footer line
         self.setStrokeColor(colors.HexColor('#E2E8F0'))
         self.setLineWidth(1)
         self.line(40, 40, w - 40, 40)
@@ -56,14 +56,14 @@ class NumberedCanvas(canvas.Canvas):
         self.restoreState()
 
 
-def build_comprehensive_pdf():
+def build_master_guide_pdf():
     doc = SimpleDocTemplate(
         PDF_PATH,
         pagesize=letter,
-        leftMargin=40,
-        rightMargin=40,
-        topMargin=48,
-        bottomMargin=48
+        leftMargin=38,
+        rightMargin=38,
+        topMargin=46,
+        bottomMargin=46
     )
 
     styles = getSampleStyleSheet()
@@ -72,8 +72,8 @@ def build_comprehensive_pdf():
         'DocTitle',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=18,
-        leading=22,
+        fontSize=17,
+        leading=21,
         textColor=colors.HexColor('#0F172A')
     )
     
@@ -81,8 +81,8 @@ def build_comprehensive_pdf():
         'DocSubtitle',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=10.5,
-        leading=14,
+        fontSize=10,
+        leading=13.5,
         textColor=colors.HexColor('#059669')
     )
     
@@ -90,10 +90,10 @@ def build_comprehensive_pdf():
         'H1Style',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=12,
-        leading=16,
+        fontSize=11.5,
+        leading=15,
         textColor=colors.HexColor('#0F172A'),
-        spaceBefore=10,
+        spaceBefore=9,
         spaceAfter=4
     )
 
@@ -101,8 +101,8 @@ def build_comprehensive_pdf():
         'H2Style',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=10,
-        leading=13,
+        fontSize=9.5,
+        leading=12.5,
         textColor=colors.HexColor('#0284C7'),
         spaceBefore=6,
         spaceAfter=3
@@ -112,8 +112,8 @@ def build_comprehensive_pdf():
         'BodyDark',
         parent=styles['Normal'],
         fontName='Helvetica',
-        fontSize=8.5,
-        leading=11.5,
+        fontSize=8,
+        leading=11,
         textColor=colors.HexColor('#334155')
     )
     
@@ -121,8 +121,8 @@ def build_comprehensive_pdf():
         'BodyDarkBold',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=8.5,
-        leading=11.5,
+        fontSize=8,
+        leading=11,
         textColor=colors.HexColor('#0F172A')
     )
 
@@ -130,8 +130,8 @@ def build_comprehensive_pdf():
         'CalloutGreen',
         parent=styles['Normal'],
         fontName='Helvetica',
-        fontSize=8.5,
-        leading=11.5,
+        fontSize=8,
+        leading=11,
         textColor=colors.HexColor('#065F46')
     )
 
@@ -139,8 +139,8 @@ def build_comprehensive_pdf():
         'CritiqueRed',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=8,
-        leading=11,
+        fontSize=7.5,
+        leading=10.5,
         textColor=colors.HexColor('#991B1B')
     )
 
@@ -148,8 +148,8 @@ def build_comprehensive_pdf():
         'FixGreen',
         parent=styles['Normal'],
         fontName='Helvetica',
-        fontSize=8,
-        leading=11,
+        fontSize=7.5,
+        leading=10.5,
         textColor=colors.HexColor('#065F46')
     )
 
@@ -157,8 +157,8 @@ def build_comprehensive_pdf():
         'SlideBoxTitle',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=10,
-        leading=13,
+        fontSize=9.5,
+        leading=12,
         textColor=colors.HexColor('#FFFFFF')
     )
 
@@ -166,19 +166,37 @@ def build_comprehensive_pdf():
         'SlideBoxBody',
         parent=styles['Normal'],
         fontName='Helvetica',
-        fontSize=8,
-        leading=11,
+        fontSize=7.8,
+        leading=10.5,
         textColor=colors.HexColor('#F8FAFC')
+    )
+
+    script_scene_title = ParagraphStyle(
+        'ScriptSceneTitle',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=9,
+        leading=12,
+        textColor=colors.HexColor('#00D084')
+    )
+
+    script_body = ParagraphStyle(
+        'ScriptBody',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=7.8,
+        leading=10.5,
+        textColor=colors.HexColor('#E2E8F0')
     )
 
     story = []
 
     # =========================================================================
-    # PAGE 1: TITLE & AUDIT SUMMARY
+    # PAGE 1: TITLE, EXECUTIVE NOTICE & AUDIT (SLIDES 1, 2, 3)
     # =========================================================================
-    story.append(Paragraph("SMART INDIA HACKATHON 2026 — MASTER PPT BLUEPRINT & AUDIT", doc_title))
+    story.append(Paragraph("SMART INDIA HACKATHON 2026 — MASTER PRESENTATION & VIDEO PLAYBOOK", doc_title))
     story.append(Paragraph("PROBLEM STATEMENT ID: 26156 | UNIVERSAL LOG PRE-PROCESSING FRAMEWORK (ULPF)", doc_subtitle))
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 5))
 
     meta_table_data = [
         [
@@ -192,47 +210,47 @@ def build_comprehensive_pdf():
             Paragraph("<b>Institute:</b> CMR University, Bengaluru", body)
         ]
     ]
-    meta_table = Table(meta_table_data, colWidths=[175, 175, 180])
+    meta_table = Table(meta_table_data, colWidths=[175, 175, 186])
     meta_table.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#F1F5F9')),
         ('BOX', (0,0), (-1,-1), 1, colors.HexColor('#CBD5E1')),
         ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E2E8F0')),
-        ('TOPPADDING', (0,0), (-1,-1), 4),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+        ('TOPPADDING', (0,0), (-1,-1), 3.5),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 3.5),
         ('LEFTPADDING', (0,0), (-1,-1), 6),
         ('RIGHTPADDING', (0,0), (-1,-1), 6),
     ]))
     story.append(meta_table)
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 5))
 
     banner_data = [
         [Paragraph(
-            "<b>EXECUTIVE JURY NOTICE & COMPLIANCE SUMMARY:</b><br/>"
-            "This master document contains the <b>complete line-by-line audit</b>, <b>all exact text changes</b>, "
-            "<b>verbatim slide content</b>, <b>high-contrast terminal screenshots of the live max benchmark</b>, and "
-            "<b>forensic validation receipts</b> required to restructure the presentation deck into an award-winning submission.",
+            "<b>EXECUTIVE JURY NOTICE & COMPREHENSIVE GUIDE:</b><br/>"
+            "This master guide contains the <b>complete line-by-line slide audit</b>, <b>verbatim slide text</b>, "
+            "<b>live maximum benchmark terminal screenshot (184k+ EPS)</b>, <b>5-tier architecture flowchart</b>, "
+            "<b>minute-by-minute video demonstration script</b>, and <b>Grand Finale jury defense Q&A</b>.",
             callout_green
         )]
     ]
-    banner_table = Table(banner_data, colWidths=[530])
+    banner_table = Table(banner_data, colWidths=[536])
     banner_table.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#ECFDF5')),
         ('BOX', (0,0), (-1,-1), 1.2, colors.HexColor('#059669')),
-        ('TOPPADDING', (0,0), (-1,-1), 5),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 5),
-        ('LEFTPADDING', (0,0), (-1,-1), 8),
-        ('RIGHTPADDING', (0,0), (-1,-1), 8),
+        ('TOPPADDING', (0,0), (-1,-1), 4),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+        ('LEFTPADDING', (0,0), (-1,-1), 7),
+        ('RIGHTPADDING', (0,0), (-1,-1), 7),
     ]))
     story.append(banner_table)
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 5))
 
-    story.append(Paragraph("1. Slide-by-Slide Audit & Exact Required Changes", h1_style))
+    story.append(Paragraph("1. Slide-by-Slide Critical Audit & Line-by-Line Changes (Slides 1, 2, 3)", h1_style))
     story.append(Paragraph(
         "Pages 3 and 5 in the submitted deck were identical duplicates of pages 2 and 4. "
-        "Below is the exact audit and line-by-line fix for all 6 core slides:",
+        "Below is the exact forensic audit and replacement copy for the initial 3 core slides:",
         body
     ))
-    story.append(Spacer(1, 4))
+    story.append(Spacer(1, 3))
 
     s123_audit = [
         [Paragraph("<b>Slide & Section</b>", body_bold), Paragraph("<b>Identified Flaws in Current Slide</b>", critique_red), Paragraph("<b>Mandatory Replacement & Fix</b>", fix_green)],
@@ -252,7 +270,7 @@ def build_comprehensive_pdf():
             Paragraph("• Replace with 5-Tier Data Pipeline (Ingress -> Normalizer -> Crypto Vault -> Storage -> Sinks)<br/>• Group tech stack into 4 clean architectural pillars", fix_green)
         ]
     ]
-    t_s123 = Table(s123_audit, colWidths=[105, 205, 220])
+    t_s123 = Table(s123_audit, colWidths=[105, 205, 226])
     t_s123.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#E2E8F0')),
         ('BACKGROUND', (0,1), (-1,-1), colors.HexColor('#FFFFFF')),
@@ -267,9 +285,9 @@ def build_comprehensive_pdf():
     story.append(PageBreak())
 
     # =========================================================================
-    # PAGE 2: AUDIT PART 2 + LIVE TERMINAL BENCHMARK SCREENSHOT
+    # PAGE 2: AUDIT (SLIDES 4, 5, 6) & LIVE TERMINAL SCREENSHOT
     # =========================================================================
-    story.append(Paragraph("Slide-by-Slide Audit (Slides 4, 5, 6)", h1_style))
+    story.append(Paragraph("Slide-by-Slide Critical Audit (Slides 4, 5, 6)", h1_style))
     s456_audit = [
         [Paragraph("<b>Slide & Section</b>", body_bold), Paragraph("<b>Identified Flaws in Current Slide</b>", critique_red), Paragraph("<b>Mandatory Replacement & Fix</b>", fix_green)],
         [
@@ -288,7 +306,7 @@ def build_comprehensive_pdf():
             Paragraph("• Replace empty box with <b>4-Phase Strategic Roadmap</b> (Core -> eBPF 500k EPS -> TPM 2.0 -> Defense Mesh)<br/>• Clean citations: OCSF v1.1.0, RFC 5424, NIST SP 800-92", fix_green)
         ]
     ]
-    t_s456 = Table(s456_audit, colWidths=[105, 205, 220])
+    t_s456 = Table(s456_audit, colWidths=[105, 205, 226])
     t_s456.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#E2E8F0')),
         ('BACKGROUND', (0,1), (-1,-1), colors.HexColor('#FFFFFF')),
@@ -300,7 +318,7 @@ def build_comprehensive_pdf():
         ('RIGHTPADDING', (0,0), (-1,-1), 5),
     ]))
     story.append(t_s456)
-    story.append(Spacer(1, 8))
+    story.append(Spacer(1, 6))
 
     story.append(Paragraph("2. Live Maximum Benchmark Terminal Execution Screenshot", h1_style))
     story.append(Paragraph(
@@ -312,7 +330,7 @@ def build_comprehensive_pdf():
 
     term_img_path = "docs/sih_assets/sih_terminal_receipt.png"
     if os.path.exists(term_img_path):
-        story.append(Image(term_img_path, width=530, height=255))
+        story.append(Image(term_img_path, width=536, height=255))
     story.append(PageBreak())
 
     # =========================================================================
@@ -321,16 +339,16 @@ def build_comprehensive_pdf():
     story.append(Paragraph("3. Empirical KPI Scorecard & 5-Tier System Architecture", h1_style))
     score_img_path = "docs/sih_assets/sih_benchmark_scorecard.png"
     if os.path.exists(score_img_path):
-        story.append(Image(score_img_path, width=530, height=230))
-        story.append(Spacer(1, 6))
+        story.append(Image(score_img_path, width=536, height=225))
+        story.append(Spacer(1, 5))
 
     arch_img_path = "docs/sih_assets/sih_architecture_diagram.png"
     if os.path.exists(arch_img_path):
-        story.append(Image(arch_img_path, width=530, height=270))
+        story.append(Image(arch_img_path, width=536, height=265))
     story.append(PageBreak())
 
     # =========================================================================
-    # PAGE 4: EXACT SLIDE-BY-SLIDE CONTENT (READY TO COPY-PASTE INTO PPT)
+    # PAGE 4: EXACT SLIDE-BY-SLIDE CONTENT (READY TO COPY-PASTE)
     # =========================================================================
     story.append(Paragraph("4. Exact Verbatim Slide Text (Ready to Copy-Paste into PPT)", h1_style))
     story.append(Paragraph(
@@ -391,7 +409,7 @@ def build_comprehensive_pdf():
             [Paragraph(f"<b>{title}</b>", slide_box_title)],
             [Paragraph("<br/>".join(points), slide_box_body)]
         ]
-        box_t = Table(box_data, colWidths=[530])
+        box_t = Table(box_data, colWidths=[536])
         box_t.setStyle(TableStyle([
             ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#0F172A')),
             ('BACKGROUND', (0,1), (-1,-1), colors.HexColor('#1E293B')),
@@ -404,8 +422,87 @@ def build_comprehensive_pdf():
         story.append(box_t)
         story.append(Spacer(1, 4))
 
+    story.append(PageBreak())
+
+    # =========================================================================
+    # PAGE 5: MINUTE-BY-MINUTE VIDEO DEMO SCRIPT & JURY DEFENSE STRATEGY
+    # =========================================================================
+    story.append(Paragraph("5. Official SIH Video Demo Script (Minute-by-Minute Narration)", h1_style))
+    story.append(Paragraph(
+        "Follow this exact script for recording your 3:00 to 3:45 minute video demonstration for the SIH evaluators:",
+        body
+    ))
+    story.append(Spacer(1, 4))
+
+    video_scenes = [
+        ("SCENE 1 (0:00 - 0:35) | Problem Statement & Value Proposition",
+         "Screen: Main Dashboard Overview. Show Brand Logo, Top KPI Cards, and Live Ingestion Stream.",
+         "Narration: 'Respected Judges, welcome to the demonstration of ULPF — the Universal Log Pre-processing Framework, developed by Team MEGABYTES for SIH Problem Statement 26156 under the Blockchain and Cybersecurity theme. Modern SOCs face an exponential NxM integration crisis where hundreds of firewall and cloud formats flood expensive SIEMs. ULPF is not another SIEM — it is the vendor-independent, air-gapped preprocessing and cryptographic interoperability layer between heterogeneous log sources and downstream analytics.'"),
+        ("SCENE 2 (0:35 - 1:15) | Live Sockets & Real-Time Socket Radar Scope",
+         "Screen: Testing Simulator Hub (/testing/). Click 'DISPATCH ACTIVE SOCKET PROBES'. Show radar sweep and latency badges.",
+         "Narration: 'On our Testing Simulator Hub, you see our Live Network Port Radar. ULPF operates at the wire layer using non-blocking asynchronous sockets on pure Syslog UDP :5140, TCP :5141, and REST :8000 with zero client agent overhead. When we trigger active probes across all 6 subsystems, you see real-time datagram handshakes with sub-millisecond response times averaging just 0.45 ms.'"),
+        ("SCENE 3 (1:15 - 1:55) | 184k EPS Stress Cannon & Red-Team Threat Arsenal",
+         "Screen: Simulator Threat Grid. Click 'SYN Flood DoS' or 'SQLi', click 'DISPATCH 1,000 PACKET BURST'. Show wiretap receipts.",
+         "Narration: 'Next, our High-Velocity Stress Cannon and Red-Team Cyber Threat Arsenal tests system resilience across 8 active attack scenarios. When firing a 1,000-datagram burst over UDP 5140, ULPF sustains over 184,400 packets/sec with a memory footprint of just 42 MB RSS. Our C-Fast compiler deterministically normalizes multi-vendor formats into canonical ULPF-IR.'"),
+        ("SCENE 4 (1:55 - 2:35) | Cryptographic SHA-256 Merkle Ledger (Blockchain Theme)",
+         "Screen: Main Dashboard Merkle Vault. Show 125 logs/block root hash. Click 'SIMULATE LOG TAMPER'. Show red alert.",
+         "Narration: 'This brings us to our core link to the Blockchain & Cybersecurity theme: our Cryptographic SHA-256 Merkle Ledger Vault. ULPF preserves 100% of raw bytes and batches events into 125-log blocks. If an attacker gains root privileges and alters even a single byte of a historical log, the Merkle root calculation immediately fails, proving evidence tampering and satisfying Section 65B of the Indian Evidence Act.'"),
+        ("SCENE 5 (2:35 - 3:15) | Sovereign Air-Gapped AI Parser Onboarding",
+         "Screen: AI Onboarding Queue. Select unknown log, click 'SYNTHESIZE AI PARSER', show generated Pydantic schema, click Approve.",
+         "Narration: 'When a network device emits an unknown zero-day log format, ULPF routes it to our Sovereign AI Onboarding Engine. Powered by a local LLM running on Ollama, the AI synthesizes a deterministic parser and presents it for single-click deployment. Because the LLM runs 100% locally, zero sensitive defense telemetry ever leaves the air-gapped network.'"),
+        ("SCENE 6 (3:15 - 3:45) | Analytics Studio, Docker Pro Clip & Benchmark Wrap-up",
+         "Screen: Analytics Studio charts, brief terminal flash running 'python scripts/run_benchmarks.py' and 'docker compose ps'.",
+         "Narration: 'Finally, our Analytics Studio exports standardized telemetry into OCSF v1.1.0, Elastic ECS, and OpenSearch for CERT-In 6-hour compliance. The entire ecosystem is containerized with Docker and Redpanda streaming sinks. All subsystem benchmarks are 100% operational. ULPF delivers sovereign, high-throughput cyber defense for India. Thank you!'")
+    ]
+
+    for title, action, narration in video_scenes:
+        scene_data = [
+            [Paragraph(f"<b>{title}</b>", script_scene_title)],
+            [Paragraph(f"<b>[ACTION ON SCREEN]:</b> {action}<br/><b>[WHAT TO SAY]:</b> <i>{narration}</i>", script_body)]
+        ]
+        scene_t = Table(scene_data, colWidths=[536])
+        scene_t.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#0F172A')),
+            ('BACKGROUND', (0,1), (-1,-1), colors.HexColor('#1E293B')),
+            ('BOX', (0,0), (-1,-1), 1, colors.HexColor('#334155')),
+            ('TOPPADDING', (0,0), (-1,-1), 2.5),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 2.5),
+            ('LEFTPADDING', (0,0), (-1,-1), 5),
+            ('RIGHTPADDING', (0,0), (-1,-1), 5),
+        ]))
+        story.append(scene_t)
+        story.append(Spacer(1, 3))
+
+    story.append(Spacer(1, 4))
+    story.append(Paragraph("6. Grand Finale Jury Defense & Q&A Strategy", h1_style))
+    defense_qa = [
+        ("Q1: How is your solution related to Blockchain?",
+         "Answer: 'We apply the core cryptographic foundation of Blockchain — the SHA-256 Merkle Tree Ledger. Logs are batched into 125-event blocks. Any historical modification causes an immediate Merkle root mismatch, ensuring non-repudiation and court admissibility under Section 65B IE Act.'"),
+        ("Q2: How do you handle zero-day log formats without cloud LLMs?",
+         "Answer: 'We run a quantized local LLM (Qwen 2.5 via Ollama) on-premise in air-gapped mode. It analyzes structural tokens, generates a deterministic Pydantic parser, and submits it to the SOC administrator for single-click deployment with zero telemetry leaks.'"),
+        ("Q3: What is your measured ingestion throughput?",
+         "Answer: 'In our live benchmarks, our raw UDP socket collector on port 5140 sustained 184,457.6 packets per second with a memory footprint of just 42.14 MB RSS, allowing ULPF to run directly as a sidecar container on edge gateways.'")
+    ]
+
+    for q, a in defense_qa:
+        qa_data = [
+            [Paragraph(f"<b>{q}</b>", body_bold)],
+            [Paragraph(a, body)]
+        ]
+        qa_t = Table(qa_data, colWidths=[536])
+        qa_t.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#F8FAFC')),
+            ('BOX', (0,0), (-1,-1), 0.8, colors.HexColor('#CBD5E1')),
+            ('TOPPADDING', (0,0), (-1,-1), 2.5),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 2.5),
+            ('LEFTPADDING', (0,0), (-1,-1), 5),
+            ('RIGHTPADDING', (0,0), (-1,-1), 5),
+        ]))
+        story.append(qa_t)
+        story.append(Spacer(1, 2.5))
+
     doc.build(story, canvasmaker=NumberedCanvas)
-    print(f"Master Complete PDF Generated: {PDF_PATH}")
+    print(f"Comprehensive 5-Page Master PDF Generated: {PDF_PATH}")
 
 if __name__ == '__main__':
-    build_comprehensive_pdf()
+    build_master_guide_pdf()
