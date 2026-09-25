@@ -20,7 +20,7 @@ This guide details how to deploy, operate, scale, and monitor the ULPF distribut
 | **`ulpf-worker`** | `ulpf-ulpf-worker:latest` | Internal | None | Distributed Redpanda Kafka consumer & batch processor |
 | **`redpanda`** | `redpandadata/redpanda:v23.3.14`| `9092`, `19092`, `9644` | `9092`, `19092`, `9644` | High-throughput streaming bus (~400MB RAM) |
 | **`redpanda-console`**| `redpandadata/console:v2.4.5` | `8080` | `8085` | Live Kafka stream, topic, and partition visualizer |
-| **`minio`** | `quay.io/minio/minio:RELEASE.2024-01-16T16-07-38Z` | `9000`, `9001` | `9000`, `9001` | S3-compatible raw evidence storage & web console |
+| **`minio`** | `quay.io/minio/minio:latest` | `9000`, `9001` | `9000`, `9001` | S3-compatible raw evidence storage & web console |
 | **`opensearch`** | `opensearchproject/opensearch:2.11.1`| `9200` | `9200` | Search & analytics cluster (Optional profile) |
 | **`ulpf-ai`** | `ulpf-ai:latest` | `11434` | `11434` | Sovereign local LLM / Ollama engine (Optional profile)|
 
