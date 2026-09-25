@@ -34,12 +34,23 @@ Run the automated deployment script in PowerShell from the project root:
 .\deploy.ps1
 ```
 
-### Option B: Linux / Cloud VM (Bash)
+### Option B: Linux / Oracle Cloud VM (Bash)
 Make the script executable and execute:
 ```bash
 chmod +x deploy.sh
 ./deploy.sh
 ```
+
+> [!TIP]
+> **Oracle Cloud Infrastructure (OCI) VM Checklist**:
+> 1. **OCI Ingress Security Rules** (VCN -> Security Lists): Open TCP ports `8000`, `8050`, `8085`, `9001`, `5141` and UDP `5140`.
+> 2. **OS Firewall** (Ubuntu/Oracle Linux):
+>    ```bash
+>    sudo iptables -I INPUT 6 -m state --state NEW -p tcp -m multiport --dports 8000,8050,8085,9000,9001,5141 -j ACCEPT
+>    sudo iptables -I INPUT 6 -m state --state NEW -p udp --dport 5140 -j ACCEPT
+>    sudo netfilter-persistent save || sudo firewall-cmd --reload 2>/dev/null || true
+>    ```
+
 
 ### Option C: Manual Docker Compose
 ```bash
