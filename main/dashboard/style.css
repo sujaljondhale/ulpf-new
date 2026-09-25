@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap');
+
 /* ==========================================================================
    ULPF ENTERPRISE SOC CONTROL CENTER — MODERN GLASSMORPHIC DESIGN SYSTEM
    Featuring 2 Curated Themes: Dark Obsidian (Emerald Glow) & Light Crystal
@@ -92,6 +94,7 @@
   --font-sans: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', Consolas, Monaco, monospace;
   --font-heading: 'Outfit', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-brand: 'Syne', 'Space Grotesk', system-ui, -apple-system, sans-serif;
 }
 
 /* LIGHT THEME — Clean Crystal */
@@ -418,7 +421,28 @@ body {
 .brand-logo {
   display: flex;
   align-items: center;
-  gap: 12px;
+  width: 100%;
+  gap: 10px;
+  min-width: 0;
+}
+
+.brand-icon-img {
+  width: 42%;
+  max-width: 72px;
+  max-height: 72px;
+  object-fit: contain;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 0px 0px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  flex-shrink: 0;
+}
+
+.brand-icon-img:hover {
+  transform: translateY(-2px) scale(1.04);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.45);
 }
 
 .brand-icon {
@@ -434,18 +458,27 @@ body {
 }
 
 .brand-title {
-  font-size: 17px;
+  font-family: 'Syne', 'Space Grotesk', system-ui, sans-serif;
+  font-size: 16px;
   font-weight: 800;
   color: var(--text-main);
-  letter-spacing: 0.5px;
-  line-height: 1.1;
+  line-height: 1.15;
+  letter-spacing: -0.2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .brand-sub {
-  font-size: 10px;
-  color: var(--text-muted);
-  line-height: 1.2;
+  font-size: 9.5px;
+  color: #00D084;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
   margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .sidebar-nav {
@@ -912,6 +945,14 @@ body {
 
 .btn:active {
   transform: scale(0.98);
+}
+
+.btn:disabled, .btn[disabled] {
+  opacity: 0.38 !important;
+  cursor: not-allowed !important;
+  pointer-events: none !important;
+  box-shadow: none !important;
+  filter: grayscale(0.6);
 }
 
 .btn-sm {
