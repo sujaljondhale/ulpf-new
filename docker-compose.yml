@@ -300,6 +300,34 @@ services:
       - ulpf-net
     restart: unless-stopped
 
+  # ----------------------------------------------------------------------------
+  # 10. ULPF Virtual Device Simulator & Protocol Testing Hub (Port 8050)
+  # ----------------------------------------------------------------------------
+  ulpf-simulator:
+    build:
+      context: .
+      dockerfile: Dockerfile.simulator
+    image: ulpf-simulator:latest
+    container_name: ulpf-simulator
+    ports:
+      - "8050:8050"
+    environment:
+      - TESTING_HOST=0.0.0.0
+      - TESTING_PORT=8050
+      - ULPF_API_URL=http://ulpf-api:8000
+    depends_on:
+      ulpf-api:
+        condition: service_healthy
+    networks:
+      - ulpf-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8050/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+
 volumes:
   minio_data:
     name: ulpf_minio_data
