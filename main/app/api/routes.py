@@ -3969,9 +3969,10 @@ PIPELINE_STATE = {
 
 
 @router.post("/api/test/pipeline/run")
-def post_testing_pipeline_run(body: Optional[Dict[str, Any]] = None):
+@router.post("/api/v1/test/pipeline/run")
+def post_testing_pipeline_run(body: Optional[Dict[str, Any]] = Body(default=None)):
     """Execute end-to-end 5-stage automated audit pipeline."""
-    stage = (body or {}).get("stage") or "all"
+    stage = (body or {}).get("stage") or (body or {}).get("mode") or "all"
     
     t0 = time.perf_counter()
     # Test Stage 1: Ingestion
