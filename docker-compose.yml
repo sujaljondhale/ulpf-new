@@ -204,7 +204,7 @@ services:
   # 6. MinIO — Immutable Raw Log S3 Object Storage (~150MB RAM)
   # ----------------------------------------------------------------------------
   minio:
-    image: minio/minio:latest
+    image: quay.io/minio/minio:RELEASE.2024-01-16T16-07-38Z
     container_name: ulpf-minio
     command: server /data --console-address ":9001"
     environment:
