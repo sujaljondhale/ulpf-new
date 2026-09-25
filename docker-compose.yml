@@ -22,7 +22,6 @@ services:
     build:
       context: .
       dockerfile: main/Dockerfile
-    image: ulpf-api:latest
     container_name: ulpf-api
     ports:
       - "8000:8000"
@@ -205,7 +204,7 @@ services:
   # 6. MinIO — Immutable Raw Log S3 Object Storage (~150MB RAM)
   # ----------------------------------------------------------------------------
   minio:
-    image: quay.io/minio/minio:latest
+    image: minio/minio:latest
     container_name: ulpf-minio
     command: server /data --console-address ":9001"
     environment:
@@ -288,7 +287,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.ai
-    image: ulpf-ai:latest
     container_name: ulpf-ai
     profiles:
       - ai
@@ -307,7 +305,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.simulator
-    image: ulpf-simulator:latest
     container_name: ulpf-simulator
     ports:
       - "8050:8050"
