@@ -12,3 +12,5 @@ ENV/
 *.log
 main/storage/raw/*.raw
 main/storage/*.db
+*.pdf
+docs/sih_assets/
