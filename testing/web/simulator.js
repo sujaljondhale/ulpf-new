@@ -864,7 +864,17 @@ document.addEventListener("DOMContentLoaded", () => {
         }),
       });
       if (res.ok) {
+        dev.packetsSent = (dev.packetsSent || 0) + 1;
         appendTerminalLog(dev, payload, "sys", payload.length, true);
+        recordAuditEntry({
+          protocol: dev.protocol,
+          target: `${host}:${targetPort}`,
+          source: dev.name,
+          status: "SUCCESS",
+          bytes: payload.length,
+          rtt: "<1ms",
+          payload: payload
+        });
       }
     } catch (e) {
       console.warn("Background log send failed for", dev.name, e);
@@ -1137,7 +1147,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let stressTestTimer = null;
 
-  // Packet Count Selector Buttons
+  // Packet Count Selector Buttons - Activate and trigger instant burst on click
   document.querySelectorAll(".btn-burst-count").forEach(btn => {
     btn.addEventListener("click", () => {
       document.querySelectorAll(".btn-burst-count").forEach(b => b.classList.remove("active"));
@@ -1145,6 +1155,9 @@ document.addEventListener("DOMContentLoaded", () => {
       const count = btn.getAttribute("data-count");
       const hiddenInput = document.getElementById("selectedBurstCount");
       if (hiddenInput) hiddenInput.value = count;
+      
+      // Instantly fire and activate high-speed packet burst
+      window.startBurstLoadTest();
     });
   });
 
@@ -3325,11 +3338,37 @@ LEEF:2.0|Suricata|IDS|6.0|ALERT|devTime=2026-09-25T14:32:03Z|src=10.0.1.55|dst=8
     });
   }
 
+  async function loadInitialAuditHistory() {
+    try {
+      const res = await fetch("/api/test/history?limit=50");
+      if (res.ok) {
+        const historyData = await res.json();
+        if (Array.isArray(historyData) && historyData.length > 0) {
+          auditLogs = historyData.map((item, idx) => ({
+            id: item.id || idx + 1,
+            timestamp: item.timestamp || new Date().toLocaleTimeString(),
+            protocol: (item.protocol || "UDP").toUpperCase(),
+            target: `${item.host || "127.0.0.1"}:${item.port || 5140}`,
+            source: item.source || "Virtual-Device",
+            status: item.success !== false ? "SUCCESS" : "FAILED",
+            bytes: item.bytes_sent || (item.payload ? item.payload.length : 0),
+            rtt: item.latency_ms !== undefined ? `${item.latency_ms} ms` : "<1ms",
+            payload: item.payload || ""
+          }));
+          window.renderAuditHistoryTable();
+        }
+      }
+    } catch (e) {
+      console.warn("Could not load initial audit history:", e);
+    }
+  }
+
   // Initial Boot
   loadSettings();
   renderDevicesList();
   renderGuide("linux");
   window.renderAuditHistoryTable();
+  loadInitialAuditHistory();
   restartAutoProbeTimer();
   window.initFileUploaderTab();
   setTimeout(() => {

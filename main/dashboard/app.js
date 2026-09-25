@@ -766,6 +766,17 @@
     const tbody = document.getElementById("eventsTableBody");
     if (!tbody) return;
 
+    const searchInp = document.getElementById("eventsTableSearchInput");
+    if (searchInp && searchInp.value !== (query || "")) {
+      searchInp.value = query || "";
+    }
+
+    if (typeof applyLogsFilters === "function") {
+      logsCurrentPage = 1;
+      applyLogsFilters();
+      return;
+    }
+
     if (!query) {
       refreshEventsTable();
       return;
@@ -6891,55 +6902,34 @@ normalization:
 
     // MinIO Forensics Handler
     document.getElementById('btnSearchForensics').addEventListener('click', async () => {
-      const input = document.getElementById('forensicEventIdInput').value.trim();
-      if (!input) return;
+      const input = (document.getElementById('forensicEventIdInput')?.value || "").trim();
+      if (!input) {
+        showToast("Please enter an Event ID to inspect forensics.", "warning");
+        return;
+      }
       const btn = document.getElementById('btnSearchForensics');
       btn.textContent = 'Fetching...';
 
       try {
-        const res = await fetch(`/api/v1/analytics/evidence/${input}`);
-        const data = await res.json();
-        
-        if (res.ok) {
-           const ev = data.parsed_event || { original: {}, event: {} };
-           ev.original = ev.original || {};
-           ev.original.raw_evidence = data.raw_content;
-           ev.original.sha256 = data.sha256_hash;
-           ev.tamper_verified = data.tamper_verified;
-           
-           window.openEventDetailModal(input, ev);
+        let evData = null;
+        try {
+          const res = await fetch(`/api/v1/analytics/evidence/${encodeURIComponent(input)}`);
+          if (res.ok) evData = await res.json();
+        } catch (e) {}
 
-           // Auto-trigger AI if not already loaded or analyzed
-           setTimeout(async () => {
-             const aiBadge = document.getElementById("modalAiStatusBadge");
-             if (aiBadge) aiBadge.innerText = "Analyzing...";
-             try {
-                const aiRes = await fetch('/api/v1/ai/reanalyze-threat/' + encodeURIComponent(input), { method: 'POST' });
-                const aiData = await aiRes.json();
-                if (aiRes.ok && aiData.result) {
-                    const resData = aiData.result;
-                    const aiBody = document.getElementById("modalAiExplanationBody");
-                    if (aiBody) {
-                       if (resData.is_threat) {
-                           aiBody.innerHTML = `<div style="padding:12px; background: rgba(239, 68, 68, 0.05); border-left: 3px solid var(--danger-main); border-radius: 4px;">
-                              <strong>Verified Threat:</strong> ${resData.reasoning}
-                           </div>`;
-                       } else {
-                           aiBody.innerHTML = `<div style="color: var(--success-main); padding: 12px; background: rgba(16, 185, 129, 0.1); border-radius: 4px;">
-                              <i class="fas fa-shield-alt"></i> AI Verified False Positive: ${resData.reasoning}
-                           </div>`;
-                       }
-                    }
-                    if (aiBadge) aiBadge.innerText = resData.is_threat ? "THREAT CONFIRMED" : "BENIGN";
-                }
-             } catch(e) {}
-           }, 500);
-
+        if (evData && (evData.parsed_event || evData.raw_content)) {
+          const ev = evData.parsed_event || { original: {}, event: {} };
+          ev.original = ev.original || {};
+          ev.original.raw_evidence = evData.raw_content;
+          ev.original.sha256 = evData.sha256_hash;
+          ev.tamper_verified = evData.tamper_verified;
+          window.openEventDetailModal(input, ev);
         } else {
-           alert("Could not retrieve evidence: " + (data.detail || "Not Found"));
+          // Open detail modal with fallback matching
+          window.openEventDetailModal(input);
         }
       } catch (e) {
-        console.error(e);
+        window.openEventDetailModal(input);
       } finally {
         btn.textContent = 'Fetch Evidence';
       }
@@ -7011,7 +7001,7 @@ normalization:
         for (let j = 0; j < data.positions[i].length; j++) {
           const node = data.positions[i][j];
           const hash = String(node.hash || "").toLowerCase();
-          const evtId = String(node.event?.id || node.event?.ulpf?.event_id || "").toLowerCase();
+          const evtId = String(node.event?.event_id || node.event?.id || node.event?.raw_event_id || node.event?.ulpf?.event_id || "").toLowerCase();
           if (hash.includes(q) || (evtId && evtId.includes(q))) {
             matchedNode = node;
             matchedLevel = i;
@@ -7047,6 +7037,20 @@ normalization:
         navigator.clipboard.writeText(hash);
         showToast("Copied SHA-256 Hash to Clipboard!", "success");
       }
+    };
+
+    window.showEventInLogsTable = function (eid) {
+      if (!eid) return;
+      window.location.hash = "#/events";
+      setTimeout(() => {
+        const searchInput = document.getElementById("eventsTableSearchInput") || document.getElementById("globalSearchInput");
+        if (searchInput) {
+          searchInput.value = eid;
+          searchInput.dispatchEvent(new Event("input"));
+        } else if (typeof window.filterEventsTable === "function") {
+          window.filterEventsTable(eid);
+        }
+      }, 150);
     };
 
     window.inspectNode = function(node, level, index) {
@@ -7092,14 +7096,14 @@ normalization:
       if (detailsBox) {
         if (isLeaf && node.event && !isPad) {
           const ev = node.event;
-          const eid = ev.id || ev.ulpf?.event_id || "EVT-" + (index + 1);
-          const src = ev.source || ev.observer?.name || ev.observer?.ip || "Syslog Ingress";
-          const fmt = (ev.format || "Deterministic Canonical").toUpperCase();
-          const ts = ev.timestamp || new Date().toISOString();
-          const act = ev.action || ev.disposition || "PROCESSED";
+          const eid = ev.event_id || ev.raw_event_id || ev.id || ev.ulpf?.event_id || "ULPF-2026-1000";
+          const src = ev.source || ev.device?.hostname || ev.observer?.name || ev.observer?.ip || "Syslog Ingress";
+          const fmt = (ev.format || ev.original?.format || "Deterministic Canonical").toUpperCase();
+          const ts = ev.timestamp || ev.created_at || new Date().toISOString();
+          const act = (ev.action || ev.event?.action || ev.status || "PROCESSED").toUpperCase();
           detailsBox.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:6px;">
-              <span style="font-weight:700; color:var(--text-main); font-family:var(--font-mono);">${eid}</span>
+              <span style="font-weight:700; color:var(--text-main); font-family:var(--font-mono); font-size:13px;">${eid}</span>
               <span class="badge badge-teal">${fmt}</span>
               <span class="badge badge-neutral">${act}</span>
             </div>
@@ -7108,9 +7112,14 @@ normalization:
               <div><strong>Ingest Timestamp:</strong> ${ts}</div>
               <div><strong>Tamper Verification:</strong> <span style="color:var(--success-main); font-weight:700;">VERIFIED (SHA-256 Authentic)</span></div>
             </div>
-            <button class="btn btn-sm btn-teal" onclick="window.location.hash='#/events'; setTimeout(()=>{const si=document.getElementById('globalSearchInput'); if(si){si.value='${eid}'; si.dispatchEvent(new Event('input'));}}, 200);" style="width:100%; justify-content:center; font-size:11px; padding:5px 8px;">
-              <span>Inspect Full Event in Logs Explorer ➔</span>
-            </button>
+            <div style="display:flex; gap:8px; margin-top:8px;">
+              <button class="btn btn-sm btn-primary" onclick="window.openEventDetailModal('${eid}', window.selectedMerkleNode ? window.selectedMerkleNode.event : null)" style="flex:1; justify-content:center; font-size:11px; padding:6px 10px; font-weight:700;">
+                <span>Inspect Event Details (Modal) ➔</span>
+              </button>
+              <button class="btn btn-sm btn-secondary" onclick="window.showEventInLogsTable('${eid}')" style="flex:1; justify-content:center; font-size:11px; padding:6px 10px;">
+                <span>View in Logs Table</span>
+              </button>
+            </div>
           `;
         } else if (isRoot) {
           detailsBox.innerHTML = `

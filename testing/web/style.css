@@ -698,6 +698,29 @@ body {
   border-radius: 8px;
 }
 
+/* Burst Packet Preset Buttons */
+.btn-burst-count {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.btn-burst-count:hover {
+  border-color: var(--primary-main) !important;
+  color: var(--primary-main) !important;
+  transform: translateY(-2px);
+}
+
+.btn-burst-count.active {
+  background: var(--primary-main) !important;
+  color: #04140C !important;
+  border-color: var(--primary-hover) !important;
+  box-shadow: 0 0 16px var(--primary-glow), 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+  transform: translateY(-2px) scale(1.05);
+  font-weight: 800;
+}
+
 .btn:disabled, .btn-primary:disabled, .btn-secondary:disabled, .btn-teal:disabled, .btn-danger:disabled, button:disabled {
   opacity: 0.38 !important;
   cursor: not-allowed !important;
