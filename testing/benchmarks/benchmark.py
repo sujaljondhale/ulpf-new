@@ -79,6 +79,9 @@ def run_benchmark(
             errors += 1
         t1 = time.perf_counter()
         latencies_us.append((t1 - t0) * 1_000_000)
+        
+        if interval > 0.0:
+            time.sleep(interval)
 
     t_end = time.perf_counter()
     total_duration_sec = t_end - t_start
