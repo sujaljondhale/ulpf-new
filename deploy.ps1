@@ -33,10 +33,14 @@ Start-Sleep -Seconds 10
 
 # 5. Initialize MinIO and Redpanda Topics
 Write-Host "`n[5/5] Bootstrapping MinIO buckets and Redpanda streaming topics..." -ForegroundColor Yellow
+$minioUser = if ($env:MINIO_ACCESS_KEY) { $env:MINIO_ACCESS_KEY } else { "ulpf_admin" }
+$minioPass = if ($env:MINIO_SECRET_KEY) { $env:MINIO_SECRET_KEY } else { "ulpf_password_2026" }
+$minioBucket = if ($env:MINIO_BUCKET) { $env:MINIO_BUCKET } else { "ulpf-raw" }
+
 try {
-    docker exec ulpf-minio mc alias set local http://localhost:9000 ulpf_admin ulpf_password_2026 2>$null
-    docker exec ulpf-minio mc mb local/ulpf-raw 2>$null
-    Write-Host "  -> MinIO bucket 'ulpf-raw' verified." -ForegroundColor Green
+    docker exec ulpf-minio mc alias set local http://localhost:9000 $minioUser $minioPass 2>$null
+    docker exec ulpf-minio mc mb "local/$minioBucket" 2>$null
+    Write-Host "  -> MinIO bucket '$minioBucket' verified." -ForegroundColor Green
 } catch {
     Write-Host "  -> Notice: MinIO bucket init deferred or already initialized." -ForegroundColor Gray
 }
@@ -54,6 +58,6 @@ Write-Host "====================================================================
 Write-Host " SOC UI & Gateway:       http://localhost:8000" -ForegroundColor White
 Write-Host " Testing Simulator Hub:  http://localhost:8050" -ForegroundColor White
 Write-Host " Redpanda Stream Visual: http://localhost:8085" -ForegroundColor White
-Write-Host " MinIO Object Storage:   http://localhost:9001 (ulpf_admin / ulpf_password_2026)" -ForegroundColor White
+Write-Host " MinIO Object Storage:   http://localhost:9001 ($minioUser / [configured secret])" -ForegroundColor White
 Write-Host " Redis Cache & Broker:   Port 6379" -ForegroundColor White
 Write-Host "======================================================================`n" -ForegroundColor Green

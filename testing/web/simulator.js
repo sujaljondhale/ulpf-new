@@ -1136,8 +1136,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // ==============================================================================
   // TAB 3: HIGH-THROUGHPUT LOAD GENERATOR & STRESS CANNON CONTROLLER
   // ==============================================================================
-  const btnStartStress = document.getElementById("btnStartStressTest");
-  const btnStopStress = document.getElementById("btnStopStressTest");
+  const btnToggleStress = document.getElementById("btnToggleStressTest");
   const loadgenProgressFill = document.getElementById("loadgenProgressFill");
   const statBurstDelivered = document.getElementById("statBurstDelivered");
   const statBurstEps = document.getElementById("statBurstEps");
@@ -1157,7 +1156,9 @@ document.addEventListener("DOMContentLoaded", () => {
       if (hiddenInput) hiddenInput.value = count;
       
       // Instantly fire and activate high-speed packet burst
-      window.startBurstLoadTest();
+      if (!isStressTesting) {
+        window.toggleBurstLoadTest();
+      }
     });
   });
 
@@ -1173,113 +1174,130 @@ document.addEventListener("DOMContentLoaded", () => {
     loadgenConsoleFeed.scrollTop = loadgenConsoleFeed.scrollHeight;
   }
 
-  window.startBurstLoadTest = async function () {
-    const hiddenInput = document.getElementById("selectedBurstCount");
-    const burstCount = parseInt(hiddenInput ? hiddenInput.value : "50", 10) || 50;
-    const protoSelect = document.getElementById("loadgenProtocol");
-    const protocol = protoSelect ? protoSelect.value : "UDP";
-    const pacingSelect = document.getElementById("loadgenPacing");
-    const pacingValue = parseInt(pacingSelect ? pacingSelect.value : "0", 10) || 0;
-    const pacingDelayMs = pacingValue === 0 ? 0 : Math.round(1000 / pacingValue);
+  let isStressTesting = false;
 
-    const host = (hostInput && hostInput.value.trim()) ? hostInput.value.trim() : (testbedSettings.host || "127.0.0.1");
+  window.toggleBurstLoadTest = async function () {
+    if (isStressTesting) {
+      isStressTesting = false;
+      if (stressTestTimer) {
+        clearTimeout(stressTestTimer);
+        stressTestTimer = null;
+      }
+      appendLoadgenLog("Stress cannon stopped by operator.");
+      showToast("Stress test stopped.");
+      resetToggleButton();
+      return;
+    }
+    isStressTesting = true;
 
-    if (btnStartStress) {
-      btnStartStress.disabled = true;
-      btnStartStress.innerHTML = "<span>Firing Packets...</span>";
+    if (btnToggleStress) {
+      btnToggleStress.classList.remove("btn-primary");
+      btnToggleStress.classList.add("btn-danger");
+      btnToggleStress.innerHTML = `
+        <svg class="svg-icon" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12"></rect></svg>
+        <span>Stop Firing Burst</span>
+      `;
     }
 
     if (loadgenProgressFill) {
       loadgenProgressFill.style.width = "25%";
     }
 
-    if (statBurstDelivered) statBurstDelivered.textContent = "Blasting...";
-    if (statBurstEps) statBurstEps.textContent = "Calculating...";
-    if (statBurstElapsed) statBurstElapsed.textContent = "0.00s";
-    if (statBurstBytes) statBurstBytes.textContent = "...";
+    const fireNextBurst = async () => {
+      if (!isStressTesting) {
+        resetToggleButton();
+        return;
+      }
+      
+      const hiddenInput = document.getElementById("selectedBurstCount");
+      const burstCount = parseInt(hiddenInput ? hiddenInput.value : "50", 10) || 50;
+      const protoSelect = document.getElementById("loadgenProtocol");
+      const protocol = protoSelect ? protoSelect.value : "UDP";
+      const pacingSelect = document.getElementById("loadgenPacing");
+      const pacingValue = parseInt(pacingSelect ? pacingSelect.value : "0", 10) || 0;
+      const pacingDelayMs = pacingValue === 0 ? 0 : Math.round(1000 / pacingValue);
 
-    appendLoadgenLog(`Launching high-speed burst: ${burstCount} packets via ${protocol} to ${host}...`);
+      const host = (typeof hostInput !== 'undefined' && hostInput && hostInput.value.trim()) ? hostInput.value.trim() : (testbedSettings.host || "127.0.0.1");
 
-    const t0 = performance.now();
+      if (statBurstDelivered) statBurstDelivered.textContent = "Blasting...";
+      if (statBurstEps) statBurstEps.textContent = "Calculating...";
+      if (statBurstElapsed) statBurstElapsed.textContent = "0.00s";
+      if (statBurstBytes) statBurstBytes.textContent = "...";
 
-    try {
-      const res = await fetch("/api/test/burst", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          host: host,
+      appendLoadgenLog(`Launching high-speed burst: ${burstCount} packets via ${protocol} to ${host}...`);
+
+      const t0 = performance.now();
+
+      try {
+        const res = await fetch("/api/test/burst", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            host: host,
+            protocol: protocol,
+            count: burstCount,
+            pacing_delay_ms: pacingDelayMs
+          })
+        });
+
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: Failed to execute burst cannon`);
+        }
+
+        const data = await res.json();
+        const elapsed = data.elapsed_seconds || ((performance.now() - t0) / 1000).toFixed(3);
+        const delivered = data.delivered || burstCount;
+        const effectiveEps = data.effective_eps || Math.round(delivered / (parseFloat(elapsed) || 0.001));
+        const totalBytes = data.total_bytes || (delivered * 185);
+
+        if (loadgenProgressFill) {
+          loadgenProgressFill.style.width = "100%";
+        }
+
+        if (statBurstDelivered) statBurstDelivered.textContent = delivered.toLocaleString();
+        if (statBurstEps) statBurstEps.textContent = `${effectiveEps.toLocaleString()} EPS`;
+        if (statBurstElapsed) statBurstElapsed.textContent = `${elapsed}s`;
+        if (statBurstBytes) statBurstBytes.textContent = `${(totalBytes / 1024).toFixed(1)} KB`;
+
+        appendLoadgenLog(`Burst complete: ${delivered}/${burstCount} packets delivered in ${elapsed}s (Throughput: ${effectiveEps.toLocaleString()} EPS, ${(totalBytes / 1024).toFixed(1)} KB). Zero packet loss [0.00%].`);
+
+        recordAuditEntry({
           protocol: protocol,
-          count: burstCount,
-          pacing_delay_ms: pacingDelayMs
-        })
-      });
+          target: `${host}:8000/5140`,
+          source: "StressCannon-Burst",
+          status: "SUCCESS",
+          bytes: totalBytes,
+          rtt: `${Math.round((parseFloat(elapsed) * 1000) / delivered)} ms/pkt`,
+          payload: `[STRESS-BURST] ${delivered} packets fired via ${protocol} at ${effectiveEps.toLocaleString()} EPS`
+        });
 
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}: Failed to execute burst cannon`);
+        if (isStressTesting) {
+          stressTestTimer = setTimeout(fireNextBurst, 100);
+        }
+      } catch (err) {
+        appendLoadgenLog(`[WARN] Stress burst notice: ${err.message}.`);
+        showToast(`Stress Cannon notice: ${err.message}`);
+        isStressTesting = false;
+        resetToggleButton();
       }
+    };
 
-      const data = await res.json();
-      const elapsed = data.elapsed_seconds || ((performance.now() - t0) / 1000).toFixed(3);
-      const delivered = data.delivered || burstCount;
-      const effectiveEps = data.effective_eps || Math.round(delivered / (parseFloat(elapsed) || 0.001));
-      const totalBytes = data.total_bytes || (delivered * 185);
-
-      if (loadgenProgressFill) {
-        loadgenProgressFill.style.width = "100%";
-      }
-
-      if (statBurstDelivered) statBurstDelivered.textContent = delivered.toLocaleString();
-      if (statBurstEps) statBurstEps.textContent = `${effectiveEps.toLocaleString()} EPS`;
-      if (statBurstElapsed) statBurstElapsed.textContent = `${elapsed}s`;
-      if (statBurstBytes) statBurstBytes.textContent = `${(totalBytes / 1024).toFixed(1)} KB`;
-
-      appendLoadgenLog(`Burst complete: ${delivered}/${burstCount} packets delivered in ${elapsed}s (Throughput: ${effectiveEps.toLocaleString()} EPS, ${(totalBytes / 1024).toFixed(1)} KB). Zero packet loss [0.00%].`);
-
-      recordAuditEntry({
-        protocol: protocol,
-        target: `${host}:8000/5140`,
-        source: "StressCannon-Burst",
-        status: "SUCCESS",
-        bytes: totalBytes,
-        rtt: `${Math.round((parseFloat(elapsed) * 1000) / delivered)} ms/pkt`,
-        payload: `[STRESS-BURST] ${delivered} packets fired via ${protocol} at ${effectiveEps.toLocaleString()} EPS`
-      });
-
-      showToast(`Burst complete: ${delivered} packets delivered at ${effectiveEps.toLocaleString()} EPS!`);
-    } catch (err) {
-      appendLoadgenLog(`[WARN] Stress burst notice: ${err.message}.`);
-      showToast(`Stress Cannon notice: ${err.message}`);
-    } finally {
-      if (btnStartStress) {
-        btnStartStress.disabled = false;
-        btnStartStress.innerHTML = `
-          <svg class="svg-icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-          <span>Start Firing Burst</span>
-        `;
-      }
-    }
+    fireNextBurst();
   };
 
-  if (btnStartStress) {
-    btnStartStress.addEventListener("click", window.startBurstLoadTest);
-  }
-
-  if (btnStopStress) {
-    btnStopStress.addEventListener("click", () => {
-      if (stressTestTimer) {
-        clearInterval(stressTestTimer);
-        stressTestTimer = null;
-      }
-      appendLoadgenLog("Stress cannon stopped by operator.");
-      showToast("Stress test stopped.");
-      if (btnStartStress) {
-        btnStartStress.disabled = false;
-        btnStartStress.innerHTML = `
+  function resetToggleButton() {
+      if (btnToggleStress) {
+        btnToggleStress.classList.remove("btn-danger");
+        btnToggleStress.classList.add("btn-primary");
+        btnToggleStress.innerHTML = `
           <svg class="svg-icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
           <span>Start Firing Burst</span>
         `;
       }
-    });
+  }
+
+  if (btnToggleStress) {
+    btnToggleStress.addEventListener("click", window.toggleBurstLoadTest);
   }
 
   // Toast Helper
@@ -1372,9 +1390,14 @@ document.addEventListener("DOMContentLoaded", () => {
   // ==============================================================================
   // SETTINGS & REMOTE SERVER API CONTROLLER (PERSISTENT VIA LOCALSTORAGE)
   // ==============================================================================
+  const isCloudHost = typeof window !== "undefined" && !!window.location && !!window.location.hostname &&
+    window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1" && window.location.hostname !== "0.0.0.0";
+  const defaultHost = (typeof window !== "undefined" && window.location && window.location.hostname) ? window.location.hostname : "127.0.0.1";
+  const defaultScheme = (typeof window !== "undefined" && window.location && window.location.protocol) ? window.location.protocol.replace(":", "") : "http";
+
   const DEFAULT_SETTINGS = {
-    scheme: "http",
-    host: "127.0.0.1",
+    scheme: defaultScheme || "http",
+    host: defaultHost || "127.0.0.1",
     apiPort: 8000,
     udpPort: 5140,
     tcpPort: 5141,
@@ -1544,10 +1567,12 @@ document.addEventListener("DOMContentLoaded", () => {
       const saved = localStorage.getItem("ulpf_testbed_settings");
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (isCloudHost && (parsed.host === "127.0.0.1" || parsed.host === "localhost" || parsed.host === "host.docker.internal")) {
-          parsed.host = window.location.hostname || "ulpf-new-dlri.onrender.com";
-          parsed.scheme = "https";
-          parsed.apiPort = 443;
+        if (isCloudHost && (parsed.host === "127.0.0.1" || parsed.host === "localhost" || parsed.host === "host.docker.internal" || !parsed.host)) {
+          parsed.host = window.location.hostname || "127.0.0.1";
+          parsed.scheme = window.location.protocol.replace(":", "") || "http";
+          if (!parsed.apiPort || parsed.apiPort === 8050) {
+            parsed.apiPort = 8000;
+          }
         }
         testbedSettings = { ...DEFAULT_SETTINGS, ...parsed };
       }
@@ -1575,7 +1600,7 @@ document.addEventListener("DOMContentLoaded", () => {
       localStorage.removeItem("ulpf_testbed_settings");
     } catch (e) { }
     applyTargetSettings({ ...DEFAULT_SETTINGS }, false, true);
-    showToast("Reset to default configuration (http://127.0.0.1:8000, 5140, 5141).");
+    showToast(`Reset to default configuration (${DEFAULT_SETTINGS.scheme}://${DEFAULT_SETTINGS.host}:${DEFAULT_SETTINGS.apiPort}, ${DEFAULT_SETTINGS.udpPort}, ${DEFAULT_SETTINGS.tcpPort}).`);
   };
 
   window.validateSettingsConnection = function () {
@@ -2104,8 +2129,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     try {
       const queryUrl = `/api/test/target-status?host=${encodeURIComponent(host)}&api_port=${apiPort}&udp_port=${udpPort}&tcp_port=${tcpPort}&scheme=${encodeURIComponent(scheme)}`;
+      const probeTimeout = Math.max(parseInt(testbedSettings.timeout, 10) || 5000, 7000);
       const res = await fetch(queryUrl, {
-        signal: AbortSignal.timeout(testbedSettings.timeout || 3500)
+        signal: AbortSignal.timeout(probeTimeout)
       });
 
       const rtt = Math.round(performance.now() - t0);
@@ -2124,7 +2150,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const isUdpUp = ["online", "ready"].includes(udpProbe.status);
         const isTcpUp = ["online", "ready", "connected"].includes(tcpProbe.status);
         const isAiUp = ["online", "ready", "loaded", "healthy"].includes(aiProbe.status);
-        const isServerOnline = isHttpUp || data.all_ready === true;
+        const isServerOnline = isHttpUp;
 
         let readyCount = 0;
         if (isHttpUp) readyCount++;
@@ -2167,33 +2193,33 @@ document.addEventListener("DOMContentLoaded", () => {
         // Update Phase 4 Radar Matrix Cards
         const radarUdp = document.getElementById("radarUdpStatus");
         const radarUdpLat = document.getElementById("radarUdpLatency");
-        if (radarUdp) radarUdp.textContent = (udpProbe.status || "READY").toUpperCase();
-        if (radarUdpLat) radarUdpLat.textContent = `${udpProbe.latency_ms || 0.4} ms`;
+        if (radarUdp) radarUdp.textContent = (udpProbe.status || "OFFLINE").toUpperCase();
+        if (radarUdpLat) radarUdpLat.textContent = typeof udpProbe.latency_ms === 'number' ? `${udpProbe.latency_ms} ms` : `-- ms`;
 
         const radarTcp = document.getElementById("radarTcpStatus");
         const radarTcpLat = document.getElementById("radarTcpLatency");
-        if (radarTcp) radarTcp.textContent = (tcpProbe.status || "ONLINE").toUpperCase();
-        if (radarTcpLat) radarTcpLat.textContent = `${tcpProbe.latency_ms || 0.8} ms`;
+        if (radarTcp) radarTcp.textContent = (tcpProbe.status || "OFFLINE").toUpperCase();
+        if (radarTcpLat) radarTcpLat.textContent = typeof tcpProbe.latency_ms === 'number' ? `${tcpProbe.latency_ms} ms` : `-- ms`;
 
         const radarHttp = document.getElementById("radarHttpStatus");
         const radarHttpLat = document.getElementById("radarHttpLatency");
-        if (radarHttp) radarHttp.textContent = (httpProbe.status || "ONLINE").toUpperCase();
-        if (radarHttpLat) radarHttpLat.textContent = `${httpProbe.latency_ms || 1.2} ms`;
+        if (radarHttp) radarHttp.textContent = (httpProbe.status || "OFFLINE").toUpperCase();
+        if (radarHttpLat) radarHttpLat.textContent = typeof httpProbe.latency_ms === 'number' ? `${httpProbe.latency_ms} ms` : `-- ms`;
 
         const radarSse = document.getElementById("radarSseStatus");
         const radarSseLat = document.getElementById("radarSseLatency");
-        if (radarSse) radarSse.textContent = (sseProbe.status || "ONLINE").toUpperCase();
-        if (radarSseLat) radarSseLat.textContent = `${sseProbe.latency_ms || 0.6} ms`;
+        if (radarSse) radarSse.textContent = (sseProbe.status || "OFFLINE").toUpperCase();
+        if (radarSseLat) radarSseLat.textContent = typeof sseProbe.latency_ms === 'number' ? `${sseProbe.latency_ms} ms` : `-- ms`;
 
         const radarAi = document.getElementById("radarAiStatus");
         const radarAiLat = document.getElementById("radarAiLatency");
-        if (radarAi) radarAi.textContent = (aiProbe.status || "READY").toUpperCase();
-        if (radarAiLat) radarAiLat.textContent = `${aiProbe.latency_ms || 2.0} ms`;
+        if (radarAi) radarAi.textContent = (aiProbe.status || "OFFLINE").toUpperCase();
+        if (radarAiLat) radarAiLat.textContent = typeof aiProbe.latency_ms === 'number' ? `${aiProbe.latency_ms} ms` : `-- ms`;
 
         const radarStorage = document.getElementById("radarStorageStatus");
         const radarStorageLat = document.getElementById("radarStorageLatency");
-        if (radarStorage) radarStorage.textContent = (merkleProbe.status || "ONLINE").toUpperCase();
-        if (radarStorageLat) radarStorageLat.textContent = `${merkleProbe.latency_ms || 0.3} ms`;
+        if (radarStorage) radarStorage.textContent = (merkleProbe.status || "OFFLINE").toUpperCase();
+        if (radarStorageLat) radarStorageLat.textContent = typeof merkleProbe.latency_ms === 'number' ? `${merkleProbe.latency_ms} ms` : `-- ms`;
 
         // Update radar blip hits
         RADAR_BLIPS.forEach(b => { b.lastHit = Date.now(); });
@@ -2212,16 +2238,17 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     } catch (e) {
       const rtt = Math.round(performance.now() - t0);
+      const isTimeout = e.name === "TimeoutError" || e.name === "AbortError" || (e.message && e.message.toLowerCase().includes("timeout"));
       if (topBadge) topBadge.className = "server-status-pill offline";
       if (topDot) topDot.className = "badge-status-dot offline";
       if (topStatus) topStatus.textContent = "OFFLINE";
-      if (topPing) topPing.textContent = "(timeout)";
+      if (topPing) topPing.textContent = isTimeout ? "(timeout)" : "(err)";
 
       if (heroStatus) {
-        heroStatus.textContent = "OFFLINE / UNREACHABLE";
+        heroStatus.textContent = isTimeout ? "PROBE TIMEOUT / UNREACHABLE" : "OFFLINE / UNREACHABLE";
         heroStatus.style.color = "#f87171";
       }
-      if (heroLatency) heroLatency.textContent = `${rtt} ms Timeout`;
+      if (heroLatency) heroLatency.textContent = isTimeout ? `${rtt} ms Timeout` : "Offline";
       if (heroDot) heroDot.className = "badge-status-dot offline";
       if (stateDot) stateDot.className = "badge-status-dot offline";
 

@@ -4,8 +4,7 @@ import time
 import json
 import statistics
 
-# Ensure main directory is on path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "main")))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app.models.raw_event import RawEvent
@@ -22,7 +21,7 @@ from app.parsers import (
     KvParser,
 )
 from app.parsers.c_fast_parser import c_fast_parser
-from app.pipeline import UlpfPipeline
+from kosmoporos.engine import KosmoporosEngine
 from app.pipeline_monitor import ThroughputMonitor
 
 def run_benchmarks(iterations=5000):
@@ -133,7 +132,7 @@ def run_benchmarks(iterations=5000):
 
     # 3. Full End-to-End Pipeline Ingestion Benchmark
     print("\n[3] Full End-to-End Pipeline Ingestion (Ingest -> Detect -> Parse -> Normalize -> Provenance):", flush=True)
-    pipeline = UlpfPipeline()
+    engine = KosmoporosEngine()
     monitor = ThroughputMonitor(console_logging=False)
     
     e2e_iterations = 2000
@@ -141,12 +140,12 @@ def run_benchmarks(iterations=5000):
 
     # Warmup
     for _ in range(200):
-        pipeline.process(raw_event_sample)
+        engine.parse(raw_payload=raw_event_sample)
 
     start = time.perf_counter()
     for _ in range(e2e_iterations):
         t0 = time.perf_counter()
-        ir = pipeline.process(raw_event_sample)
+        ir = engine.parse(raw_payload=raw_event_sample)
         lat_us = (time.perf_counter() - t0) * 1_000_000
         monitor.record_event(byte_size=len(raw_event_sample), latency_us=lat_us)
     total_pipeline_time = time.perf_counter() - start
@@ -158,7 +157,7 @@ def run_benchmarks(iterations=5000):
     print(f"    E2E Ingestion Rate : {pipeline_eps:,.0f} logs/sec (EPS)", flush=True)
     print(f"    E2E Average Latency: {pipeline_lat_us:.2f} µs per event", flush=True)
     print(f"    Throughput Bandwidth: {mon_stats['throughput_mb_s']:.3f} MB/sec", flush=True)
-    print(f"    Pipeline Result Status: {ir.status.upper()} (Canonical OCSF/ECS Formed: {ir.event.action})", flush=True)
+    print(f"    Pipeline Result Status: {ir.status.upper()} (Canonical Formed)", flush=True)
 
     # 4. Multi-Core Async Queue Ingestion Benchmark
     import asyncio

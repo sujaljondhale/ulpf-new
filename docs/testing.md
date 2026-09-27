@@ -11,7 +11,7 @@ The **ULPF Testing Simulator Hub** is an independent, browser-accessible testing
 * **URL**: `http://127.0.0.1:8050`
 * **Startup Script**: `start_testing.bat` (or `python testing/server/sim_server.py`)
 * **Palette Compliance**: Designed strictly with the 4-color palette (`#EDE9E6`, `#C9996B`, `#5C4F4A`, `#5C766D`).
-* **Architectural Decoupling**: Completely segregated from the production server (`main/`, port `8000`), ensuring that synthetic traffic, attack simulations, and stress tests never pollute production pipelines.
+* **Architectural Decoupling**: Completely segregated from the production server (port `8000`), ensuring that synthetic traffic, attack simulations, and stress tests never pollute production pipelines.
 
 ---
 
@@ -20,7 +20,7 @@ The **ULPF Testing Simulator Hub** is an independent, browser-accessible testing
 At the top of every tab in the Testing Hub is the **Target Machine Controller Bar**:
 
 ```
-[  TARGET MACHINE: ] [ http:// ▼ ] [ 192.168.1.50 ] : [ 8000 ] [ Preset Machine... ▼ ] [ ● ONLINE (12ms) ] [  Ping API ] [ ️ Ports ]
+[  TARGET MACHINE: ] [ http:// ▼ ] [ 192.168.1.50 ] : [ 8000 ] [ Preset Machine... ▼ ] [ ● ONLINE (12ms) ] [  Ping API ] [  Ports ]
 ```
 
 ### 2.1 Configuration Controls:
@@ -34,12 +34,12 @@ At the top of every tab in the Testing Hub is the **Target Machine Controller Ba
    - ` Localhost (127.0.0.1:8000)`
    - ` Docker Host (host.docker.internal:8000)`
    - ` Remote LAN Machine...` (prompts for LAN IP)
-   - `️ Remote Cloud / VPS...` (prompts for domain / HTTPS URL)
+   - ` Remote Cloud / VPS...` (prompts for domain / HTTPS URL)
 5. **Live Health Status Pill**: Displays green `ONLINE (12ms)` or red `OFFLINE (timeout)` with real-time ping latency.
 6. ** Ping API**: Sends an immediate on-demand socket probe.
-7. **️ Ports Modal Trigger**: Opens granular transport configuration.
+7. ** Ports Modal Trigger**: Opens granular transport configuration.
 
-### 2.2 Remote Endpoints Configuration Modal (`️ Ports`)
+### 2.2 Remote Endpoints Configuration Modal (` Ports`)
 Allows configuring:
 * **Protocol Scheme**: `http` / `https`
 * **Target Host / IP**: Remote IP or hostname
@@ -50,9 +50,11 @@ Allows configuring:
 * **Auto-Probe Frequency**: `Paused`, `5 seconds`, or `10 seconds`
 * **Buttons**: ` Save & Apply`, ` Test Ping`, ` Reset Defaults`
 
-### 2.3 Browser CORS Bypass Guarantee
-When the ULPF server is hosted on a remote machine, browsers may block direct JavaScript cross-origin requests.  
-**Solution**: Health radar checks and synthetic log dispatches are proxied through `/api/test/target-status` and `/api/test/send-log` on the local simulator backend (`testing/server/sim_server.py`), executing raw Python socket probes directly to the remote machine. This guarantees **100% reliable connectivity verification** with zero CORS or mixed-content errors.
+### 2.3 Browser CORS Bypass, Split-Horizon DNS & Hairpin NAT Tolerance
+When the ULPF server is hosted on a remote machine, cloud instance (such as Oracle Cloud Infrastructure / OCI), or local container network, browsers may block direct cross-origin requests or encounter hairpin NAT routing limitations.
+* **Backend Socket Proxying**: Health radar checks and synthetic log dispatches are proxied through `/api/test/target-status` and `/api/test/send-log` on the simulator backend (`testing/server/sim_server.py`), executing raw Python socket handshakes directly to the target machine without CORS or mixed-content restrictions.
+* **Split-Horizon DNS & Hairpin NAT Fallback**: When testing against a server running on the same host or cloud VM (where the public IP is not routable back to the host via NAT loopback), the simulator detects internal loopback (`127.0.0.1` / `ulpf-api:8000`) vs public interface probes, seamlessly maintaining accurate socket status indicators.
+* **Hybrid Fallback Check**: The frontend (`testing/web/simulator.js`) pairs the backend `/api/test/target-status` probe with a fast direct HTTP fetch probe (`/api/v1/health` with `mode: 'cors'`). If either connection path succeeds, the target machine is immediately registered as `ONLINE`.
 
 ---
 
@@ -78,14 +80,14 @@ A 6-scenario cyber threat simulation arsenal with 1-click execution:
 2. ** SQL Injection (SQLi) Web Exploit**: Injects `UNION SELECT` database exfiltration tokens targeting WAF collectors to verify automated exploit classification.
 3. ** Horizontal Port Scan Sweep**: Executes a 12-port reconnaissance sweep across common enterprise ports (`21`, `22`, `53`, `80`, `443`, `3389`, `8080`) from `198.51.100.77`.
 4. ** Blacklisted IP Violation**: Ingress attempt from known botnet controller `198.51.100.99`, confirming instant packet discard at the socket layer.
-5. **️ SHA-256 Tamper Corruption**: Transmits raw telemetry and validates cryptographic hash verification on the server to prove evidence immutability.
-6. **️ Proprietary SCADA Hex Frame**: Injects non-standard MODBUS-HEX frames (`[SCADA-MODBUS-HEX] ADDR:0x04 FUNC:0x03 CRC:ERROR_FAIL`) to test fallback to AI Onboarding and Human Review queues.
+5. ** SHA-256 Tamper Corruption**: Transmits raw telemetry and validates cryptographic hash verification on the server to prove evidence immutability.
+6. ** Proprietary SCADA Hex Frame**: Injects non-standard MODBUS-HEX frames (`[SCADA-MODBUS-HEX] ADDR:0x04 FUNC:0x03 CRC:ERROR_FAIL`) to test fallback to AI Onboarding and Human Review queues.
 * **Live Defense Verification Console**: Real-time logging of both attack packet delivery and server defense responses.
 
 ---
 
 ### Tab 3: High-Throughput Load Generator
-* **Stress Storming**: Fires bursts of 50, 100, 250, or 500 packets across UDP (`:5140`), TCP (`:5141`), or HTTP REST (`:8000`).
+* **Stress Storming**: Fires continuous recursive bursts of 50, 100, 250, or 500 packets across UDP (`:5140`), TCP (`:5141`), or HTTP REST (`:8000`) using a unified Start/Stop toggle switch.
 * **Pacing & Rate Limiting**: Maximum velocity (0ms delay) or paced throughput (100, 50, 10 events/sec).
 * **Live Telemetry Radar**:
   - Packets Fired / Requested
@@ -137,7 +139,7 @@ A 6-scenario cyber threat simulation arsenal with 1-click execution:
     - ` Fast Smoke Check (--fast)`
     - ` Pytest Test Suites (--suites)` (13 test suites, 61 unit tests)
     - ` End-to-End Smoke Test (--smoke)` (10 verification phases)
-    - `️ Security & Cyber Resilience (--security)` (8 attack tests)
+    - ` Security & Cyber Resilience (--security)` (8 attack tests)
     - ` Stack & Subsystem Verification (--stack)` (10 runtime subsystem checks)
     - ` Throughput Benchmark (--bench)` (1,000 synthetic packet benchmark)
 * **Live Stage Grid & Timers**:

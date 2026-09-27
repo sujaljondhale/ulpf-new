@@ -80,6 +80,70 @@ app.add_middleware(
 TRANSMISSION_HISTORY: List[Dict[str, Any]] = []
 MAX_HISTORY = 200
 
+# ==============================================================================
+# SPLIT-HORIZON DNS & CONTAINER LOOPBACK / HAIRPIN NAT RESOLVER
+# ==============================================================================
+HAIRPIN_HOSTS: set = set()
+_HAIRPIN_LOCK = threading.Lock()
+
+
+def get_internal_fallback_host(is_ai: bool = False) -> str:
+    """Return companion service hostname inside Docker network or loopback on host."""
+    is_docker = os.path.exists("/.dockerenv") or os.environ.get("ULPF_INTERNAL_API_HOST") is not None
+    if is_ai:
+        return os.environ.get("ULPF_INTERNAL_AI_HOST", "ulpf-ai" if is_docker else "127.0.0.1")
+    default_internal = "ulpf-api" if is_docker else "127.0.0.1"
+    return os.environ.get("ULPF_INTERNAL_API_HOST", default_internal)
+
+
+def resolve_internal_target_host(target_host: Optional[str] = None, is_ai: bool = False) -> str:
+    """
+    Intelligently resolve target host for container-to-service communication.
+    Handles:
+    1. Localhost / loopback aliases: '127.0.0.1', 'localhost', '0.0.0.0', '::1', 'host.docker.internal'
+    2. Cached cloud public IPs affected by cloud hairpin NAT
+    3. Machine's local hostname matching
+    """
+    clean_host = (target_host or "127.0.0.1").strip()
+    if clean_host.startswith("http://"):
+        clean_host = clean_host[7:]
+    elif clean_host.startswith("https://"):
+        clean_host = clean_host[8:]
+    clean_host = clean_host.split(":")[0].rstrip("/")
+
+    fallback_host = get_internal_fallback_host(is_ai=is_ai)
+
+    # 1. Loopback addresses
+    if clean_host in ("127.0.0.1", "localhost", "0.0.0.0", "::1", "host.docker.internal"):
+        return fallback_host
+
+    # 2. Known hairpin NAT cloud addresses
+    with _HAIRPIN_LOCK:
+        if clean_host in HAIRPIN_HOSTS:
+            return fallback_host
+
+    # 3. Match local machine hostname or common container names
+    try:
+        if clean_host.lower() in (socket.gethostname().lower(), "ulpf-simulator", "ulpf-api"):
+            return fallback_host
+    except Exception:
+        pass
+
+    return clean_host
+
+
+def mark_hairpin_host(host: str) -> None:
+    """Remember that this host is the local VM's external IP requiring internal Docker routing."""
+    clean = (host or "").strip()
+    if clean.startswith("http://"):
+        clean = clean[7:]
+    elif clean.startswith("https://"):
+        clean = clean[8:]
+    clean = clean.split(":")[0].rstrip("/")
+    if clean and clean not in ("127.0.0.1", "localhost", "0.0.0.0", "::1"):
+        with _HAIRPIN_LOCK:
+            HAIRPIN_HOSTS.add(clean)
+
 
 class PingRequest(BaseModel):
     host: str = "127.0.0.1"
@@ -175,20 +239,15 @@ def get_target_status(
         scheme = req_body.scheme or scheme
     import concurrent.futures
 
-    # Split-Horizon DNS Translation: When the browser on the host machine requests a probe for 
-    # '127.0.0.1' or 'localhost', the completely decoupled simulator backend needs to translate this 
-    # to 'host.docker.internal' to route the health check OUT of the simulator container and into 
-    # the host machine's exposed ports, acting as an anonymous external client.
-    internal_target_host = host
-    if internal_target_host in ("127.0.0.1", "localhost"):
-        default_internal = "host.docker.internal" if os.path.exists("/.dockerenv") else "127.0.0.1"
-        internal_target_host = os.environ.get("ULPF_INTERNAL_API_HOST", default_internal)
+    target_host = (host or "127.0.0.1").strip()
+    internal_target_host = resolve_internal_target_host(target_host, is_ai=False)
+    internal_ai_host = resolve_internal_target_host(target_host, is_ai=True)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-        f_http = executor.submit(probe_socket, internal_target_host, api_port, scheme, 3.5)
-        f_tcp = executor.submit(probe_socket, internal_target_host, tcp_port, "tcp", 2.5)
-        f_udp = executor.submit(probe_socket, internal_target_host, udp_port, "udp", 2.0)
-        f_ai = executor.submit(probe_socket, internal_target_host, ollama_port, "tcp", 1.5)
+        f_http = executor.submit(probe_socket, internal_target_host, api_port, scheme, 2.5)
+        f_tcp = executor.submit(probe_socket, internal_target_host, tcp_port, "tcp", 2.0)
+        f_udp = executor.submit(probe_socket, internal_target_host, udp_port, "udp", 1.5)
+        f_ai = executor.submit(probe_socket, internal_ai_host, ollama_port, "tcp", 1.5)
 
         http_probe = f_http.result()
         tcp_probe = f_tcp.result()
@@ -196,11 +255,35 @@ def get_target_status(
         ai_probe = f_ai.result()
 
     is_http_up = http_probe.get("status") in ("healthy", "ready", "online")
+
+    # Smart Split-Horizon Hairpin Recovery:
+    # If the probe to internal_target_host failed, but we are running in Docker,
+    # the target_host might be the host VM's external IP which is blocked by hairpin NAT.
+    # Check the companion container directly.
+    fallback_host = get_internal_fallback_host(is_ai=False)
+    if not is_http_up and internal_target_host != fallback_host:
+        fb_http = probe_socket(fallback_host, api_port, scheme, 2.0)
+        if fb_http.get("status") in ("healthy", "ready", "online"):
+            mark_hairpin_host(target_host)
+            http_probe = fb_http
+            is_http_up = True
+            # Also re-probe TCP and UDP via fallback_host
+            tcp_probe = probe_socket(fallback_host, tcp_port, "tcp", 1.5)
+            udp_probe = probe_socket(fallback_host, udp_port, "udp", 1.5)
+
+    # Check AI companion fallback if AI probe failed
+    fallback_ai = get_internal_fallback_host(is_ai=True)
+    if ai_probe.get("status") not in ("connected", "ready", "online", "healthy") and internal_ai_host != fallback_ai:
+        fb_ai = probe_socket(fallback_ai, ollama_port, "tcp", 1.5)
+        if fb_ai.get("status") in ("connected", "ready", "online", "healthy"):
+            ai_probe = fb_ai
+
     is_tcp_up = tcp_probe.get("status") in ("connected", "ready", "online")
     is_ai_up = ai_probe.get("status") in ("connected", "ready", "online", "healthy")
 
+    display_host = target_host
     return {
-        "host": host,
+        "host": display_host,
         "api_port": api_port,
         "scheme": scheme,
         "version": "1.0.0 Enterprise (Phase 8)",
@@ -211,45 +294,45 @@ def get_target_status(
                 "protocol": scheme.upper(),
                 "status": http_probe.get("status", "healthy" if is_http_up else "offline"),
                 "latency_ms": http_probe.get("latency_ms", 1.2),
-                "detail": http_probe.get("detail", "HTTP Ingestion API"),
+                "detail": http_probe.get("detail", f"HTTP Ingestion API on {display_host}:{api_port}"),
             },
             "syslog_udp": {
                 "port": udp_port,
                 "protocol": "UDP",
                 "status": udp_probe.get("status", "ready"),
                 "latency_ms": udp_probe.get("latency_ms", 0.4),
-                "detail": udp_probe.get("detail", f"UDP socket opened to {host}:{udp_port}"),
+                "detail": udp_probe.get("detail", f"UDP socket opened to {display_host}:{udp_port}"),
             },
             "syslog_tcp": {
                 "port": tcp_port,
                 "protocol": "TCP",
                 "status": tcp_probe.get("status", "online" if is_tcp_up else "ready"),
                 "latency_ms": tcp_probe.get("latency_ms", 0.8),
-                "detail": tcp_probe.get("detail", f"TCP Syslog Collector on {host}:{tcp_port}"),
+                "detail": tcp_probe.get("detail", f"TCP Syslog Collector on {display_host}:{tcp_port}"),
             },
             "sse_stream": {
                 "port": api_port,
                 "protocol": "SSE / HTTP",
-                "status": "online" if is_http_up else "ready",
+                "status": "online" if is_http_up else "offline",
                 "latency_ms": round(http_probe.get("latency_ms", 0.6) * 0.8, 2) or 0.6,
-                "detail": f"Real-Time Event Stream Broadcast active at {host}:{api_port}/api/v1/events/stream",
+                "detail": f"Real-Time Event Stream Broadcast active at {display_host}:{api_port}/api/v1/events/stream" if is_http_up else "Stream waiting for HTTP API",
             },
             "ai_engine": {
                 "port": ollama_port,
                 "protocol": "OLLAMA (qwen2.5:7b)",
-                "status": "ready" if is_ai_up else "ready",
+                "status": "online" if is_ai_up else "ready",
                 "latency_ms": ai_probe.get("latency_ms", 1.8),
                 "detail": "Local Sovereign AI Model Engine (Qwen 7B) active" if is_ai_up else "Sovereign AI parsing engine active (fallback regex active)",
             },
             "merkle_vault": {
                 "port": api_port,
                 "protocol": "MERKLE / S3",
-                "status": "online",
+                "status": "online" if is_http_up else "ready",
                 "latency_ms": 0.4,
                 "detail": "Cryptographic SHA-256 Merkle Ledger & MinIO immutable vault operational",
             },
         },
-        "all_ready": is_http_up or True,
+        "all_ready": bool(is_http_up),
     }
 
 
@@ -269,10 +352,9 @@ def probe_port_endpoint(req: ProbePortRequest):
     payload = req.payload or "PING / SOCKET_PROBE_REQUEST"
     payload_bytes = len(payload.encode("utf-8"))
     
-    internal_host = host
-    if internal_host in ("127.0.0.1", "localhost"):
-        default_internal = "host.docker.internal" if os.path.exists("/.dockerenv") else "127.0.0.1"
-        internal_host = os.environ.get("ULPF_INTERNAL_API_HOST", default_internal)
+    is_ai = (target_key == "ai_engine" or port == 11434)
+    internal_host = resolve_internal_target_host(host, is_ai=is_ai)
+    fallback_host = get_internal_fallback_host(is_ai=is_ai)
 
     t0 = time.perf_counter()
 
@@ -291,6 +373,11 @@ def probe_port_endpoint(req: ProbePortRequest):
         }
     elif target_key == "syslog_tcp":
         res = probe_socket(internal_host, port, "tcp", timeout=2.5)
+        if res.get("status") not in ("connected", "ready", "online") and internal_host != fallback_host:
+            fb = probe_socket(fallback_host, port, "tcp", timeout=1.5)
+            if fb.get("status") in ("connected", "ready", "online"):
+                mark_hairpin_host(host)
+                res = fb
         rtt_ms = res.get("latency_ms", round((time.perf_counter() - t0) * 1000, 2))
         status = "VERIFIED" if res.get("status") in ("connected", "ready", "online") else "LISTENING"
         return {
@@ -305,39 +392,57 @@ def probe_port_endpoint(req: ProbePortRequest):
         }
     elif target_key == "http_api":
         res = probe_socket(internal_host, port, "http", timeout=3.0)
+        if res.get("status") not in ("healthy", "ready", "online") and internal_host != fallback_host:
+            fb = probe_socket(fallback_host, port, "http", timeout=2.0)
+            if fb.get("status") in ("healthy", "ready", "online"):
+                mark_hairpin_host(host)
+                res = fb
         rtt_ms = res.get("latency_ms", round((time.perf_counter() - t0) * 1000, 2))
+        is_ok = res.get("status") in ("healthy", "ready", "online")
         return {
-            "status": "HEALTHY",
+            "status": "HEALTHY" if is_ok else "OFFLINE",
             "protocol": "HTTP/REST",
             "host": host,
             "port": port,
             "rtt_ms": max(1.1, rtt_ms),
             "bytes_sent": payload_bytes,
-            "details": f"HTTP 200 OK Live Ingestion REST Gateway operational at {host}:{port}/api/v1/health",
+            "details": f"HTTP Live Ingestion Gateway operational at {host}:{port}/api/v1/health" if is_ok else f"HTTP port {port} unreachable on {host}",
             "timestamp": time.strftime("%H:%M:%S")
         }
     elif target_key == "sse_stream":
         res = probe_socket(internal_host, port, "http", timeout=2.0)
+        if res.get("status") not in ("healthy", "ready", "online") and internal_host != fallback_host:
+            fb = probe_socket(fallback_host, port, "http", timeout=1.5)
+            if fb.get("status") in ("healthy", "ready", "online"):
+                mark_hairpin_host(host)
+                res = fb
         rtt_ms = res.get("latency_ms", round((time.perf_counter() - t0) * 1000, 2))
+        is_ok = res.get("status") in ("healthy", "ready", "online")
         return {
-            "status": "STREAMING",
+            "status": "STREAMING" if is_ok else "OFFLINE",
             "protocol": "SSE / HTTP",
             "host": host,
             "port": port,
             "rtt_ms": max(0.8, rtt_ms),
             "bytes_sent": payload_bytes,
-            "details": f"Server-Sent Events broadcast stream active on {host}:{port}/api/v1/events/stream",
+            "details": f"Server-Sent Events broadcast stream active on {host}:{port}/api/v1/events/stream" if is_ok else f"SSE stream unreachable on {host}:{port}",
             "timestamp": time.strftime("%H:%M:%S")
         }
     elif target_key == "ai_engine":
+        res = probe_socket(internal_host, port, "tcp", timeout=1.5)
+        if res.get("status") not in ("connected", "ready", "online") and internal_host != fallback_host:
+            fb = probe_socket(fallback_host, port, "tcp", timeout=1.5)
+            if fb.get("status") in ("connected", "ready", "online"):
+                res = fb
+        is_up = res.get("status") in ("connected", "ready", "online")
         return {
-            "status": "ACTIVE",
+            "status": "ACTIVE" if is_up else "FALLBACK",
             "protocol": "AI/SLM",
             "host": host,
             "port": port,
-            "rtt_ms": round((time.perf_counter() - t0) * 1000, 2) or 1.8,
+            "rtt_ms": res.get("latency_ms", round((time.perf_counter() - t0) * 1000, 2)) or 1.8,
             "bytes_sent": payload_bytes,
-            "details": f"Sovereign Zero-Shot Neural Parser Engine and Local Model ready on {host}:{port}",
+            "details": f"Sovereign Zero-Shot Neural Parser Engine and Local Model ready on {host}:{port}" if is_up else f"Local Model standby on {host}:{port} (Rule-based Sovereign parser active)",
             "timestamp": time.strftime("%H:%M:%S")
         }
     elif target_key == "merkle_vault":
@@ -353,15 +458,20 @@ def probe_port_endpoint(req: ProbePortRequest):
         }
     else:
         res = probe_socket(internal_host, port, "tcp", timeout=2.0)
+        if res.get("status") not in ("connected", "ready", "online") and internal_host != fallback_host:
+            fb = probe_socket(fallback_host, port, "tcp", timeout=1.5)
+            if fb.get("status") in ("connected", "ready", "online"):
+                mark_hairpin_host(host)
+                res = fb
         rtt_ms = res.get("latency_ms", round((time.perf_counter() - t0) * 1000, 2))
         return {
-            "status": "OK",
+            "status": "OK" if res.get("status") in ("connected", "ready", "online") else "UNREACHABLE",
             "protocol": "SOCKET",
             "host": host,
             "port": port,
             "rtt_ms": max(0.5, rtt_ms),
             "bytes_sent": payload_bytes,
-            "details": f"Socket probe connection successful to {host}:{port}",
+            "details": f"Socket probe connection result for {host}:{port}: {res.get('status')}",
             "timestamp": time.strftime("%H:%M:%S")
         }
 
@@ -375,7 +485,17 @@ def list_presets():
 @app.post("/api/test/ping")
 def ping_target(req: PingRequest):
     """Probe network connection to desired host and port."""
-    result = probe_socket(req.host, req.port, req.protocol, timeout=req.timeout)
+    is_ai = (req.port == 11434)
+    internal_host = resolve_internal_target_host(req.host, is_ai=is_ai)
+    result = probe_socket(internal_host, req.port, req.protocol, timeout=req.timeout)
+    if result.get("status") in ("offline", "disconnected", "error"):
+        fallback = get_internal_fallback_host(is_ai=is_ai)
+        if fallback != internal_host:
+            fb_res = probe_socket(fallback, req.port, req.protocol, timeout=min(req.timeout, 2.0))
+            if fb_res.get("status") not in ("offline", "disconnected", "error"):
+                mark_hairpin_host(req.host)
+                result = fb_res
+    result["host"] = req.host
     return result
 
 
@@ -440,9 +560,8 @@ def dispatch_log_to_target(
     """
     t0 = time.perf_counter()
     proto = (protocol or "UDP").strip().upper()
-    clean_host = (host or "127.0.0.1").strip()
-    if clean_host in ("127.0.0.1", "localhost") and os.path.exists("/.dockerenv"):
-        clean_host = os.environ.get("ULPF_INTERNAL_API_HOST", "host.docker.internal")
+    clean_host = resolve_internal_target_host(host)
+    fallback_host = get_internal_fallback_host(is_ai=False)
 
     scheme = (scheme or "http").lower()
     if port is None or port <= 0:
@@ -493,7 +612,7 @@ def dispatch_log_to_target(
             receipt.setdefault("latency_ms", latency_ms)
             receipt.setdefault("success", True)
             receipt.setdefault("protocol", proto)
-            receipt.setdefault("destination", f"{clean_host}:{target_port}")
+            receipt.setdefault("destination", f"{host}:{target_port}")
             receipt.setdefault("bytes_sent", len(message.encode("utf-8")))
 
             # Enrich with real event ID from server if missing (single transmissions)
@@ -517,6 +636,30 @@ def dispatch_log_to_target(
 
             return receipt
     except Exception as worker_err:
+        # If transmission failed to clean_host and clean_host is not yet using fallback_host,
+        # try companion container within Docker network:
+        if clean_host != fallback_host:
+            try:
+                fb_transmit_url = build_target_api_url(fallback_host, api_port, "/api/v1/test/transmit", scheme)
+                req_fb = urllib.request.Request(
+                    fb_transmit_url,
+                    data=data_bytes,
+                    headers={"Content-Type": "application/json", "User-Agent": "ULPF-Simulator-Proxy/1.0"},
+                    method="POST",
+                )
+                with opener.open(req_fb, timeout=timeout) as fb_resp:
+                    fb_content = fb_resp.read().decode("utf-8")
+                    mark_hairpin_host(host)
+                    receipt = json.loads(fb_content) if fb_content.startswith("{") else {"raw": fb_content}
+                    receipt.setdefault("latency_ms", round((time.perf_counter() - t0) * 1000, 2))
+                    receipt.setdefault("success", True)
+                    receipt.setdefault("protocol", proto)
+                    receipt.setdefault("destination", f"{host}:{target_port}")
+                    receipt.setdefault("bytes_sent", len(message.encode("utf-8")))
+                    return receipt
+            except Exception:
+                pass
+
         # Strategy 2: Direct REST Ingestion via /api/v1/ingest fallback
         try:
             ingest_url = f"{scheme}://{clean_host}:{api_port}/api/v1/ingest"
@@ -547,7 +690,7 @@ def dispatch_log_to_target(
                     "success": True,
                     "status": "success",
                     "protocol": proto,
-                    "destination": f"{clean_host}:{target_port}",
+                    "destination": f"{host}:{target_port}",
                     "event_id": ingest_res.get("event_id"),
                     "format": ingest_res.get("detected_format") or ingest_res.get("format"),
                     "sha256": ingest_res.get("raw_sha256") or ingest_res.get("sha256"),
@@ -557,17 +700,52 @@ def dispatch_log_to_target(
                     "response": ingest_res,
                 }
         except Exception as ingest_err:
+            if clean_host != fallback_host:
+                try:
+                    fb_ingest_url = f"{scheme}://{fallback_host}:{api_port}/api/v1/ingest"
+                    req_fb_ingest = urllib.request.Request(
+                        fb_ingest_url,
+                        data=data_bytes,
+                        headers={"Content-Type": "application/json", "User-Agent": "ULPF-Simulator-Proxy/1.0"},
+                        method="POST",
+                    )
+                    with opener.open(req_fb_ingest, timeout=timeout) as fb_resp:
+                        fb_content = fb_resp.read().decode("utf-8")
+                        mark_hairpin_host(host)
+                        ingest_res = json.loads(fb_content) if fb_content.startswith("{") else {"raw": fb_content}
+                        return {
+                            "success": True,
+                            "status": "success",
+                            "protocol": proto,
+                            "destination": f"{host}:{target_port}",
+                            "event_id": ingest_res.get("event_id"),
+                            "format": ingest_res.get("detected_format") or ingest_res.get("format"),
+                            "sha256": ingest_res.get("raw_sha256") or ingest_res.get("sha256"),
+                            "bytes_sent": len(message.encode("utf-8")),
+                            "latency_ms": round((time.perf_counter() - t0) * 1000, 2),
+                            "message": ingest_res.get("message") or f"Successfully ingested {len(message)} bytes via ULPF pipeline.",
+                            "response": ingest_res,
+                        }
+                except Exception:
+                    pass
+
             # Strategy 3: Direct Socket fallback (for local testbeds without HTTP API)
             if proto == "UDP":
-                return send_udp_log(clean_host, target_port, message, timeout=timeout)
+                res = send_udp_log(clean_host, target_port, message, timeout=timeout)
+                if not res.get("success") and clean_host != fallback_host:
+                    res = send_udp_log(fallback_host, target_port, message, timeout=timeout)
+                return res
             elif proto == "TCP":
-                return send_tcp_log(clean_host, target_port, message, timeout=timeout)
+                res = send_tcp_log(clean_host, target_port, message, timeout=timeout)
+                if not res.get("success") and clean_host != fallback_host:
+                    res = send_tcp_log(fallback_host, target_port, message, timeout=timeout)
+                return res
             else:
                 latency_ms = round((time.perf_counter() - t0) * 1000, 2)
                 return {
                     "success": False,
                     "protocol": proto,
-                    "destination": f"{clean_host}:{target_port}",
+                    "destination": f"{host}:{target_port}",
                     "error": f"Worker transmission error: {str(worker_err)} | Ingestion fallback error: {str(ingest_err)}",
                     "latency_ms": latency_ms,
                     "bytes_sent": 0,
@@ -671,11 +849,10 @@ def proxy_readiness(host: str = "127.0.0.1", port: int = 8000, scheme: str = "ht
     """
     Proxy readiness diagnostic check to target host server-side.
     """
-    if host in ("127.0.0.1", "localhost"):
-        default_internal = "host.docker.internal" if os.path.exists("/.dockerenv") else "127.0.0.1"
-        host = os.environ.get("ULPF_INTERNAL_API_HOST", default_internal)
+    target_host = resolve_internal_target_host(host)
+    fallback_host = get_internal_fallback_host(is_ai=False)
 
-    url = f"{scheme}://{host}:{port}/api/v1/system/readiness"
+    url = f"{scheme}://{target_host}:{port}/api/v1/system/readiness"
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "ULPF-Simulator-Proxy/1.0"})
         opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
@@ -683,6 +860,16 @@ def proxy_readiness(host: str = "127.0.0.1", port: int = 8000, scheme: str = "ht
             content = resp.read().decode("utf-8")
             return json.loads(content) if content.startswith("{") else {"raw": content}
     except Exception as e:
+        if target_host != fallback_host:
+            try:
+                fb_url = f"{scheme}://{fallback_host}:{port}/api/v1/system/readiness"
+                fb_req = urllib.request.Request(fb_url, headers={"User-Agent": "ULPF-Simulator-Proxy/1.0"})
+                with opener.open(fb_req, timeout=timeout) as fb_resp:
+                    content = fb_resp.read().decode("utf-8")
+                    mark_hairpin_host(host)
+                    return json.loads(content) if content.startswith("{") else {"raw": content}
+            except Exception:
+                pass
         return JSONResponse(
             status_code=502,
             content={"status": "offline", "readiness_score": 0, "error": str(e), "subsystems": {}}
@@ -700,12 +887,11 @@ async def proxy_sources_route(
     """
     Proxy virtual device source registrations to target host server-side.
     """
-    if host in ("127.0.0.1", "localhost"):
-        default_internal = "host.docker.internal" if os.path.exists("/.dockerenv") else "127.0.0.1"
-        host = os.environ.get("ULPF_INTERNAL_API_HOST", default_internal)
+    target_host = resolve_internal_target_host(host)
+    fallback_host = get_internal_fallback_host(is_ai=False)
 
     url_path = f"/api/v1/sources/{subpath}".rstrip("/") if subpath else "/api/v1/sources"
-    target_url = f"{scheme}://{host}:{port}{url_path}"
+    target_url = f"{scheme}://{target_host}:{port}{url_path}"
 
     body = await request.body()
     try:
@@ -720,6 +906,21 @@ async def proxy_sources_route(
             content = resp.read().decode("utf-8")
             return json.loads(content) if content.startswith("{") else {"raw": content}
     except Exception as e:
+        if target_host != fallback_host:
+            try:
+                fb_url = f"{scheme}://{fallback_host}:{port}{url_path}"
+                fb_req = urllib.request.Request(
+                    fb_url,
+                    data=body if body else None,
+                    headers={"Content-Type": "application/json", "User-Agent": "ULPF-Simulator-Proxy/1.0"},
+                    method=request.method,
+                )
+                with opener.open(fb_req, timeout=3.0) as fb_resp:
+                    content = fb_resp.read().decode("utf-8")
+                    mark_hairpin_host(host)
+                    return json.loads(content) if content.startswith("{") else {"raw": content}
+            except Exception:
+                pass
         return {"status": "proxied_error", "error": str(e)}
 
 
@@ -800,9 +1001,7 @@ def test_burst_traffic(req: BurstRequest):
     - HTTP: High-speed batch ingestion
     """
     proto = (req.protocol or "UDP").strip().upper()
-    clean_host = (req.host or "127.0.0.1").strip()
-    if clean_host in ("127.0.0.1", "localhost") and os.path.exists("/.dockerenv"):
-        clean_host = os.environ.get("ULPF_INTERNAL_API_HOST", "host.docker.internal")
+    clean_host = resolve_internal_target_host(req.host)
 
     scheme = (req.scheme or "http").lower()
     api_port = req.api_port or 8000
@@ -1664,9 +1863,7 @@ def trigger_burst_traffic(req: BurstRequest):
     receipts = []
 
     # Split-Horizon DNS Translation
-    internal_target_host = req.host
-    if internal_target_host in ("127.0.0.1", "localhost"):
-        internal_target_host = os.environ.get("ULPF_INTERNAL_API_HOST", "host.docker.internal")
+    internal_target_host = resolve_internal_target_host(req.host)
 
     # Calculate inter-packet sleep interval if interval / rate limiting / pacing is requested
     sleep_interval = 0.0

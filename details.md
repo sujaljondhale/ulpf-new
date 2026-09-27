@@ -14,6 +14,8 @@ This document provides a comprehensive inventory of all functional source code f
 | [`start_main.bat`](./start_main.bat) | `start_main.bat` | Windows batch launcher for the Main Core ULPF processing service (FastAPI, collectors, parsers, and dashboard on Port 8000). |
 | [`start_testing.bat`](./start_testing.bat) | `start_testing.bat` | Windows batch launcher for the dedicated Testing Web Studio and Network Simulator backend on Port 8050. |
 | [`test_pipeline.bat`](./test_pipeline.bat) | `test_pipeline.bat` | Batch script executing the automated regression pipeline (`testing/run_pipeline.py`) with support for `--device-timeout`, `--logs-interval`, and `--fast`. |
+| [`deploy.sh`](./deploy.sh) | `deploy.sh` | Production automated deployment script for Linux/Oracle Cloud Infrastructure (Docker installation, firewall rules, swap creation, compose startup). |
+| [`deploy.ps1`](./deploy.ps1) | `deploy.ps1` | Production automated deployment script for Windows PowerShell (dependency checks, port checks, compose orchestration). |
 | [`docker-compose.yml`](./docker-compose.yml) | `docker-compose.yml` | Multi-container Docker configuration orchestrating FastAPI API, Worker, MinIO S3, OpenSearch, Redpanda Kafka, and Ollama AI services. |
 | [`Dockerfile`](./Dockerfile) | `Dockerfile` | Multi-stage production container image for the unified ULPF application. |
 | [`Dockerfile.api`](./Dockerfile.api) | `Dockerfile.api` | Dedicated lightweight Docker container specification for the FastAPI API Gateway. |
@@ -25,113 +27,115 @@ This document provides a comprehensive inventory of all functional source code f
 | [`.gitignore`](./.gitignore) | `.gitignore` | Specifies intentionally untracked files (caches, virtual environments, raw binaries, SQLite DBs). |
 | [`.dockerignore`](./.dockerignore) | `.dockerignore` | Excludes unnecessary local files, caches, and test logs from container build contexts. |
 | [`render.yaml`](./render.yaml) | `render.yaml` | Cloud deployment blueprint and service declaration for hosting ULPF on the Render platform. |
+| [`DEPLOYMENT.md`](./DEPLOYMENT.md) | `DEPLOYMENT.md` | Streamlined deployment guide and service inventory for local and cloud environments. |
+| [`working.md`](./working.md) | `working.md` | Functional status, operational readiness verification guide, and component health records. |
 | [`README.md`](./README.md) | `README.md` | Master project overview, architectural design summary, key capabilities, and quick-start instructions. |
 
 ---
 
-## 2. Main Core Subsystem (`main/`)
+## 2. Main Core Subsystem (`app/` & `kosmoporos/`)
 
 ### Application Entrypoint & Ingestion Engine
 | File Name | Location | Use / Purpose |
 | :--- | :--- | :--- |
-| [`run_main.py`](./main/run_main.py) | `main/run_main.py` | Direct executable launcher for the main core service, setting working paths and starting Uvicorn. |
-| [`main.py`](./main/app/main.py) | `main/app/main.py` | Core FastAPI application lifecycle manager, registering REST routes, CORS middleware, SSE event streams, and static dashboard files. |
-| [`pipeline.py`](./main/app/pipeline.py) | `main/app/pipeline.py` | Central deterministic processing pipeline coordinating format detection, vendor parsing, taxonomy normalization, validation, and storage. |
-| [`cli.py`](./main/app/cli.py) | `main/app/cli.py` | Command-line interface tool for offline log ingestion, individual log parsing, and ad-hoc file inspection. |
-| [`settings.py`](./main/app/config/settings.py) | `main/app/config/settings.py` | Central application configuration management using Pydantic Settings (ports, directories, retention, AI keys). |
+| [`run_main.py`](./run_main.py) | `run_main.py` | Direct executable launcher for the main core service, setting working paths and starting Uvicorn. |
+| [`main.py`](./app/main.py) | `app/main.py` | Core FastAPI application lifecycle manager, registering REST routes, CORS middleware, SSE event streams, and static dashboard files. |
+| [`pipeline.py`](./app/pipeline.py) | `app/pipeline.py` | Central deterministic processing pipeline coordinating format detection, vendor parsing, taxonomy normalization, validation, and storage. |
+| [`cli.py`](./app/cli.py) | `app/cli.py` | Command-line interface tool for offline log ingestion, individual log parsing, and ad-hoc file inspection. |
+| [`settings.py`](./app/config/settings.py) | `app/config/settings.py` | Central application configuration management using Pydantic Settings (ports, directories, retention, AI keys). |
 
-### REST API Layer (`main/app/api/`)
+### REST API Layer (`app/api/`)
 | File Name | Location | Use / Purpose |
 | :--- | :--- | :--- |
-| [`routes.py`](./main/app/api/routes.py) | `main/app/api/routes.py` | Primary REST API route definitions (`/ingest`, `/events`, `/sources`, `/threats`, `/export`, `/retention`). |
-| [`schemas.py`](./main/app/api/schemas.py) | `main/app/api/schemas.py` | Pydantic validation models and request/response schemas for all API payloads. |
-| [`generator.py`](./main/app/api/generator.py) | `main/app/api/generator.py` | Synthetic multi-vendor security event generator (CEF, Syslog, JSON, KV, LEEF) for testing and UI demonstration. |
+| [`routes.py`](./app/api/routes.py) | `app/api/routes.py` | Primary REST API route definitions (`/ingest`, `/events`, `/sources`, `/threats`, `/export`, `/retention`). |
+| [`schemas.py`](./app/api/schemas.py) | `app/api/schemas.py` | Pydantic validation models and request/response schemas for all API payloads. |
+| [`generator.py`](./app/api/generator.py) | `app/api/generator.py` | Synthetic multi-vendor security event generator (CEF, Syslog, JSON, KV, LEEF) for testing and UI demonstration. |
 
-### Network Collectors & Ingress (`main/app/collectors/`)
+### Network Collectors & Ingress (`app/collectors/`)
 | File Name | Location | Use / Purpose |
 | :--- | :--- | :--- |
-| [`base.py`](./main/app/collectors/base.py) | `main/app/collectors/base.py` | Abstract base class defining common collector interfaces, lifecycle hooks, and metrics tracking. |
-| [`syslog_collector.py`](./main/app/collectors/syslog_collector.py) | `main/app/collectors/syslog_collector.py` | High-throughput UDP (:5140) and TCP (:5141) network syslog listener for real and simulated appliances. |
-| [`file_collector.py`](./main/app/collectors/file_collector.py) | `main/app/collectors/file_collector.py` | Directory-watcher collector monitoring local folders (`storage/logs/`) for automated batch file ingestion. |
-| [`redpanda_collector.py`](./main/app/collectors/redpanda_collector.py) | `main/app/collectors/redpanda_collector.py` | Streaming consumer integrating with Redpanda / Apache Kafka message brokers for distributed event streams. |
-| [`ingress.py`](./main/app/collectors/ingress.py) | `main/app/collectors/ingress.py` | Ingress coordinator accepting incoming datagrams and dispatching to backpressure queues and pipelines. |
-| [`queue.py`](./main/app/collectors/queue.py) | `main/app/collectors/queue.py` | In-memory asynchronous backpressure queue managing burst buffers and rate-limiting drop policies. |
-| [`source_registry.py`](./main/app/collectors/source_registry.py) | `main/app/collectors/source_registry.py` | Stateful registry tracking connected devices, IP addresses, packet volumes, and connection statuses. |
+| [`base.py`](./app/collectors/base.py) | `app/collectors/base.py` | Abstract base class defining common collector interfaces, lifecycle hooks, and metrics tracking. |
+| [`syslog_collector.py`](./app/collectors/syslog_collector.py) | `app/collectors/syslog_collector.py` | High-throughput UDP (:5140) and TCP (:5141) network syslog listener for real and simulated appliances. |
+| [`file_collector.py`](./app/collectors/file_collector.py) | `app/collectors/file_collector.py` | Directory-watcher collector monitoring local folders (`storage/logs/`) for automated batch file ingestion. |
+| [`redpanda_collector.py`](./app/collectors/redpanda_collector.py) | `app/collectors/redpanda_collector.py` | Streaming consumer integrating with Redpanda / Apache Kafka message brokers for distributed event streams. |
+| [`ingress.py`](./app/collectors/ingress.py) | `app/collectors/ingress.py` | Ingress coordinator accepting incoming datagrams and dispatching to backpressure queues and pipelines. |
+| [`queue.py`](./app/collectors/queue.py) | `app/collectors/queue.py` | In-memory asynchronous backpressure queue managing burst buffers and rate-limiting drop policies. |
+| [`source_registry.py`](./app/collectors/source_registry.py) | `app/collectors/source_registry.py` | Stateful registry tracking connected devices, IP addresses, packet volumes, and connection statuses. |
 
-### Format Detection & Classification (`main/app/detector/`)
+### Format Detection & Classification (`app/detector/`)
 | File Name | Location | Use / Purpose |
 | :--- | :--- | :--- |
-| [`detector.py`](./main/app/detector/detector.py) | `main/app/detector/detector.py` | Format detection engine evaluating heuristics, header patterns, and confidence scoring. |
-| [`format_detector.py`](./main/app/detector/format_detector.py) | `main/app/detector/format_detector.py` | Signature matching for 8 major log standards (CEF, LEEF, Syslog RFC 3164/5424, JSON, KV, CSV, XML). |
-| [`models.py`](./main/app/detector/models.py) | `main/app/detector/models.py` | Data structures representing detected format verdicts, confidence scores, and syntax classifications. |
+| [`detector.py`](./app/detector/detector.py) | `app/detector/detector.py` | Format detection engine evaluating heuristics, header patterns, and confidence scoring. |
+| [`format_detector.py`](./app/detector/format_detector.py) | `app/detector/format_detector.py` | Signature matching for 8 major log standards (CEF, LEEF, Syslog RFC 3164/5424, JSON, KV, CSV, XML). |
+| [`models.py`](./app/detector/models.py) | `app/detector/models.py` | Data structures representing detected format verdicts, confidence scores, and syntax classifications. |
 
-### Vendor Parsers (`main/app/parsers/`)
+### Vendor Parsers (`app/parsers/`)
 | File Name | Location | Use / Purpose |
 | :--- | :--- | :--- |
-| [`base.py`](./main/app/parsers/base.py) | `main/app/parsers/base.py` | Base parser contract and abstract methods for extracting tokenized fields from raw logs. |
-| [`cef_parser.py`](./main/app/parsers/cef_parser.py) | `main/app/parsers/cef_parser.py` | Common Event Format parser (ArcSight, Fortinet, Check Point, Palo Alto). |
-| [`leef_parser.py`](./main/app/parsers/leef_parser.py) | `main/app/parsers/leef_parser.py` | Log Event Extended Format parser (IBM QRadar, Suricata IDS). |
-| [`syslog_parser.py`](./main/app/parsers/syslog_parser.py) | `main/app/parsers/syslog_parser.py` | Standard Syslog parser handling RFC 3164 (BSD) and RFC 5424 (IETF) message headers and payloads. |
-| [`json_parser.py`](./main/app/parsers/json_parser.py) | `main/app/parsers/json_parser.py` | High-speed parser for structured JSON logs (AWS CloudTrail, Suricata EVE, Kubernetes). |
-| [`kv_parser.py`](./main/app/parsers/kv_parser.py) | `main/app/parsers/kv_parser.py` | Key-value delimiter parser handling quoted strings and nested delimiters (Palo Alto PAN-OS, CheckPoint). |
-| [`xml_parser.py`](./main/app/parsers/xml_parser.py) | `main/app/parsers/xml_parser.py` | XML parser extracting security telemetry from Windows Event Logs and application manifests. |
-| [`csv_parser.py`](./main/app/parsers/csv_parser.py) | `main/app/parsers/csv_parser.py` | Delimited format parser for comma-separated, tab-separated, and pipe-separated tabular records. |
-| [`text_parser.py`](./main/app/parsers/text_parser.py) | `main/app/parsers/text_parser.py` | Unstructured text parser utilizing regex and pattern heuristics for legacy mainframe logs. |
-| [`compiler.py`](./main/app/parsers/compiler.py) | `main/app/parsers/compiler.py` | Dynamic JIT parser compilation engine converting declarative regex schemas into executable Python parsers. |
-| [`registry.py`](./main/app/parsers/registry.py) | `main/app/parsers/registry.py` | Central parser lookup registry routing detected formats to corresponding parser modules. |
+| [`base.py`](./app/parsers/base.py) | `app/parsers/base.py` | Base parser contract and abstract methods for extracting tokenized fields from raw logs. |
+| [`cef_parser.py`](./app/parsers/cef_parser.py) | `app/parsers/cef_parser.py` | Common Event Format parser (ArcSight, Fortinet, Check Point, Palo Alto). |
+| [`leef_parser.py`](./app/parsers/leef_parser.py) | `app/parsers/leef_parser.py` | Log Event Extended Format parser (IBM QRadar, Suricata IDS). |
+| [`syslog_parser.py`](./app/parsers/syslog_parser.py) | `app/parsers/syslog_parser.py` | Standard Syslog parser handling RFC 3164 (BSD) and RFC 5424 (IETF) message headers and payloads. |
+| [`json_parser.py`](./app/parsers/json_parser.py) | `app/parsers/json_parser.py` | High-speed parser for structured JSON logs (AWS CloudTrail, Suricata EVE, Kubernetes). |
+| [`kv_parser.py`](./app/parsers/kv_parser.py) | `app/parsers/kv_parser.py` | Key-value delimiter parser handling quoted strings and nested delimiters (Palo Alto PAN-OS, CheckPoint). |
+| [`xml_parser.py`](./app/parsers/xml_parser.py) | `app/parsers/xml_parser.py` | XML parser extracting security telemetry from Windows Event Logs and application manifests. |
+| [`csv_parser.py`](./app/parsers/csv_parser.py) | `app/parsers/csv_parser.py` | Delimited format parser for comma-separated, tab-separated, and pipe-separated tabular records. |
+| [`text_parser.py`](./app/parsers/text_parser.py) | `app/parsers/text_parser.py` | Unstructured text parser utilizing regex and pattern heuristics for legacy mainframe logs. |
+| [`compiler.py`](./app/parsers/compiler.py) | `app/parsers/compiler.py` | Dynamic JIT parser compilation engine converting declarative regex schemas into executable Python parsers. |
+| [`registry.py`](./app/parsers/registry.py) | `app/parsers/registry.py` | Central parser lookup registry routing detected formats to corresponding parser modules. |
 
-### Normalization & Taxonomy (`main/app/normalization/`)
+### Normalization & Taxonomy (`app/normalization/`)
 | File Name | Location | Use / Purpose |
 | :--- | :--- | :--- |
-| [`normalizer.py`](./main/app/normalization/normalizer.py) | `main/app/normalization/normalizer.py` | Core transformation engine converting raw parsed tokens into standard ULPF Intermediate Representation (ULPF-IR). |
-| [`mappings.py`](./main/app/normalization/mappings.py) | `main/app/normalization/mappings.py` | Exhaustive field-mapping dictionaries translating vendor-specific field names (e.g. `spt`, `src_port`, `source_port`) to canonical names (`src_port`). |
-| [`taxonomy.py`](./main/app/normalization/taxonomy.py) | `main/app/normalization/taxonomy.py` | Classification rules normalizing vendor action verdicts (`allow`, `drop`, `block`, `deny`) and severities (`critical`, `high`, `medium`, `low`). |
+| [`normalizer.py`](./app/normalization/normalizer.py) | `app/normalization/normalizer.py` | Core transformation engine converting raw parsed tokens into standard ULPF Intermediate Representation (ULPF-IR). |
+| [`mappings.py`](./app/normalization/mappings.py) | `app/normalization/mappings.py` | Exhaustive field-mapping dictionaries translating vendor-specific field names (e.g. `spt`, `src_port`, `source_port`) to canonical names (`src_port`). |
+| [`taxonomy.py`](./app/normalization/taxonomy.py) | `app/normalization/taxonomy.py` | Classification rules normalizing vendor action verdicts (`allow`, `drop`, `block`, `deny`) and severities (`critical`, `high`, `medium`, `low`). |
 
-### Data Models & Provenance (`main/app/models/`)
+### Data Models & Provenance (`app/models/`)
 | File Name | Location | Use / Purpose |
 | :--- | :--- | :--- |
-| [`canonical_event.py`](./main/app/models/canonical_event.py) | `main/app/models/canonical_event.py` | Unified, schema-enforced security event data model representing completely normalized records. |
-| [`ir.py`](./main/app/models/ir.py) | `main/app/models/ir.py` | Pydantic definition of ULPF Intermediate Representation (ULPF-IR) carrying metadata and normalized attributes. |
-| [`provenance.py`](./main/app/models/provenance.py) | `main/app/models/provenance.py` | Legal chain-of-custody model holding SHA-256 cryptographic hashes, ingestion timestamps, and raw byte offsets. |
-| [`raw_event.py`](./main/app/models/raw_event.py) | `main/app/models/raw_event.py` | Immutable raw ingested log model preserving original unaltered byte streams for evidentiary compliance. |
-| [`taxonomy.py`](./main/app/models/taxonomy.py) | `main/app/models/taxonomy.py` | Enumerations and domain categories for security activities (Authentication, Network Traffic, Malware, Policy). |
-| [`api.py`](./main/app/models/api.py) | `main/app/models/api.py` | Internal data transfer models for API requests, batch uploads, and query filtering. |
+| [`canonical_event.py`](./app/models/canonical_event.py) | `app/models/canonical_event.py` | Unified, schema-enforced security event data model representing completely normalized records. |
+| [`ir.py`](./app/models/ir.py) | `app/models/ir.py` | Pydantic definition of ULPF Intermediate Representation (ULPF-IR) carrying metadata and normalized attributes. |
+| [`provenance.py`](./app/models/provenance.py) | `app/models/provenance.py` | Legal chain-of-custody model holding SHA-256 cryptographic hashes, ingestion timestamps, and raw byte offsets. |
+| [`raw_event.py`](./app/models/raw_event.py) | `app/models/raw_event.py` | Immutable raw ingested log model preserving original unaltered byte streams for evidentiary compliance. |
+| [`taxonomy.py`](./app/models/taxonomy.py) | `app/models/taxonomy.py` | Enumerations and domain categories for security activities (Authentication, Network Traffic, Malware, Policy). |
+| [`api.py`](./app/models/api.py) | `app/models/api.py` | Internal data transfer models for API requests, batch uploads, and query filtering. |
 
-### AI Model Integration & Parser Synthesis (`main/app/ai/`)
+### AI Model Integration & Parser Synthesis (`app/ai/`)
 | File Name | Location | Use / Purpose |
 | :--- | :--- | :--- |
-| [`onboarding.py`](./main/app/ai/onboarding.py) | `main/app/ai/onboarding.py` | Automated AI parser generator analyzing unrecognized logs and synthesizing executable parser rules for human approval. |
-| [`providers.py`](./main/app/ai/providers.py) | `main/app/ai/providers.py` | Multi-provider LLM abstraction layer supporting local Ollama, HuggingFace, OpenAI, Anthropic, and Gemini with automated failover. |
+| [`onboarding.py`](./app/ai/onboarding.py) | `app/ai/onboarding.py` | Automated AI parser generator analyzing unrecognized logs and synthesizing executable parser rules for human approval. |
+| [`providers.py`](./app/ai/providers.py) | `app/ai/providers.py` | Multi-provider LLM abstraction layer supporting local Ollama, HuggingFace, OpenAI, Anthropic, and Gemini with automated failover. |
 
-### Storage, Database & Audit Ledger (`main/app/storage/`)
+### Storage, Database & Audit Ledger (`app/storage/`)
 | File Name | Location | Use / Purpose |
 | :--- | :--- | :--- |
-| [`database.py`](./main/app/storage/database.py) | `main/app/storage/database.py` | SQLite metadata database management, schema auto-migration, event queries, and source record persistence. |
-| [`persistence.py`](./main/app/storage/persistence.py) | `main/app/storage/persistence.py` | Raw log persistence engine writing immutable `.raw` archive files with SHA-256 hash indexing and time-based retention pruning. |
-| [`minio_store.py`](./main/app/storage/minio_store.py) | `main/app/storage/minio_store.py` | Cold object storage interface archiving compressed raw logs to MinIO / AWS S3 buckets. |
-| [`opensearch_store.py`](./main/app/storage/opensearch_store.py) | `main/app/storage/opensearch_store.py` | Hot search indexer streaming canonical events to OpenSearch / Elasticsearch for sub-second threat querying. |
+| [`database.py`](./app/storage/database.py) | `app/storage/database.py` | SQLite metadata database management, schema auto-migration, event queries, and source record persistence. |
+| [`persistence.py`](./app/storage/persistence.py) | `app/storage/persistence.py` | Raw log persistence engine writing immutable `.raw` archive files with SHA-256 hash indexing and time-based retention pruning. |
+| [`minio_store.py`](./app/storage/minio_store.py) | `app/storage/minio_store.py` | Cold object storage interface archiving compressed raw logs to MinIO / AWS S3 buckets. |
+| [`opensearch_store.py`](./app/storage/opensearch_store.py) | `app/storage/opensearch_store.py` | Hot search indexer streaming canonical events to OpenSearch / Elasticsearch for sub-second threat querying. |
 
-### Validation & Exporters (`main/app/validation/` & `main/app/exporters/`)
+### Validation & Exporters (`app/validation/` & `app/exporters/`)
 | File Name | Location | Use / Purpose |
 | :--- | :--- | :--- |
-| [`validator.py`](./main/app/validation/validator.py) | `main/app/validation/validator.py` | Integrity validator verifying IP syntax, timestamp validity, and required field completeness. |
-| [`base.py`](./main/app/exporters/base.py) | `main/app/exporters/base.py` | Abstract exporter interface for transforming and exporting normalized events. |
-| [`ocsf.py`](./main/app/exporters/ocsf.py) | `main/app/exporters/ocsf.py` | Open Cybersecurity Schema Framework (OCSF v1.1) mapping engine and JSON exporter. |
-| [`ecs.py`](./main/app/exporters/ecs.py) | `main/app/exporters/ecs.py` | Elastic Common Schema (ECS v8.x) mapping engine and JSON exporter. |
-| [`redpanda_exporter.py`](./main/app/exporters/redpanda_exporter.py) | `main/app/exporters/redpanda_exporter.py` | Kafka publisher streaming dual-packaged (OCSF + ECS) events to Redpanda topics. |
-| [`forwarder.py`](./main/app/exporters/forwarder.py) | `main/app/exporters/forwarder.py` | Real-time TCP/UDP/HTTP forwarder replicating normalized events to external SIEMs and datalakes. |
+| [`validator.py`](./app/validation/validator.py) | `app/validation/validator.py` | Integrity validator verifying IP syntax, timestamp validity, and required field completeness. |
+| [`base.py`](./app/exporters/base.py) | `app/exporters/base.py` | Abstract exporter interface for transforming and exporting normalized events. |
+| [`ocsf.py`](./app/exporters/ocsf.py) | `app/exporters/ocsf.py` | Open Cybersecurity Schema Framework (OCSF v1.1) mapping engine and JSON exporter. |
+| [`ecs.py`](./app/exporters/ecs.py) | `app/exporters/ecs.py` | Elastic Common Schema (ECS v8.x) mapping engine and JSON exporter. |
+| [`redpanda_exporter.py`](./app/exporters/redpanda_exporter.py) | `app/exporters/redpanda_exporter.py` | Kafka publisher streaming dual-packaged (OCSF + ECS) events to Redpanda topics. |
+| [`forwarder.py`](./app/exporters/forwarder.py) | `app/exporters/forwarder.py` | Real-time TCP/UDP/HTTP forwarder replicating normalized events to external SIEMs and datalakes. |
 
 ---
 
-## 3. Main Enterprise Dashboard (`main/dashboard/`)
+## 3. Main Enterprise Dashboard (`dashboard/`)
 
 | File Name | Location | Use / Purpose |
 | :--- | :--- | :--- |
-| [`index.html`](./main/dashboard/index.html) | `main/dashboard/index.html` | Core Enterprise Security Control Center single-page application structure, navigation bar, and modal skeletons. |
-| [`app.js`](./main/dashboard/app.js) | `main/dashboard/app.js` | Main client-side router, SSE real-time stream listener, chart renderers, custom log injector, device manager, and `#/testing` suite view. |
-| [`style.css`](./main/dashboard/style.css) | `main/dashboard/style.css` | Comprehensive cybersecurity theme styling supporting Nord Dark and Snow Light modes, responsive grids, and tables. |
-| [`client_app.html`](./main/dashboard/client_app.html) | `main/dashboard/client_app.html` | Lightweight standalone test harness for client browser ping and manual log submission. |
-| [`client_app.js`](./main/dashboard/client_app.js) | `main/dashboard/client_app.js` | Client-side scripting for standalone browser ingestion testing. |
+| [`index.html`](./dashboard/index.html) | `dashboard/index.html` | Core Enterprise Security Control Center single-page application structure, navigation bar, and modal skeletons. |
+| [`app.js`](./dashboard/app.js) | `dashboard/app.js` | Main client-side router, SSE real-time stream listener, chart renderers, custom log injector, device manager, and `#/testing` suite view. |
+| [`style.css`](./dashboard/style.css) | `dashboard/style.css` | Comprehensive cybersecurity theme styling supporting Nord Dark and Snow Light modes, responsive grids, and tables. |
+| [`client_app.html`](./dashboard/client_app.html) | `dashboard/client_app.html` | Lightweight standalone test harness for client browser ping and manual log submission. |
+| [`client_app.js`](./dashboard/client_app.js) | `dashboard/client_app.js` | Client-side scripting for standalone browser ingestion testing. |
 
 ---
 
@@ -199,7 +203,6 @@ This document provides a comprehensive inventory of all functional source code f
 | [`health.bat`](./scripts/health.bat) / [`health.sh`](./scripts/health.sh) | `scripts/health.bat`, `scripts/health.sh` | Quick health and port availability checking scripts. |
 | [`demo.bat`](./scripts/demo.bat) / [`demo.sh`](./scripts/demo.sh) | `scripts/demo.bat`, `scripts/demo.sh` | Automated demonstration scenario triggers for live hackathon evaluation. |
 | [`entrypoint_ai.sh`](./scripts/entrypoint_ai.sh) | `scripts/entrypoint_ai.sh` | Docker container entrypoint for bootstrapping local Ollama models in isolated deployments. |
-| [`oracle-setup.sh`](./scripts/oracle-setup.sh) | `scripts/oracle-setup.sh` | Infrastructure setup and provisioning script for Oracle Cloud Infrastructure (OCI) instances. |
 
 ---
 

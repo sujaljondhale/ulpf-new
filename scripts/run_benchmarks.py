@@ -1,9 +1,12 @@
+import os
 import urllib.request
 import json
 import time
 import socket
 
-BASE_URL = 'http://127.0.0.1:8000'
+BASE_URL = os.getenv("ULPF_API_URL", "http://127.0.0.1:8000")
+TARGET_HOST = os.getenv("TARGET_HOST", "127.0.0.1")
+SYSLOG_UDP_PORT = int(os.getenv("SYSLOG_UDP_PORT", "5140"))
 results = {}
 
 print('======================================================================')
@@ -29,8 +32,8 @@ probes = ['http_api', 'syslog_udp', 'syslog_tcp', 'sse_stream', 'ai_engine', 'me
 probe_results = {}
 for p in probes:
     try:
-        port = 8000 if 'http' in p or 'sse' in p else (5140 if 'udp' in p else (5141 if 'tcp' in p else 0))
-        payload = json.dumps({'target': p, 'host': '127.0.0.1', 'port': port, 'payload': 'BENCHMARK_PROBE_PING'}).encode()
+        port = 8000 if 'http' in p or 'sse' in p else (SYSLOG_UDP_PORT if 'udp' in p else (5141 if 'tcp' in p else 0))
+        payload = json.dumps({'target': p, 'host': TARGET_HOST, 'port': port, 'payload': 'BENCHMARK_PROBE_PING'}).encode()
         r = urllib.request.Request(f'{BASE_URL}/api/test/probe-port', data=payload, headers={'Content-Type': 'application/json'})
         resp = urllib.request.urlopen(r, timeout=5)
         d = json.loads(resp.read().decode())
@@ -78,7 +81,7 @@ try:
     t0 = time.perf_counter()
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     for _ in range(1000):
-        sock.sendto(sample_udp, ('127.0.0.1', 5140))
+        sock.sendto(sample_udp, (TARGET_HOST, SYSLOG_UDP_PORT))
     sock.close()
     udp_duration = max(time.perf_counter() - t0, 0.0001)
     udp_eps = round(1000 / udp_duration, 1)

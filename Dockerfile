@@ -1,47 +1,40 @@
 # ==============================================================================
-# ULPF Testing Simulator & Protocol Testing Hub
-# Production Container Image for Render Cloud Deployment (Testing Site)
+# ULPF — Universal Log Pre-processing Framework
+# Dedicated Main SOC Backend & Dashboard Container Image (for VM / Host Deployment)
 # ==============================================================================
 
 FROM python:3.12-slim AS base
 
-# Set environment variables for non-interactive and unbuffered python execution
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
-    TESTING_HOST=0.0.0.0 \
-    TESTING_PORT=8050
+    ULPF_ENV=production \
+    ULPF_API_HOST=0.0.0.0 \
+    ULPF_API_PORT=8000 \
+    PYTHONPATH=/app
 
 WORKDIR /app
 
-# Install minimal OS runtime packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Create non-root system user for security
-RUN groupadd -r appuser && useradd -r -u 1000 -g appuser appuser
+# Create deterministic non-root system user & group (UID/GID 10001) for volume permission consistency
+RUN groupadd -r -g 10001 ulpfgroup && useradd -r -u 10001 -g ulpfgroup -d /app -s /sbin/nologin ulpfuser
+RUN mkdir -p /app/storage/raw /app/storage/logs && chown -R ulpfuser:ulpfgroup /app
 
-# Create persistent storage directories and set permissions
-RUN mkdir -p /app/storage/raw /app/storage/logs && chown -R appuser:appuser /app
+COPY --chown=ulpfuser:ulpfgroup . .
 
-# Copy application source code
-COPY --chown=appuser:appuser . .
+USER ulpfuser
 
-# Switch to non-root user
-USER appuser
+EXPOSE 8000
+EXPOSE 5140/udp
+EXPOSE 5141
 
-# Expose Simulator Web Application Port
-EXPOSE 8050
+HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=5 \
+    CMD curl -f -s http://127.0.0.1:8000/api/v1/health/live || exit 1
 
-# Docker Healthcheck against testing web root
-HEALTHCHECK --interval=15s --timeout=5s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:${PORT:-8050}/ || exit 1
-
-# Launch the Simulator Web Application & API Hub
-# PORT env var is dynamically injected by Render
-CMD ["sh", "-c", "python testing/run_testing.py"]
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-${ULPF_API_PORT:-8000}} --no-access-log"]

@@ -63,15 +63,16 @@ Existing SIEM architectures face three critical bottlenecks:
 * **REST Ingestion API (:8000)**: High-speed batch ingestion endpoint (`POST /api/v1/ingest`).
 * **Multi-Transport File Lab**: Multipart raw log ingestion and replay studio.
 
-### Tier 2: Deterministic & Sovereign AI Parsing Engine
+### Tier 2: Deterministic & Sovereign AI Parsing Engine (Kosmoporos Core)
+* **Isolated `kosmoporos` Engine**: The core parsing and threat logic is encapsulated in a strictly independent library (`kosmoporos`) with zero dependencies on the application or networking layers.
 * **C-Fast Parser Compiler**: Deterministic string tokenizers mapping known formats in sub-millisecond execution (`0.070 ms P50`).
 * **Canonical ULPF-IR Event Model**: Standardized taxonomy (source, destination, protocol, action, severity, and unmapped attributes).
 * **Sovereign AI Onboarding Engine**: Air-gapped local LLM (Qwen 2.5 via Ollama) synthesizing Pydantic V2 schemas for zero-day logs without internet access.
 
 ### Tier 3: Cryptographic Merkle Vault & Security Threat Triage
-* **SHA-256 Merkle Tree Ledger**: Groups 125 logs/block into binary Merkle trees. Any retrospective modification causes root hash validation failure.
+* **SHA-256 Merkle Tree Ledger**: Groups 125 logs/block into binary Merkle trees. Any retrospective modification causes root hash validation failure. Handled directly by the `KosmoporosMerkleVault`.
 * **Byte-Offset Provenance Map**: Bidirectional character-level index linking normalized fields to raw string slices.
-* **Heuristic Threat Analyzer**: Evaluates SQLi, XSS, Path Traversal, DNS Tunneling, Ransomware, and SYN floods in real time.
+* **Heuristic Threat Analyzer**: Evaluates SQLi, XSS, Path Traversal, DNS Tunneling, Ransomware, and SYN floods in real time via the engine's `ThreatDetector`.
 
 ### Tier 4: Multi-Backend Persistence & Storage
 * **SQLite (WAL Mode)**: High-speed relational metadata and parser registry store.
@@ -93,7 +94,7 @@ To provide enterprise-grade verification without polluting production databases,
    [ ULPF TESTING SIMULATOR HUB (Port 8050 / /testing/) ]
    ├── Tab 1: Virtual Devices (Palo Alto, Fortinet, Cisco, Linux, AWS CloudTrail)
    ├── Tab 2: Cyber Threat & Attack Arsenal (8 Red-Team Cyber Attack Scenarios)
-   ├── Tab 3: High-Throughput Load Generator (Stress bursts & EPS radar)
+   ├── Tab 3: Continuous High-Throughput Load Generator (Stress bursts & EPS radar)
    ├── Tab 4: Server Health & Port Radar (Socket probes across 8000/5140/5141)
    ├── Tab 5: Real Device Guides, Settings & Transmission Audit Ledger
    ├── Tab 6: Automated Test Pipeline Runner (5-Stage Diagnostic Engine)

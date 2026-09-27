@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="main/dashboard/logo.png" alt="Kosmoporos Logo" width="180" style="border-radius: 16px; box-shadow: 0 8px 32px rgba(0, 208, 132, 0.25); margin-bottom: 16px;" />
+<img src="dashboard/logo.png" alt="Kosmoporos Logo" width="180" style="border-radius: 16px; box-shadow: 0 8px 32px rgba(0, 208, 132, 0.25); margin-bottom: 16px;" />
 
-# ⚡ Kosmoporos (ULPF)
+#  Kosmoporos (ULPF)
 ### *Universal Log Pre-processing Framework — High-Throughput Wire Ingress, Sovereign AI Normalization, Cryptographic Merkle Provenance & Multi-SIEM Egress*
 
 **Smart India Hackathon 2026 | Problem Statement ID: 26156 (NTRO)**  
@@ -21,7 +21,7 @@
 
 ---
 
-## 🌟 Executive Summary & Core Value Proposition
+##  Executive Summary & Core Value Proposition
 
 > **"Kosmoporos is not another SIEM — it is the ultra-high-speed, vendor-independent, air-gapped preprocessing and cryptographic provenance layer between heterogeneous network log sources and the analytical platforms that consume them."**
 
@@ -36,26 +36,26 @@ In modern enterprise and defense Security Operations Centers (SOCs), cybersecuri
 
 ---
 
-## 🏆 What Makes Kosmoporos Unique? (Competitive Matrix)
+##  What Makes Kosmoporos Unique? (Competitive Matrix)
 
 Unlike legacy log forwarders (Logstash, Fluentd, Vector, FluentBit) or monolithic SIEM ingestion agents, Kosmoporos was engineered from first principles for **national defense, air-gapped critical infrastructure, and high-throughput enterprise SOCs**:
 
-| Feature / Capability | Legacy Forwarders *(Logstash / Fluentd)* | Modern Agents *(Vector / FluentBit)* | Traditional SIEMs *(Splunk / Sentinel)* | **⚡ Kosmoporos (ULPF)** |
+| Feature / Capability | Legacy Forwarders *(Logstash / Fluentd)* | Modern Agents *(Vector / FluentBit)* | Traditional SIEMs *(Splunk / Sentinel)* | ** Kosmoporos (ULPF)** |
 | :--- | :--- | :--- | :--- | :--- |
 | **Direct Wire Ingress** | 10k – 25k EPS (High CPU) | 50k – 80k EPS | Client-side heavy agent | **`188,761+ Packets/Sec`** *(Non-blocking kernel sockets)* |
 | **Worker Memory (RSS)** | 500 MB – 2 GB (JVM) | 80 MB – 150 MB | 200 MB – 500 MB | **`42.14 MB RSS`** *(Ultra-lightweight edge footprint)* |
-| **Raw Evidence Integrity** | ❌ Lossy / Modified | ⚠️ Partial string retain | ❌ Transformed & Indexed | **`100% Byte-Exact MinIO S3`** *(Court-admissible Section 65B)* |
-| **Cryptographic Proofs** | ❌ None | ❌ None | ❌ Proprietary database | **`SHA-256 Merkle Forest`** *(125-log block tamper verification)* |
-| **Zero-Day Schema Onboarding** | ❌ Manual Regex (Weeks) | ❌ Manual Config (Days) | ❌ Vendor App Updates | **`Sovereign AI Compiler`** *(< 5s on-premise AST synthesis)* |
-| **Multi-Schema Egress** | ⚠️ Custom mapping filters | ⚠️ JSON / Static outputs | ❌ Proprietary Schema lock | **`OCSF v1.1.0 + ECS + OpenSearch`** *(Simultaneous)* |
-| **Integrated Red-Team Testbed**| ❌ None | ❌ None | ❌ Separate paid license | **`Decoupled Cyber Simulator (:8050)`** *(8 attack vectors)* |
-| **Air-Gapped Sovereign AI** | ❌ Requires Cloud APIs | ❌ None | ⚠️ Cloud-connected LLMs | **`100% Local / Zero-Cloud Leakage`** *(Qwen 2.5 7B)* |
+| **Raw Evidence Integrity** |  Lossy / Modified |  Partial string retain |  Transformed & Indexed | **`100% Byte-Exact MinIO S3`** *(Court-admissible Section 65B)* |
+| **Cryptographic Proofs** |  None |  None |  Proprietary database | **`SHA-256 Merkle Forest`** *(125-log block tamper verification)* |
+| **Zero-Day Schema Onboarding** |  Manual Regex (Weeks) |  Manual Config (Days) |  Vendor App Updates | **`Sovereign AI Compiler`** *(< 5s on-premise AST synthesis)* |
+| **Multi-Schema Egress** |  Custom mapping filters |  JSON / Static outputs |  Proprietary Schema lock | **`OCSF v1.1.0 + ECS + OpenSearch`** *(Simultaneous)* |
+| **Integrated Red-Team Testbed**|  None |  None |  Separate paid license | **`Decoupled Cyber Simulator (:8050)`** *(8 attack vectors)* |
+| **Air-Gapped Sovereign AI** |  Requires Cloud APIs |  None |  Cloud-connected LLMs | **`100% Local / Zero-Cloud Leakage`** *(Qwen 2.5 7B)* |
 
 ---
 
-## 🏛️ End-to-End 10-Stage System Architecture
+##  End-to-End 10-Stage System Architecture
 
-### 📐 Interactive Mermaid Architecture Diagram
+###  Interactive Mermaid Architecture Diagram
 
 ```mermaid
 flowchart LR
@@ -79,18 +79,18 @@ flowchart LR
     
     S4["<b>4. Signature Triage</b><br/>• Magic-Byte AST Scanner<br/>• CEF · LEEF · RFC5424<br/>• W3C · JSON · Key-Value"]:::trg
 
-    subgraph S5 ["<b>5. Dual-Path Parser & Normalizer</b>"]
+    subgraph S5 ["<b>5. Dual-Path Parser & Normalizer (Kosmoporos Core)</b>"]
         direction TB
-        S5A["⚡ Fast-Path: C-Fast Tokenizer"]:::prs
-        S5B["🧠 Slow-Path: Local Sovereign AI"]:::ai
-        S5C["🔄 ULPF-IR Canonical Schema"]:::prs
+        S5A[" Fast-Path: C-Fast Tokenizer"]:::prs
+        S5B[" Slow-Path: Local Sovereign AI"]:::ai
+        S5C[" ULPF-IR Canonical Schema"]:::prs
         S5A --> S5C
         S5B --> S5C
     end
 
-    S6["<b>6. Security & Bounds</b><br/>• PII Regex Anonymizer<br/>• RFC Bounds Validation<br/>• Heuristic Threat Analyzer"]:::sec
+    S6["<b>6. Security & Bounds (Kosmoporos Core)</b><br/>• PII Regex Anonymizer<br/>• RFC Bounds Validation<br/>• Heuristic Threat Analyzer"]:::sec
 
-    S7["<b>7. Merkle Provenance</b><br/>• Byte-Exact SHA-256 Pin<br/>• Character Slice Offset Map<br/>• 125-Log/Block Merkle Vault"]:::cry
+    S7["<b>7. Merkle Provenance (Kosmoporos Core)</b><br/>• Byte-Exact SHA-256 Pin<br/>• Character Slice Offset Map<br/>• 125-Log/Block Merkle Vault"]:::cry
 
     S8["<b>8. Persistence Layer</b><br/>• SQLite WAL / PostgreSQL<br/>• MinIO S3 Raw Object Lake<br/>• Dead-Letter Queue (DLQ)"]:::str
 
@@ -106,23 +106,57 @@ flowchart LR
 
 ---
 
-## 📊 Live Verified System Benchmarks
+##  The Three-Unit Decoupled Architecture
+
+Kosmoporos enforces a strict, unidirectional dependency graph separating its core logic from application concerns and testing interfaces. This allows the core parsing and cryptographic engine to be deployed independently of the web dashboards or testing simulators.
+
+1. **`kosmoporos` (The Core Engine Unit)**
+   - **Completely Autonomous:** Operates as a strictly isolated library with zero dependencies on web frameworks or application networking layers.
+   - **Capabilities:** Handles ultra-high-speed parsing, character-level byte offset mapping, real-time cyber threat detection, and SHA-256 Merkle block generation.
+2. **`app` (The Integration & Orchestration Unit)**
+   - **Dependent Only on Core:** Wraps the `kosmoporos` engine to expose REST APIs, multi-tier persistence (SQLite, OpenSearch, MinIO), and WebSocket streaming.
+   - **Capabilities:** Manages the SOC dashboard, database state, and network socket ingestion (UDP/TCP/REST).
+3. **`testing/` (The Simulator & Verification Unit)**
+   - **Completely Externalized:** The entire cyber testing suite, device simulator, and load generator sits outside the production codebase.
+   - **Capabilities:** Triggers stress payloads, executes forensic debugging pipelines, and tests API functionality without polluting the production app.
+
+###  How the Kosmoporos Core Engine Works
+
+The standalone `kosmoporos` engine consists of four primary subsystems that process every incoming raw log sequentially:
+
+1. **`KosmoporosEngine` (Parsing & Semantic AST Synthesis)**
+   - Captures the exact raw payload and determines the format using a Magic-Byte AST Scanner.
+   - Dispatches known formats (CEF, Syslog, JSON, KV) to the **C-Fast Parser**, operating in sub-millisecond speeds.
+   - Maps parsed fields into a normalized `CanonicalEvent` while retaining the original raw `sha256` string byte offsets for legal court admissibility.
+2. **`ThreatDetector` (Heuristic Defense Matrix)**
+   - Evaluates the raw payload and IP headers against pre-compiled signature blocks.
+   - Immediately identifies SQL Injection, XSS, Path Traversal, Log4Shell, and Ransomware indicators, assigning a severity score and real-time threat alert.
+3. **`KosmoporosMerkleVault` (Cryptographic Ledger)**
+   - Batches events into blocks of exactly 125 logs. 
+   - Generates a **SHA-256 binary Merkle Tree** for every block. If a single bit of forensic evidence is altered in the storage layers later, the Merkle root hash verification will instantly fail, guaranteeing the chain of custody.
+4. **`KosmoporosStatsEngine` (Latency Analytics)**
+   - Continuously records parsing telemetry (EPS, byte throughput).
+   - Computes rolling `P50`, `P95`, and `P99` percentile latencies to ensure the core never bottlenecks high-speed network interfaces.
+
+---
+
+##  Live Verified System Benchmarks
 
 All metrics were captured via our automated benchmark suite (`python scripts/run_benchmarks.py`) against live operational wire sockets:
 
 | Pipeline Subsystem | Measured Performance | Industry Standard / Target SLA | Verification Verdict |
 | :--- | :--- | :--- | :--- |
-| **Direct Wire Ingress (UDP :5140)** | **`188,761.2 Packets / Sec`** | > 50,000 EPS Target | 🟢 **PASS [100% OPERATIONAL]** |
-| **Socket Probe Latency (RTT)** | **`0.45 ms – 1.87 ms`** | < 10.0 ms Enterprise SLA | 🟢 **PASS [100% OPERATIONAL]** |
-| **Worker Memory Footprint (RSS)** | **`42.14 MB Total RSS`** | < 256 MB Edge Container | 🟢 **PASS [100% OPERATIONAL]** |
-| **Cryptographic Merkle Batching** | **`125 Logs / Block (SHA-256)`** | Zero Historical Tamper Tolerance | 🟢 **PASS [100% OPERATIONAL]** |
-| **Multi-Vendor Parser Coverage** | **`100% Parse Success`** | > 95% Industry Benchmark | 🟢 **PASS [100% OPERATIONAL]** |
-| **Pipeline Diagnostic Latency** | **`5 / 5 Stages Passed in 0.000s`** | Zero-Loss Real-time Pipeline | 🟢 **PASS [100% OPERATIONAL]** |
-| **Red-Team Threat Detection** | **`8 / 8 Attack Vectors Neutralized`** | Immediate Real-time Alerting | 🟢 **PASS [100% OPERATIONAL]** |
+| **Direct Wire Ingress (UDP :5140)** | **`188,761.2 Packets / Sec`** | > 50,000 EPS Target |  **PASS [100% OPERATIONAL]** |
+| **Socket Probe Latency (RTT)** | **`0.45 ms – 1.87 ms`** | < 10.0 ms Enterprise SLA |  **PASS [100% OPERATIONAL]** |
+| **Worker Memory Footprint (RSS)** | **`42.14 MB Total RSS`** | < 256 MB Edge Container |  **PASS [100% OPERATIONAL]** |
+| **Cryptographic Merkle Batching** | **`125 Logs / Block (SHA-256)`** | Zero Historical Tamper Tolerance |  **PASS [100% OPERATIONAL]** |
+| **Multi-Vendor Parser Coverage** | **`100% Parse Success`** | > 95% Industry Benchmark |  **PASS [100% OPERATIONAL]** |
+| **Pipeline Diagnostic Latency** | **`5 / 5 Stages Passed in 0.000s`** | Zero-Loss Real-time Pipeline |  **PASS [100% OPERATIONAL]** |
+| **Red-Team Threat Detection** | **`8 / 8 Attack Vectors Neutralized`** | Immediate Real-time Alerting |  **PASS [100% OPERATIONAL]** |
 
 ---
 
-## 🖥️ The Dual-Application Ecosystem
+##  The Dual-Application Ecosystem
 
 The platform is architected as **two decoupled, high-performance web applications**:
 
@@ -132,7 +166,7 @@ The platform is architected as **two decoupled, high-performance web application
 ├─────────────────────────────────────────────────────────┤  ├─────────────────────────────────────────────────────────┤
 │ • SOC Overview Command Center (#/overview)              │  │ • Tab 1: Virtual Enterprise Device Fleet & Wiretap Log  │
 │ • Multi-Protocol Ingestion Hub (#/ingestion)            │  │ • Tab 2: Red-Team Cyber Attack Arsenal (8 Vectors)      │
-│ • Log Explorer & 6-Stage Forensic Modal (#/events)      │  │ • Tab 3: High-Speed Stress Cannon (100–5,000 Pkts/Burst)│
+│ • Log Explorer & 6-Stage Forensic Modal (#/events)      │  │ • Tab 3: Continuous Stress Cannon (100–10k Pkts/Burst)  │
 │ • Parsers & AI Zero-Shot Onboarding (#/parsers)         │  │ • Tab 4: Multi-Vendor Cross-Normalization Testbed       │
 │ • Analytics Studio & Merkle Forest Forensics (#/analytics)│ │ • Tab 5: Physical Hardware CLI Guides (Linux/Cisco/Win)│
 │ • System Settings & Multi-Sink SIEM Egress (#/settings) │  │ • Tab 6: 6-Stage Pipeline Forensic Step-Debugger        │
@@ -142,7 +176,7 @@ The platform is architected as **two decoupled, high-performance web application
 
 ---
 
-## 🚀 Quick-Start & Installation
+##  Quick-Start & Installation
 
 ### 1. Prerequisites
 * **Python 3.10+** (FastAPI, Uvicorn, Pydantic V2)
@@ -159,9 +193,24 @@ pip install -r requirements.txt
 ```
 
 ### 3. Start the Platform
+
+#### Option A: One-Command Automated Deployment (Recommended)
+```bash
+# On Linux / Oracle Cloud Infrastructure (OCI):
+chmod +x deploy.sh && ./deploy.sh
+
+# On Windows (PowerShell):
+powershell -ExecutionPolicy Bypass -File .\deploy.ps1
+
+# Or standard Docker Compose:
+docker compose up -d --build
+```
+> For complete container guides, cloud firewall setups, and service registries, see [**`DEPLOYMENT.md`**](DEPLOYMENT.md) and [**`docs/deployment.md`**](docs/deployment.md).
+
+#### Option B: Direct Python Execution
 ```bash
 # Terminal 1: Start Main SOC Dashboard & Ingestion Engine (Port 8000)
-python main/run_main.py
+python run_main.py
 
 # Terminal 2: Start Cyber Simulator & Protocol Testbed (Port 8050)
 python testing/run_testing.py
@@ -169,21 +218,25 @@ python testing/run_testing.py
 
 ### 4. Run Automated Topology & Benchmark Suite
 ```bash
-# Verify distributed services (Docker, Redis, Redpanda, MinIO, SQLite)
-python scripts/verify_stack.py
+# Run root automated regression pipeline (all 5 stages)
+test_pipeline.bat
 
-# Execute end-to-end performance benchmarks
+# Or run individual verification tools
+python scripts/verify_stack.py
 python scripts/run_benchmarks.py
 ```
 
 ### 5. Access the Web Interfaces
-* 🛡️ **Main SOC Dashboard**: [http://127.0.0.1:8000/dashboard/](http://127.0.0.1:8000/dashboard/)
-* ⚡ **Cyber Simulator & Testbed**: [http://localhost:8050/](http://localhost:8050/)
-* 📚 **Interactive OpenAPI Documentation**: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+*  **Main SOC Dashboard**: [http://127.0.0.1:8000/dashboard/](http://127.0.0.1:8000/dashboard/)
+*  **Cyber Simulator & Testbed**: [http://localhost:8050/](http://localhost:8050/)
+*  **Interactive OpenAPI Documentation**: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+*  **Full Technical Documentation Hub**: [**`docs/README.md`**](docs/README.md)
+*  **System Readiness & Component Ledger**: [**`working.md`**](working.md)
+*  **Codebase File Index & Architecture**: [**`details.md`**](details.md)
 
 ---
 
-## 📜 Statutory Compliance & Legal Admissibility
+##  Statutory Compliance & Legal Admissibility
 
 | Statutory Regulation / Standard | Mandatory Requirement | Kosmoporos Architectural Enforcement |
 | :--- | :--- | :--- |
@@ -195,7 +248,7 @@ python scripts/run_benchmarks.py
 
 ---
 
-## 🗺️ Strategic 4-Phase Roadmap
+##  Strategic 4-Phase Roadmap
 
 * **Phase 1 (Completed)**: Core multi-socket wire ingestion (UDP/TCP/REST), C-Fast parser, SHA-256 Merkle vault, 8 red-team attack scenarios, decoupled simulator testbed.
 * **Phase 2 (Q3 2026)**: eBPF / XDP kernel-bypass socket ingestion layer targeting **500,000+ EPS** on single CPU socket.
