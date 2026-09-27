@@ -94,7 +94,7 @@ To provide enterprise-grade verification without polluting production databases,
    [ ULPF TESTING SIMULATOR HUB (Port 8050 / /testing/) ]
    ├── Tab 1: Virtual Devices (Palo Alto, Fortinet, Cisco, Linux, AWS CloudTrail)
    ├── Tab 2: Cyber Threat & Attack Arsenal (8 Red-Team Cyber Attack Scenarios)
-   ├── Tab 3: High-Throughput Load Generator (Stress bursts & EPS radar)
+   ├── Tab 3: Continuous High-Throughput Load Generator (Stress bursts & EPS radar)
    ├── Tab 4: Server Health & Port Radar (Socket probes across 8000/5140/5141)
    ├── Tab 5: Real Device Guides, Settings & Transmission Audit Ledger
    ├── Tab 6: Automated Test Pipeline Runner (5-Stage Diagnostic Engine)

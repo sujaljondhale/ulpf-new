@@ -87,7 +87,7 @@ A 6-scenario cyber threat simulation arsenal with 1-click execution:
 ---
 
 ### Tab 3: High-Throughput Load Generator
-* **Stress Storming**: Fires bursts of 50, 100, 250, or 500 packets across UDP (`:5140`), TCP (`:5141`), or HTTP REST (`:8000`).
+* **Stress Storming**: Fires continuous recursive bursts of 50, 100, 250, or 500 packets across UDP (`:5140`), TCP (`:5141`), or HTTP REST (`:8000`) using a unified Start/Stop toggle switch.
 * **Pacing & Rate Limiting**: Maximum velocity (0ms delay) or paced throughput (100, 50, 10 events/sec).
 * **Live Telemetry Radar**:
   - Packets Fired / Requested

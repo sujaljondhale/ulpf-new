@@ -166,7 +166,7 @@ The platform is architected as **two decoupled, high-performance web application
 ├─────────────────────────────────────────────────────────┤  ├─────────────────────────────────────────────────────────┤
 │ • SOC Overview Command Center (#/overview)              │  │ • Tab 1: Virtual Enterprise Device Fleet & Wiretap Log  │
 │ • Multi-Protocol Ingestion Hub (#/ingestion)            │  │ • Tab 2: Red-Team Cyber Attack Arsenal (8 Vectors)      │
-│ • Log Explorer & 6-Stage Forensic Modal (#/events)      │  │ • Tab 3: High-Speed Stress Cannon (100–5,000 Pkts/Burst)│
+│ • Log Explorer & 6-Stage Forensic Modal (#/events)      │  │ • Tab 3: Continuous Stress Cannon (100–10k Pkts/Burst)  │
 │ • Parsers & AI Zero-Shot Onboarding (#/parsers)         │  │ • Tab 4: Multi-Vendor Cross-Normalization Testbed       │
 │ • Analytics Studio & Merkle Forest Forensics (#/analytics)│ │ • Tab 5: Physical Hardware CLI Guides (Linux/Cisco/Win)│
 │ • System Settings & Multi-Sink SIEM Egress (#/settings) │  │ • Tab 6: 6-Stage Pipeline Forensic Step-Debugger        │
