@@ -3613,7 +3613,7 @@ New-NetFirewallRule -DisplayName "ULPF Ingress TCP" -Direction Inbound -LocalPor
                   <span class="badge badge-teal">INTEGRITY SEAL VERIFIED</span>
                 </div>
                 <div class="text-muted text-xs mt-sm">
-                  Device: <strong style="color:var(--text-main);">${selectedLog.source}</strong> | Format: <strong style="color:var(--warning-main);">${selectedLog.format}</strong> | Client IP: <strong style="color:var(--primary-main);" class="mono">${selectedLog.src_ip || '192.168.99.45'}</strong> | Port: <strong style="color:var(--success-main);" class="mono">${selectedLog.format.includes('TCP') ? '5141' : '5140'}</strong>
+                  Device: <strong style="color:var(--text-main);">${selectedLog.source}</strong> | Format: <strong style="color:var(--warning-main);">${selectedLog.format}</strong> | Client IP: <strong style="color:var(--primary-main);" class="mono">${selectedLog.src_ip || 'Unknown'}</strong> | Port: <strong style="color:var(--success-main);" class="mono">${selectedLog.port || 'Unknown'}</strong>
                 </div>
               </div>
               <div style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -3631,15 +3631,15 @@ New-NetFirewallRule -DisplayName "ULPF Ingress TCP" -Direction Inbound -LocalPor
               <div class="card p-sm" style="background:var(--bg-card-subtle); border:1px solid var(--border-color);">
                 <div class="text-muted text-xs" style="letter-spacing:0.05em; text-transform:uppercase;">Ingestion Channel &amp; Socket</div>
                 <div class="font-bold mt-sm mono" style="color:var(--primary-main); font-size:12.5px;">
-                  ${selectedLog.format.includes('TCP') ? 'Syslog TCP (Port 5141)' : selectedLog.format.includes('Binary') ? 'UDP Telemetry (Port 5140)' : 'Syslog UDP (Port 5140)'}
+                  ${selectedLog.ingestion_channel || (selectedLog.format.includes('TCP') ? 'Syslog TCP' : 'Syslog UDP')}
                 </div>
-                <div class="text-muted text-xs mt-xs">Source Client IP: <span class="text-teal mono font-bold">${selectedLog.src_ip || '192.168.99.45'}</span></div>
+                <div class="text-muted text-xs mt-xs">Source Client IP: <span class="text-teal mono font-bold">${selectedLog.src_ip || 'Unknown'}</span></div>
               </div>
 
               <div class="card p-sm" style="background:var(--bg-card-subtle); border:1px solid var(--border-color);">
                 <div class="text-muted text-xs" style="letter-spacing:0.05em; text-transform:uppercase;">Ingress Timestamp &amp; Wire Size</div>
                 <div class="mono mt-sm" style="color:var(--text-main); font-size:12px;">${selectedLog.timestamp || new Date().toISOString()}</div>
-                <div class="text-muted text-xs mt-xs">Wire Size: <span class="mono font-bold" style="color:var(--success-main);">${(selectedLog.raw_message || '').length} Bytes</span> · Shannon: <span style="color:var(--primary-main);">4.32 / 8.0</span></div>
+                <div class="text-muted text-xs mt-xs">Wire Size: <span class="mono font-bold" style="color:var(--success-main);">${(selectedLog.raw_message || '').length} Bytes</span> · Shannon: <span style="color:var(--primary-main);">${selectedLog.shannon_entropy || 'N/A'}</span></div>
               </div>
 
               <div class="card p-sm" style="background:var(--bg-card-subtle); border:1px solid var(--border-color);">
@@ -3660,7 +3660,7 @@ New-NetFirewallRule -DisplayName "ULPF Ingress TCP" -Direction Inbound -LocalPor
             <div class="mt-md">
               <div class="code-box-header" style="background:var(--bg-card-subtle); padding:8px 12px; border-radius:6px 6px 0 0; display:flex; justify-content:space-between; align-items:center;">
                 <span style="font-size:11.5px; font-weight:700; color: var(--text-muted); letter-spacing:0.03em;">Raw Log</span>
-                <span class="mono text-muted" style="font-size:11px;">SHA-256: <code class="text-teal" style="font-size:10.5px;">${(selectedLog.sha256 || '4b227777d4dd1fc61c6f884f48641d02b4d121d3fd328cb08b5531fcacdabf8a').substring(0, 24)}...</code></span>
+                <span class="mono text-muted" style="font-size:11px;">SHA-256: <code class="text-teal" style="font-size:10.5px;">${(selectedLog.sha256 || 'Pending...').substring(0, 24)}</code></span>
               </div>
               <pre class="code-box" style="max-height:80px; margin-bottom:0; color:var(--text-main); font-size:12px; border-radius:0 0 6px 6px; overflow-x:auto;">${selectedLog.raw_message}</pre>
             </div>
@@ -3684,10 +3684,10 @@ New-NetFirewallRule -DisplayName "ULPF Ingress TCP" -Direction Inbound -LocalPor
                   <button class="btn btn-primary" onclick="window.approveUnknownLog('${selectedLog.id}')">
                     <span>Approve &amp; Register Parser</span>
                   </button>
-                  <button class="btn btn-teal" onclick="window.markUnknownSafeResume('${selectedLog.src_ip || '192.168.99.45'}', '${selectedLog.id}')">
+                  <button class="btn btn-teal" onclick="window.markUnknownSafeResume('${selectedLog.src_ip || ''}', '${selectedLog.id}')">
                     <span>Resume Connection (Mark Safe)</span>
                   </button>
-                  <button class="btn btn-danger" onclick="window.blockUnknownIp('${selectedLog.src_ip || '192.168.99.45'}')">
+                  <button class="btn btn-danger" onclick="window.blockUnknownIp('${selectedLog.src_ip || ''}')">
                     <span>Block &amp; Blacklist IP</span>
                   </button>
                   <button class="btn btn-secondary" onclick="window.rejectUnknownLog('${selectedLog.id}')">
@@ -3733,7 +3733,7 @@ New-NetFirewallRule -DisplayName "ULPF Ingress TCP" -Direction Inbound -LocalPor
       const record = {
         id: target.id,
         source: target.source,
-        src_ip: target.src_ip || "192.168.99.45",
+        src_ip: target.src_ip || "Unknown",
         timestamp: target.timestamp || new Date().toISOString(),
         format: target.format,
         quarantine_reason: target.reason || "Format mismatch",
@@ -3841,9 +3841,9 @@ normalization:
               <div class="card p-sm" style="background:var(--bg-card-subtle); border:1px solid var(--border-color);">
                 <div class="text-muted text-xs" style="letter-spacing:0.05em;">INGESTION CHANNEL &amp; SOCKET</div>
                 <div class="font-bold mt-sm mono" style="color:var(--primary-main); font-size:12.5px;">
-                  ${log.format.includes('TCP') ? 'Syslog TCP (Port 5141)' : log.format.includes('Binary') ? 'UDP Telemetry (Port 5140)' : 'Syslog UDP (Port 5140)'}
+                  ${log.ingestion_channel || (log.format.includes('TCP') ? 'Syslog TCP' : 'Syslog UDP')}
                 </div>
-                <div class="text-muted text-xs mt-xs">Source IP: <span class="text-teal">${log.src_ip || '192.168.99.45'}</span></div>
+                <div class="text-muted text-xs mt-xs">Source IP: <span class="text-teal">${log.src_ip || 'Unknown'}</span></div>
               </div>
 
               <div class="card p-sm" style="background:var(--bg-card-subtle); border:1px solid var(--border-color);">
@@ -3906,7 +3906,7 @@ normalization:
                   <tbody>
                     <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
                       <td class="mono font-bold" style="color:var(--primary-main); padding:6px 8px;">src</td>
-                      <td class="mono" style="color:var(--success-main); padding:6px 8px;">${log.src_ip || '192.168.99.45'}</td>
+                      <td class="mono" style="color:var(--success-main); padding:6px 8px;">${log.src_ip || 'Unknown'}</td>
                       <td class="text-muted" style="padding:6px 8px;">IPv4 Address</td>
                       <td class="mono" style="color:var(--success-main); padding:6px 8px;">source.ip</td>
                       <td style="padding:6px 8px;"><span class="badge badge-teal" style="font-size:9.5px;">99.8%</span></td>
@@ -3957,7 +3957,7 @@ normalization:
               <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:8px;">
                 <div style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:4px; padding:6px 10px;">
                   <div class="text-muted text-xs">source.ip</div>
-                  <div class="mono" style="color:var(--success-main); font-weight:700; font-size:12px;">${log.src_ip || '192.168.99.45'}</div>
+                  <div class="mono" style="color:var(--success-main); font-weight:700; font-size:12px;">${log.src_ip || 'Unknown'}</div>
                 </div>
                 <div style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:4px; padding:6px 10px;">
                   <div class="text-muted text-xs">destination.ip</div>
