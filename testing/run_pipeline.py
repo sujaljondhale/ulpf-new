@@ -18,7 +18,7 @@ from pathlib import Path
 
 # Resolve root, main, and testing directories
 ROOT_DIR = Path(__file__).resolve().parent.parent
-MAIN_DIR = ROOT_DIR / "main"
+MAIN_DIR = ROOT_DIR
 TESTING_DIR = ROOT_DIR / "testing"
 
 # Ensure main and testing are in sys.path
@@ -65,7 +65,7 @@ def run_stage(title: str, cmd: list[str], cwd: Path = ROOT_DIR, device_timeout: 
 
 def main():
     default_timeout = float(os.environ.get("ULPF_DEVICE_TIMEOUT", "3.0"))
-    default_interval_sec = float(os.environ.get("ULPF_LOGS_INTERVAL_MS", "10.0")) / 1000.0
+    default_interval_sec = float(os.environ.get("ULPF_LOGS_INTERVAL_MS", "0.0")) / 1000.0
 
     parser = argparse.ArgumentParser(
         description="ULPF Unified Testing & Verification Pipeline"
