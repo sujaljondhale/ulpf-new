@@ -11,7 +11,7 @@ The **ULPF Testing Simulator Hub** is an independent, browser-accessible testing
 * **URL**: `http://127.0.0.1:8050`
 * **Startup Script**: `start_testing.bat` (or `python testing/server/sim_server.py`)
 * **Palette Compliance**: Designed strictly with the 4-color palette (`#EDE9E6`, `#C9996B`, `#5C4F4A`, `#5C766D`).
-* **Architectural Decoupling**: Completely segregated from the production server (`main/`, port `8000`), ensuring that synthetic traffic, attack simulations, and stress tests never pollute production pipelines.
+* **Architectural Decoupling**: Completely segregated from the production server (port `8000`), ensuring that synthetic traffic, attack simulations, and stress tests never pollute production pipelines.
 
 ---
 

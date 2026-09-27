@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="main/dashboard/logo.png" alt="Kosmoporos Logo" width="180" style="border-radius: 16px; box-shadow: 0 8px 32px rgba(0, 208, 132, 0.25); margin-bottom: 16px;" />
+<img src="dashboard/logo.png" alt="Kosmoporos Logo" width="180" style="border-radius: 16px; box-shadow: 0 8px 32px rgba(0, 208, 132, 0.25); margin-bottom: 16px;" />
 
 # ⚡ Kosmoporos (ULPF)
 ### *Universal Log Pre-processing Framework — High-Throughput Wire Ingress, Sovereign AI Normalization, Cryptographic Merkle Provenance & Multi-SIEM Egress*
@@ -110,7 +110,7 @@ flowchart LR
 
 Kosmoporos enforces a strict, unidirectional dependency graph separating its core logic from application concerns and testing interfaces. This allows the core parsing and cryptographic engine to be deployed independently of the web dashboards or testing simulators.
 
-1. **`main/kosmoporos` (The Core Engine Unit)**
+1. **`kosmoporos` (The Core Engine Unit)**
    - **Completely Autonomous:** Operates as a strictly isolated library with zero dependencies on web frameworks or application networking layers.
    - **Capabilities:** Handles ultra-high-speed parsing, character-level byte offset mapping, real-time cyber threat detection, and SHA-256 Merkle block generation.
 2. **`app` (The Integration & Orchestration Unit)**
@@ -210,7 +210,7 @@ docker compose up -d --build
 #### Option B: Direct Python Execution
 ```bash
 # Terminal 1: Start Main SOC Dashboard & Ingestion Engine (Port 8000)
-python main/run_main.py
+python run_main.py
 
 # Terminal 2: Start Cyber Simulator & Protocol Testbed (Port 8050)
 python testing/run_testing.py

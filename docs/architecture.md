@@ -64,7 +64,7 @@ Existing SIEM architectures face three critical bottlenecks:
 * **Multi-Transport File Lab**: Multipart raw log ingestion and replay studio.
 
 ### Tier 2: Deterministic & Sovereign AI Parsing Engine (Kosmoporos Core)
-* **Isolated `kosmoporos` Engine**: The core parsing and threat logic is encapsulated in a strictly independent library (`main/kosmoporos`) with zero dependencies on the application or networking layers.
+* **Isolated `kosmoporos` Engine**: The core parsing and threat logic is encapsulated in a strictly independent library (`kosmoporos`) with zero dependencies on the application or networking layers.
 * **C-Fast Parser Compiler**: Deterministic string tokenizers mapping known formats in sub-millisecond execution (`0.070 ms P50`).
 * **Canonical ULPF-IR Event Model**: Standardized taxonomy (source, destination, protocol, action, severity, and unmapped attributes).
 * **Sovereign AI Onboarding Engine**: Air-gapped local LLM (Qwen 2.5 via Ollama) synthesizing Pydantic V2 schemas for zero-day logs without internet access.

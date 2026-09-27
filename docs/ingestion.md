@@ -81,8 +81,7 @@ ULPF maintains strict segregation between **immutable raw forensic evidence** an
 
 ```
 ulpf/
-├── main/
-│   └── storage/
+├── storage/
 │       ├── raw/                       # 1. Immutable Raw Log Evidence Store
 │       │   ├── ULPF-2026-1001.raw
 │       │   └── ULPF-2026-1002.raw
@@ -92,7 +91,7 @@ ulpf/
 ```
 
 ### 3.1 Raw Logs Storage (`storage/raw/`)
-* **Location**: `main/storage/raw/` on the server filesystem.
+* **Location**: `storage/raw/` on the server filesystem.
 * **Format**: Individual raw bitstream files named by timestamp or assigned event ID:  
   `storage/raw/ULPF-YYYYMMDD-HHMMSS-<id>.raw`
 * **Integrity Guarantee**:
@@ -102,13 +101,13 @@ ulpf/
   - Guarantees court-admissible chain of custody for digital forensics and compliance audits.
 
 ### 3.2 Parsed Logs Storage (`storage/ulpf_events.db` & OpenSearch)
-* **Relational Storage**: SQLite database at `main/storage/ulpf_events.db`.
+* **Relational Storage**: SQLite database at `storage/ulpf_events.db`.
   - Stored in the `events` table with normalized columns: `event_id`, `timestamp`, `category`, `action`, `severity`, `source_ip`, `source_port`, `destination_ip`, `destination_port`, `vendor`, `product`, `raw_sha256`, and complete ULPF-IR JSON.
 * **Search & Analytics**: OpenSearch cluster (`http://localhost:9200`, index `ulpf-events-v1`).
   - Indexed with high-performance schemas supporting free-text search, geo-ip enrichment, and security analytics visualizations in OpenSearch Dashboards (port 5601).
 
 ### 3.3 Unknown Logs Quarantine (`storage/ulpf_unknown.db`)
-* **Location**: `main/storage/ulpf_unknown.db` (or `unknown_logs` table).
+* **Location**: `storage/ulpf_unknown.db` (or `unknown_logs` table).
 * **Contents**: Raw payload, ingress timestamp, source IP/port, confidence score (<0.70), failure reason, assigned SHA-256 seal, and current status (`PENDING_REVIEW`, `AI_SYNTHESIZED`, `APPROVED`).
 
 ---

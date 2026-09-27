@@ -33,12 +33,12 @@ This document provides a comprehensive inventory of all functional source code f
 
 ---
 
-## 2. Main Core Subsystem (`main/`)
+## 2. Main Core Subsystem (`app/` & `kosmoporos/`)
 
 ### Application Entrypoint & Ingestion Engine
 | File Name | Location | Use / Purpose |
 | :--- | :--- | :--- |
-| [`run_main.py`](./main/run_main.py) | `main/run_main.py` | Direct executable launcher for the main core service, setting working paths and starting Uvicorn. |
+| [`run_main.py`](./run_main.py) | `run_main.py` | Direct executable launcher for the main core service, setting working paths and starting Uvicorn. |
 | [`main.py`](./app/main.py) | `app/main.py` | Core FastAPI application lifecycle manager, registering REST routes, CORS middleware, SSE event streams, and static dashboard files. |
 | [`pipeline.py`](./app/pipeline.py) | `app/pipeline.py` | Central deterministic processing pipeline coordinating format detection, vendor parsing, taxonomy normalization, validation, and storage. |
 | [`cli.py`](./app/cli.py) | `app/cli.py` | Command-line interface tool for offline log ingestion, individual log parsing, and ad-hoc file inspection. |
@@ -127,15 +127,15 @@ This document provides a comprehensive inventory of all functional source code f
 
 ---
 
-## 3. Main Enterprise Dashboard (`main/dashboard/`)
+## 3. Main Enterprise Dashboard (`dashboard/`)
 
 | File Name | Location | Use / Purpose |
 | :--- | :--- | :--- |
-| [`index.html`](./main/dashboard/index.html) | `main/dashboard/index.html` | Core Enterprise Security Control Center single-page application structure, navigation bar, and modal skeletons. |
-| [`app.js`](./main/dashboard/app.js) | `main/dashboard/app.js` | Main client-side router, SSE real-time stream listener, chart renderers, custom log injector, device manager, and `#/testing` suite view. |
-| [`style.css`](./main/dashboard/style.css) | `main/dashboard/style.css` | Comprehensive cybersecurity theme styling supporting Nord Dark and Snow Light modes, responsive grids, and tables. |
-| [`client_app.html`](./main/dashboard/client_app.html) | `main/dashboard/client_app.html` | Lightweight standalone test harness for client browser ping and manual log submission. |
-| [`client_app.js`](./main/dashboard/client_app.js) | `main/dashboard/client_app.js` | Client-side scripting for standalone browser ingestion testing. |
+| [`index.html`](./dashboard/index.html) | `dashboard/index.html` | Core Enterprise Security Control Center single-page application structure, navigation bar, and modal skeletons. |
+| [`app.js`](./dashboard/app.js) | `dashboard/app.js` | Main client-side router, SSE real-time stream listener, chart renderers, custom log injector, device manager, and `#/testing` suite view. |
+| [`style.css`](./dashboard/style.css) | `dashboard/style.css` | Comprehensive cybersecurity theme styling supporting Nord Dark and Snow Light modes, responsive grids, and tables. |
+| [`client_app.html`](./dashboard/client_app.html) | `dashboard/client_app.html` | Lightweight standalone test harness for client browser ping and manual log submission. |
+| [`client_app.js`](./dashboard/client_app.js) | `dashboard/client_app.js` | Client-side scripting for standalone browser ingestion testing. |
 
 ---
 

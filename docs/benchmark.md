@@ -94,7 +94,7 @@ Execute the end-to-end benchmark suite directly from the repository root:
 
 ```bash
 # Start backend server
-python main/run_main.py
+python run_main.py
 
 # In a separate terminal, run benchmarks
 python scripts/run_benchmarks.py
