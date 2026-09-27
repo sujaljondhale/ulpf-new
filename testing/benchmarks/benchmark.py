@@ -12,8 +12,7 @@ import os
 from pathlib import Path
 from typing import List, Dict, Any
 
-# Ensure both main core (system under test) and testing core are resolvable
-MAIN_DIR = Path(__file__).resolve().parent.parent.parent / "main"
+MAIN_DIR = Path(__file__).resolve().parent.parent.parent
 TESTING_DIR = Path(__file__).resolve().parent.parent
 
 if str(MAIN_DIR) not in sys.path:
