@@ -18,7 +18,7 @@ National security networks and critical infrastructure operating under strict ai
 
 ## 2. Where & How AI Models Are Integrated
 
-The AI subsystem resides in `main/app/ai/` and interacts directly with the core pipeline and web API:
+The AI subsystem resides in `app/ai/` and interacts directly with the core pipeline and web API:
 
 ```
 [ Ingestion Pipeline ] ──> (Unrecognized Log / Confidence < 0.70)
@@ -47,7 +47,7 @@ Dynamic Parser Registry       Security Alert Triage         SIEM Analyst Dashboa
 2. **Offline Quantized Models (GGUF / llama.cpp)**:
    - Run directly on CPU with 4-bit quantization (< 2 GB RAM).
 3. **Automated Heuristic Synthesizer (Built-in Zero-Dependency Fallback)**:
-   - When no external LLM runner is installed or active, ULPF automatically activates its built-in rule synthesis engine (`main/app/ai/offline_synthesizer.py`), which uses token frequency analysis, entropy calculation, and delimiter mapping to construct regex parsers deterministically.
+   - When no external LLM runner is installed or active, ULPF automatically activates its built-in rule synthesis engine (`app/ai/offline_synthesizer.py`), which uses token frequency analysis, entropy calculation, and delimiter mapping to construct regex parsers deterministically.
 
 ---
 

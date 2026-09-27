@@ -18,7 +18,7 @@ ENV PYTHONUNBUFFERED=1 \
     TESTING_HOST=0.0.0.0 \
     TESTING_PORT=8050 \
     ULPF_INTERNAL_API_HOST=host.docker.internal \
-    PYTHONPATH=/app/main:/app/testing:/app
+    PYTHONPATH=/app/testing:/app
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -39,8 +39,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN mkdir -p /app/storage/raw /app/storage/logs && chown -R appuser:appuser /app
 
 # Copy application source code into container
-COPY --chown=appuser:appuser main/ main/
-COPY --chown=appuser:appuser testing/ testing/
+COPY --chown=appuser:appuser . .
 
 # Switch to non-root user
 USER appuser

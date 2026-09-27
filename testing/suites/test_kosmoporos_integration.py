@@ -27,8 +27,8 @@ try:
     from app.storage.temp_storage import MemoryQueueTempStorage, DiskSpoolTempStorage  # type: ignore
     from app.pipeline import UlpfPipeline  # type: ignore
 except ImportError:
-    from main.app.storage.temp_storage import MemoryQueueTempStorage, DiskSpoolTempStorage  # type: ignore
-    from main.app.pipeline import UlpfPipeline  # type: ignore
+    from app.storage.temp_storage import MemoryQueueTempStorage, DiskSpoolTempStorage  # type: ignore
+    from app.pipeline import UlpfPipeline  # type: ignore
 
 
 def test_kosmoporos_engine_basic_parsing():
@@ -178,9 +178,9 @@ def test_persistence_manager_imain_storage_unit():
         from app.storage.interfaces import IMainStorageUnit  # type: ignore
         from app.pipeline import UlpfPipeline  # type: ignore
     except ImportError:
-        from main.app.storage.persistence import PersistenceManager  # type: ignore
-        from main.app.storage.interfaces import IMainStorageUnit  # type: ignore
-        from main.app.pipeline import UlpfPipeline  # type: ignore
+        from app.storage.persistence import PersistenceManager  # type: ignore
+        from app.storage.interfaces import IMainStorageUnit  # type: ignore
+        from app.pipeline import UlpfPipeline  # type: ignore
 
     pm = PersistenceManager()
     assert isinstance(pm, IMainStorageUnit)
@@ -212,7 +212,7 @@ def test_kosmoporos_api_endpoints():
     try:
         from app.main import app  # type: ignore
     except ImportError:
-        from main.app.main import app  # type: ignore
+        from app.main import app  # type: ignore
 
     client = TestClient(app)
 

@@ -113,7 +113,7 @@ Kosmoporos enforces a strict, unidirectional dependency graph separating its cor
 1. **`main/kosmoporos` (The Core Engine Unit)**
    - **Completely Autonomous:** Operates as a strictly isolated library with zero dependencies on web frameworks or application networking layers.
    - **Capabilities:** Handles ultra-high-speed parsing, character-level byte offset mapping, real-time cyber threat detection, and SHA-256 Merkle block generation.
-2. **`main/app` (The Integration & Orchestration Unit)**
+2. **`app` (The Integration & Orchestration Unit)**
    - **Dependent Only on Core:** Wraps the `kosmoporos` engine to expose REST APIs, multi-tier persistence (SQLite, OpenSearch, MinIO), and WebSocket streaming.
    - **Capabilities:** Manages the SOC dashboard, database state, and network socket ingestion (UDP/TCP/REST).
 3. **`testing/` (The Simulator & Verification Unit)**

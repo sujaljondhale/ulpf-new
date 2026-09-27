@@ -96,8 +96,8 @@ We will import and adapt the clean `kosmoporos` library into `main/kosmoporos/` 
 
 ---
 
-### B. Enhancing Core Pipeline: `main/app/pipeline.py`
-We will augment [`UlpfPipeline`](file:///Users/sujal/Downloads/ulpf-new-main/main/app/pipeline.py) with Kosmoporos capabilities while keeping its return type (`CanonicalEvent`) and interface unchanged:
+### B. Enhancing Core Pipeline: `app/pipeline.py`
+We will augment [`UlpfPipeline`](file:///Users/sujal/Downloads/ulpf-new-main/app/pipeline.py) with Kosmoporos capabilities while keeping its return type (`CanonicalEvent`) and interface unchanged:
 
 1. **Integrated Real-Time Threat Evaluation**:
    - Instantiate `self.threat_detector = ThreatDetector()` in `UlpfPipeline.__init__`.
@@ -121,17 +121,17 @@ We will augment [`UlpfPipeline`](file:///Users/sujal/Downloads/ulpf-new-main/mai
 
 ---
 
-### C. Temporary Staging Buffers: `main/app/storage/`
-1. **`main/app/storage/interfaces.py`**:
+### C. Temporary Staging Buffers: `app/storage/`
+1. **`app/storage/interfaces.py`**:
    - Define `ITempStorageUnit` and `IMainStorageUnit`.
-2. **`main/app/storage/temp_storage.py`**:
+2. **`app/storage/temp_storage.py`**:
    - Provide `MemoryQueueTempStorage`: thread-safe in-memory ring buffer for sub-microsecond event staging.
    - Provide `DiskSpoolTempStorage`: crash-resilient append-only write-ahead log (WAL) spooling to disk.
    - Provide `get_temp_storage(backend="memory")` singleton factory.
 
 ---
 
-### D. REST API Endpoints: `main/app/api/routes.py`
+### D. REST API Endpoints: `app/api/routes.py`
 Augment the REST API to expose these high-performance features **without altering any existing route**:
 1. Enhance `/api/v1/metrics`: Include `latency_p50_us`, `latency_p95_us`, `latency_p99_us`, and `merkle_vault` status from `KosmoporosStatsEngine`.
 2. Add `/api/v1/merkle/vault/verify/{block_id}`: Allows callers to cryptographically verify any historical 125-log block on demand.

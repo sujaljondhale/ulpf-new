@@ -21,7 +21,7 @@ services:
   ulpf-api:
     build:
       context: .
-      dockerfile: main/Dockerfile
+      dockerfile: Dockerfile
     container_name: ulpf-api
     ports:
       - "8000:8000"
