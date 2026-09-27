@@ -32,7 +32,7 @@ RUN groupadd -r appuser && useradd -r -u 1000 -g appuser -d /app appuser
 WORKDIR /app
 
 # Install Python dependencies first for caching
-COPY requirements.txt .
+COPY testing/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Create storage dirs and set permissions
