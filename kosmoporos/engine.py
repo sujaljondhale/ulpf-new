@@ -96,10 +96,15 @@ class KosmoporosEngine:
         # 3. Parser Selection
         parser_map = {
             "Palo Alto PAN-OS": "palo_alto_panos",
+            "Palo Alto PAN-OS (Syslog)": "palo_alto_panos",
             "Cisco ASA": "cisco_asa",
+            "Cisco ASA (Syslog)": "cisco_asa",
             "Fortinet FortiGate": "fortinet_fortigate",
+            "Fortinet FortiGate (Key=Value)": "fortinet_fortigate",
             "AWS CloudTrail / VPC Flow": "aws_cloudtrail",
+            "AWS CloudTrail / VPC Flow (Plaintext)": "aws_cloudtrail",
             "Suricata / Snort": "suricata_eve",
+            "Suricata / Snort (Syslog)": "suricata_eve",
             "JSON": "json",
             "Syslog": "syslog",
             "CEF": "cef",

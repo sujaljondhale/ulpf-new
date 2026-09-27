@@ -48,7 +48,7 @@ class FormatDetector:
         if self.SNORT_FAST_PATTERN.search(msg):
             return DetectionResult(format="Suricata / Snort (Syslog)", confidence=0.98, reason="Snort/Suricata Fast Alert syntax detected")
 
-        if self.PANOS_CSV_PATTERN.search(msg) or ("PaloAlto" in msg and "CEF:" in msg) or ("TRAFFIC," in msg and len(msg.split(",")) >= 10):
+        if self.PANOS_CSV_PATTERN.search(msg) or ("TRAFFIC," in msg and len(msg.split(",")) >= 10):
             return DetectionResult(format="Palo Alto PAN-OS (Syslog)", confidence=0.98, reason="Palo Alto Networks PAN-OS log pattern detected")
 
         if self.AWS_VPC_PATTERN.search(msg):

@@ -98,6 +98,8 @@ class KosmoporosAiEngine:
 
     def _query_ollama(self, raw_message: str) -> Optional[Dict[str, Any]]:
         """Query local Ollama instance with short timeout."""
+        if getattr(self, "_ollama_available", True) is False:
+            return None
         try:
             url = f"{self.host}/api/generate"
             prompt = (
@@ -115,9 +117,10 @@ class KosmoporosAiEngine:
             req = urllib.request.Request(url, data=req_data, headers={"Content-Type": "application/json"})
             with urllib.request.urlopen(req, timeout=self.timeout) as resp:
                 if resp.status == 200:
+                    self._ollama_available = True
                     body = json.loads(resp.read().decode("utf-8"))
                     response_text = body.get("response", "{}")
                     return json.loads(response_text)
         except Exception:
-            pass
+            self._ollama_available = False
         return None
