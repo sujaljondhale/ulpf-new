@@ -1173,83 +1173,104 @@ document.addEventListener("DOMContentLoaded", () => {
     loadgenConsoleFeed.scrollTop = loadgenConsoleFeed.scrollHeight;
   }
 
-  window.startBurstLoadTest = async function () {
-    const hiddenInput = document.getElementById("selectedBurstCount");
-    const burstCount = parseInt(hiddenInput ? hiddenInput.value : "50", 10) || 50;
-    const protoSelect = document.getElementById("loadgenProtocol");
-    const protocol = protoSelect ? protoSelect.value : "UDP";
-    const pacingSelect = document.getElementById("loadgenPacing");
-    const pacingValue = parseInt(pacingSelect ? pacingSelect.value : "0", 10) || 0;
-    const pacingDelayMs = pacingValue === 0 ? 0 : Math.round(1000 / pacingValue);
+  let isStressTesting = false;
 
-    const host = (hostInput && hostInput.value.trim()) ? hostInput.value.trim() : (testbedSettings.host || "127.0.0.1");
+  window.startBurstLoadTest = async function () {
+    if (isStressTesting) return;
+    isStressTesting = true;
 
     if (btnStartStress) {
       btnStartStress.disabled = true;
-      btnStartStress.innerHTML = "<span>Firing Packets...</span>";
+      btnStartStress.innerHTML = "<span>Firing Continuous Packets...</span>";
     }
 
     if (loadgenProgressFill) {
       loadgenProgressFill.style.width = "25%";
     }
 
-    if (statBurstDelivered) statBurstDelivered.textContent = "Blasting...";
-    if (statBurstEps) statBurstEps.textContent = "Calculating...";
-    if (statBurstElapsed) statBurstElapsed.textContent = "0.00s";
-    if (statBurstBytes) statBurstBytes.textContent = "...";
+    const fireNextBurst = async () => {
+      if (!isStressTesting) {
+        resetStartButton();
+        return;
+      }
+      
+      const hiddenInput = document.getElementById("selectedBurstCount");
+      const burstCount = parseInt(hiddenInput ? hiddenInput.value : "50", 10) || 50;
+      const protoSelect = document.getElementById("loadgenProtocol");
+      const protocol = protoSelect ? protoSelect.value : "UDP";
+      const pacingSelect = document.getElementById("loadgenPacing");
+      const pacingValue = parseInt(pacingSelect ? pacingSelect.value : "0", 10) || 0;
+      const pacingDelayMs = pacingValue === 0 ? 0 : Math.round(1000 / pacingValue);
 
-    appendLoadgenLog(`Launching high-speed burst: ${burstCount} packets via ${protocol} to ${host}...`);
+      const host = (typeof hostInput !== 'undefined' && hostInput && hostInput.value.trim()) ? hostInput.value.trim() : (testbedSettings.host || "127.0.0.1");
 
-    const t0 = performance.now();
+      if (statBurstDelivered) statBurstDelivered.textContent = "Blasting...";
+      if (statBurstEps) statBurstEps.textContent = "Calculating...";
+      if (statBurstElapsed) statBurstElapsed.textContent = "0.00s";
+      if (statBurstBytes) statBurstBytes.textContent = "...";
 
-    try {
-      const res = await fetch("/api/test/burst", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          host: host,
+      appendLoadgenLog(`Launching high-speed burst: ${burstCount} packets via ${protocol} to ${host}...`);
+
+      const t0 = performance.now();
+
+      try {
+        const res = await fetch("/api/test/burst", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            host: host,
+            protocol: protocol,
+            count: burstCount,
+            pacing_delay_ms: pacingDelayMs
+          })
+        });
+
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: Failed to execute burst cannon`);
+        }
+
+        const data = await res.json();
+        const elapsed = data.elapsed_seconds || ((performance.now() - t0) / 1000).toFixed(3);
+        const delivered = data.delivered || burstCount;
+        const effectiveEps = data.effective_eps || Math.round(delivered / (parseFloat(elapsed) || 0.001));
+        const totalBytes = data.total_bytes || (delivered * 185);
+
+        if (loadgenProgressFill) {
+          loadgenProgressFill.style.width = "100%";
+        }
+
+        if (statBurstDelivered) statBurstDelivered.textContent = delivered.toLocaleString();
+        if (statBurstEps) statBurstEps.textContent = `${effectiveEps.toLocaleString()} EPS`;
+        if (statBurstElapsed) statBurstElapsed.textContent = `${elapsed}s`;
+        if (statBurstBytes) statBurstBytes.textContent = `${(totalBytes / 1024).toFixed(1)} KB`;
+
+        appendLoadgenLog(`Burst complete: ${delivered}/${burstCount} packets delivered in ${elapsed}s (Throughput: ${effectiveEps.toLocaleString()} EPS, ${(totalBytes / 1024).toFixed(1)} KB). Zero packet loss [0.00%].`);
+
+        recordAuditEntry({
           protocol: protocol,
-          count: burstCount,
-          pacing_delay_ms: pacingDelayMs
-        })
-      });
+          target: `${host}:8000/5140`,
+          source: "StressCannon-Burst",
+          status: "SUCCESS",
+          bytes: totalBytes,
+          rtt: `${Math.round((parseFloat(elapsed) * 1000) / delivered)} ms/pkt`,
+          payload: `[STRESS-BURST] ${delivered} packets fired via ${protocol} at ${effectiveEps.toLocaleString()} EPS`
+        });
 
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}: Failed to execute burst cannon`);
+        if (isStressTesting) {
+          stressTestTimer = setTimeout(fireNextBurst, 100);
+        }
+      } catch (err) {
+        appendLoadgenLog(`[WARN] Stress burst notice: ${err.message}.`);
+        showToast(`Stress Cannon notice: ${err.message}`);
+        isStressTesting = false;
+        resetStartButton();
       }
+    };
 
-      const data = await res.json();
-      const elapsed = data.elapsed_seconds || ((performance.now() - t0) / 1000).toFixed(3);
-      const delivered = data.delivered || burstCount;
-      const effectiveEps = data.effective_eps || Math.round(delivered / (parseFloat(elapsed) || 0.001));
-      const totalBytes = data.total_bytes || (delivered * 185);
+    fireNextBurst();
+  };
 
-      if (loadgenProgressFill) {
-        loadgenProgressFill.style.width = "100%";
-      }
-
-      if (statBurstDelivered) statBurstDelivered.textContent = delivered.toLocaleString();
-      if (statBurstEps) statBurstEps.textContent = `${effectiveEps.toLocaleString()} EPS`;
-      if (statBurstElapsed) statBurstElapsed.textContent = `${elapsed}s`;
-      if (statBurstBytes) statBurstBytes.textContent = `${(totalBytes / 1024).toFixed(1)} KB`;
-
-      appendLoadgenLog(`Burst complete: ${delivered}/${burstCount} packets delivered in ${elapsed}s (Throughput: ${effectiveEps.toLocaleString()} EPS, ${(totalBytes / 1024).toFixed(1)} KB). Zero packet loss [0.00%].`);
-
-      recordAuditEntry({
-        protocol: protocol,
-        target: `${host}:8000/5140`,
-        source: "StressCannon-Burst",
-        status: "SUCCESS",
-        bytes: totalBytes,
-        rtt: `${Math.round((parseFloat(elapsed) * 1000) / delivered)} ms/pkt`,
-        payload: `[STRESS-BURST] ${delivered} packets fired via ${protocol} at ${effectiveEps.toLocaleString()} EPS`
-      });
-
-      showToast(`Burst complete: ${delivered} packets delivered at ${effectiveEps.toLocaleString()} EPS!`);
-    } catch (err) {
-      appendLoadgenLog(`[WARN] Stress burst notice: ${err.message}.`);
-      showToast(`Stress Cannon notice: ${err.message}`);
-    } finally {
+  function resetStartButton() {
       if (btnStartStress) {
         btnStartStress.disabled = false;
         btnStartStress.innerHTML = `
@@ -1257,8 +1278,7 @@ document.addEventListener("DOMContentLoaded", () => {
           <span>Start Firing Burst</span>
         `;
       }
-    }
-  };
+  }
 
   if (btnStartStress) {
     btnStartStress.addEventListener("click", window.startBurstLoadTest);
@@ -1266,19 +1286,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (btnStopStress) {
     btnStopStress.addEventListener("click", () => {
+      isStressTesting = false;
       if (stressTestTimer) {
-        clearInterval(stressTestTimer);
+        clearTimeout(stressTestTimer);
         stressTestTimer = null;
       }
       appendLoadgenLog("Stress cannon stopped by operator.");
       showToast("Stress test stopped.");
-      if (btnStartStress) {
-        btnStartStress.disabled = false;
-        btnStartStress.innerHTML = `
-          <svg class="svg-icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-          <span>Start Firing Burst</span>
-        `;
-      }
+      resetStartButton();
     });
   }
 
