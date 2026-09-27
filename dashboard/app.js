@@ -5254,7 +5254,7 @@ normalization:
       
       if (res.ok && data.status === "success") {
         if (!data.result.is_threat) {
-          btnEl.innerHTML = '✔ False Positive';
+          btnEl.innerHTML = ' False Positive';
           btnEl.className = 'btn btn-sm btn-teal';
           const row = document.getElementById(`toaster-log-${eventId}`);
           if (row) {
@@ -5268,7 +5268,7 @@ normalization:
              }
           }
         } else {
-          btnEl.innerHTML = '✖ Verified Threat';
+          btnEl.innerHTML = ' Verified Threat';
           btnEl.className = 'btn btn-sm btn-danger';
           const row = document.getElementById(`toaster-log-${eventId}`);
           if (row) {
