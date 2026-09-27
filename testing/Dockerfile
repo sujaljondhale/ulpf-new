@@ -32,7 +32,7 @@ RUN groupadd -r appuser && useradd -r -u 1000 -g appuser -d /app appuser
 WORKDIR /app
 
 # Install Python dependencies first for caching
-COPY testing/requirements.txt .
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Create storage dirs and set permissions
@@ -52,4 +52,4 @@ HEALTHCHECK --interval=15s --timeout=5s --start-period=15s --retries=3 \
     CMD curl -f http://localhost:${PORT:-8050}/ || exit 1
 
 # Launch the Simulator Hub
-CMD ["python", "testing/run_testing.py"]
+CMD ["python", "run_testing.py"]
