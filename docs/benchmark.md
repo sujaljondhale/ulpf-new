@@ -36,13 +36,13 @@
 
 | Performance Metric | Observed Live Telemetry | Industry Standard / Target SLA | Status |
 | :--- | :--- | :--- | :--- |
-| **Direct Wire Ingress (UDP :5140)** | **`184,457.6 Packets / Sec`** | > 50,000 EPS Target | 🟢 **Verified [OK]** |
-| **Active Socket Latency (RTT)** | **`0.45 ms – 1.83 ms`** | < 10.0 ms SLA | 🟢 **Verified [OK]** |
-| **Worker Memory Footprint (RSS)** | **`42.14 MB Total RSS`** | < 256 MB Edge Target | 🟢 **Verified [OK]** |
-| **Cryptographic Merkle Batching** | **`125 Logs / Block (SHA-256)`** | Zero Historical Tamper Tolerance | 🟢 **Verified [OK]** |
-| **Multi-Vendor Parser Accuracy** | **`100.00% Parse Success`** | > 95% Industry Std | 🟢 **Verified [OK]** |
-| **Pipeline Diagnostic Latency** | **`5 / 5 Stages Passed in 0.000s`** | Zero-Loss Real-time Pipeline | 🟢 **Verified [OK]** |
-| **Red-Team Threat Detection** | **`8 / 8 Attack Vectors Neutralized`** | Immediate Real-time SSE Alert | 🟢 **Verified [OK]** |
+| **Direct Wire Ingress (UDP :5140)** | **`184,457.6 Packets / Sec`** | > 50,000 EPS Target |  **Verified [OK]** |
+| **Active Socket Latency (RTT)** | **`0.45 ms – 1.83 ms`** | < 10.0 ms SLA |  **Verified [OK]** |
+| **Worker Memory Footprint (RSS)** | **`42.14 MB Total RSS`** | < 256 MB Edge Target |  **Verified [OK]** |
+| **Cryptographic Merkle Batching** | **`125 Logs / Block (SHA-256)`** | Zero Historical Tamper Tolerance |  **Verified [OK]** |
+| **Multi-Vendor Parser Accuracy** | **`100.00% Parse Success`** | > 95% Industry Std |  **Verified [OK]** |
+| **Pipeline Diagnostic Latency** | **`5 / 5 Stages Passed in 0.000s`** | Zero-Loss Real-time Pipeline |  **Verified [OK]** |
+| **Red-Team Threat Detection** | **`8 / 8 Attack Vectors Neutralized`** | Immediate Real-time SSE Alert |  **Verified [OK]** |
 
 ---
 
@@ -50,14 +50,14 @@
 
 | Attack Scenario | Attack Classification | Vector Characteristics | Receipts | Observed RTT | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **SYN Flood DoS** | Network Layer | High-volume raw TCP SYN bursts | `5 Logs` | `57.27 ms` | 🟢 Neutralized |
-| **SQLi Chain** | Application Layer | Boolean/Union SQL injection payloads | `5 Logs` | `82.19 ms` | 🟢 Neutralized |
-| **SSH Brute-force** | Identity & Access | Repeated authentication failure sequence | `5 Logs` | `199.59 ms` | 🟢 Neutralized |
-| **DNS Tunneling** | Exfiltration | High-entropy Base64 DNS subdomains | `5 Logs` | `56.66 ms` | 🟢 Neutralized |
-| **Ransomware Canary** | Host File System | Mass file encryption & canary trip | `5 Logs` | `88.18 ms` | 🟢 Neutralized |
-| **Auth Bypass** | Identity & Access | Token manipulation / privilege escalation | `5 Logs` | `57.75 ms` | 🟢 Neutralized |
-| **XSS Polyglot** | Web Scripting | DOM event handler & script injection | `5 Logs` | `68.82 ms` | 🟢 Neutralized |
-| **Data Exfiltration** | Outbound Flow | Large-chunk unencrypted outbound flow | `5 Logs` | `89.31 ms` | 🟢 Neutralized |
+| **SYN Flood DoS** | Network Layer | High-volume raw TCP SYN bursts | `5 Logs` | `57.27 ms` |  Neutralized |
+| **SQLi Chain** | Application Layer | Boolean/Union SQL injection payloads | `5 Logs` | `82.19 ms` |  Neutralized |
+| **SSH Brute-force** | Identity & Access | Repeated authentication failure sequence | `5 Logs` | `199.59 ms` |  Neutralized |
+| **DNS Tunneling** | Exfiltration | High-entropy Base64 DNS subdomains | `5 Logs` | `56.66 ms` |  Neutralized |
+| **Ransomware Canary** | Host File System | Mass file encryption & canary trip | `5 Logs` | `88.18 ms` |  Neutralized |
+| **Auth Bypass** | Identity & Access | Token manipulation / privilege escalation | `5 Logs` | `57.75 ms` |  Neutralized |
+| **XSS Polyglot** | Web Scripting | DOM event handler & script injection | `5 Logs` | `68.82 ms` |  Neutralized |
+| **Data Exfiltration** | Outbound Flow | Large-chunk unencrypted outbound flow | `5 Logs` | `89.31 ms` |  Neutralized |
 
 ---
 

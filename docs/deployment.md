@@ -101,14 +101,14 @@ curl http://localhost:8000/api/v1/health/live
 
 | Service | URL |
 |---------|-----|
-| 🛡️ SOC Dashboard | `http://<VM_IP>:8000/dashboard/index.html` |
-| 📖 REST API Docs | `http://<VM_IP>:8000/docs` |
-| ⚡ Testing Simulator | `http://<VM_IP>:8050/` |
-| 📊 Redpanda Visualizer | `http://<VM_IP>:8085/` |
-| 🗄️ MinIO Console | `http://<VM_IP>:9001` |
-| 🔍 OpenSearch | `http://<VM_IP>:9200` |
-| 📡 Syslog UDP | `<VM_IP>:5140` (UDP) |
-| 🔌 Syslog TCP | `<VM_IP>:5141` (TCP) |
+|  SOC Dashboard | `http://<VM_IP>:8000/dashboard/index.html` |
+|  REST API Docs | `http://<VM_IP>:8000/docs` |
+|  Testing Simulator | `http://<VM_IP>:8050/` |
+|  Redpanda Visualizer | `http://<VM_IP>:8085/` |
+|  MinIO Console | `http://<VM_IP>:9001` |
+|  OpenSearch | `http://<VM_IP>:9200` |
+|  Syslog UDP | `<VM_IP>:5140` (UDP) |
+|  Syslog TCP | `<VM_IP>:5141` (TCP) |
 
 ---
 
@@ -151,16 +151,16 @@ docker compose restart ulpf-api
 > Dashboard + REST API + Pipeline work. Syslog UDP/TCP listeners are disabled (Render only supports HTTP). Free tier sleeps after 15 min.
 
 ### What Works on Render
-- 🟢 Web Dashboard
-- 🟢 REST Ingest API (`POST /api/v1/ingest`)
-- 🟢 Full parse → normalize → detect pipeline
-- 🟢 File upload ingestion
-- 🟢 CEF / Syslog / LEEF / JSON / KV parsers
-- 🔴 Syslog UDP listener (no raw UDP on Render)
-- 🔴 Syslog TCP listener (no raw TCP on Render)
-- 🟡 MinIO (use local storage fallback)
-- 🟡 OpenSearch (in-memory only)
-- 🔴 AI/Ollama (no RAM on free tier)
+-  Web Dashboard
+-  REST Ingest API (`POST /api/v1/ingest`)
+-  Full parse → normalize → detect pipeline
+-  File upload ingestion
+-  CEF / Syslog / LEEF / JSON / KV parsers
+-  Syslog UDP listener (no raw UDP on Render)
+-  Syslog TCP listener (no raw TCP on Render)
+-  MinIO (use local storage fallback)
+-  OpenSearch (in-memory only)
+-  AI/Ollama (no RAM on free tier)
 
 ---
 
@@ -218,7 +218,7 @@ https://ulpf-demo.onrender.com/dashboard/index.html
 https://ulpf-demo.onrender.com/docs
 ```
 
-> ️ Free tier sleeps after 15 minutes of inactivity. First request after sleep takes ~30 seconds to wake up.
+>  Free tier sleeps after 15 minutes of inactivity. First request after sleep takes ~30 seconds to wake up.
 
 ---
 
@@ -286,6 +286,6 @@ For local development, testing, and air-gapped lab environments with zero cloud 
   - Protocol: `http://` or `https://`
   - Target Host: `192.168.1.50` (or Docker/Cloud IP)
   - Port: `8000`
-  - Click **⚡ Ping API** to verify connectivity with real-time latency reporting.
+  - Click ** Ping API** to verify connectivity with real-time latency reporting.
 
 

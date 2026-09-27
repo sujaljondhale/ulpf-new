@@ -6,7 +6,7 @@
 
 ---
 
-## 📋 Overview & Timing Schedule
+##  Overview & Timing Schedule
 
 | Scene | Duration | Target Screen / Tool | Core Message & Demonstration Highlight |
 | :--- | :--- | :--- | :--- |
@@ -19,7 +19,7 @@
 
 ---
 
-## 🎬 Step-by-Step Spoken Script & Screenplay
+##  Step-by-Step Spoken Script & Screenplay
 
 ### Scene 1: Problem Context & The Core Differentiator (0:00 – 0:35)
 * **Screen**: Open Tab: **Main SOC Dashboard** (`http://localhost:8000/dashboard/`).
