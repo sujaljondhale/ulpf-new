@@ -1136,8 +1136,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // ==============================================================================
   // TAB 3: HIGH-THROUGHPUT LOAD GENERATOR & STRESS CANNON CONTROLLER
   // ==============================================================================
-  const btnStartStress = document.getElementById("btnStartStressTest");
-  const btnStopStress = document.getElementById("btnStopStressTest");
+  const btnToggleStress = document.getElementById("btnToggleStressTest");
   const loadgenProgressFill = document.getElementById("loadgenProgressFill");
   const statBurstDelivered = document.getElementById("statBurstDelivered");
   const statBurstEps = document.getElementById("statBurstEps");
@@ -1157,7 +1156,9 @@ document.addEventListener("DOMContentLoaded", () => {
       if (hiddenInput) hiddenInput.value = count;
       
       // Instantly fire and activate high-speed packet burst
-      window.startBurstLoadTest();
+      if (!isStressTesting) {
+        window.toggleBurstLoadTest();
+      }
     });
   });
 
@@ -1175,13 +1176,27 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let isStressTesting = false;
 
-  window.startBurstLoadTest = async function () {
-    if (isStressTesting) return;
+  window.toggleBurstLoadTest = async function () {
+    if (isStressTesting) {
+      isStressTesting = false;
+      if (stressTestTimer) {
+        clearTimeout(stressTestTimer);
+        stressTestTimer = null;
+      }
+      appendLoadgenLog("Stress cannon stopped by operator.");
+      showToast("Stress test stopped.");
+      resetToggleButton();
+      return;
+    }
     isStressTesting = true;
 
-    if (btnStartStress) {
-      btnStartStress.disabled = true;
-      btnStartStress.innerHTML = "<span>Firing Continuous Packets...</span>";
+    if (btnToggleStress) {
+      btnToggleStress.classList.remove("btn-primary");
+      btnToggleStress.classList.add("btn-danger");
+      btnToggleStress.innerHTML = `
+        <svg class="svg-icon" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12"></rect></svg>
+        <span>Stop Firing Burst</span>
+      `;
     }
 
     if (loadgenProgressFill) {
@@ -1190,7 +1205,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const fireNextBurst = async () => {
       if (!isStressTesting) {
-        resetStartButton();
+        resetToggleButton();
         return;
       }
       
@@ -1263,38 +1278,26 @@ document.addEventListener("DOMContentLoaded", () => {
         appendLoadgenLog(`[WARN] Stress burst notice: ${err.message}.`);
         showToast(`Stress Cannon notice: ${err.message}`);
         isStressTesting = false;
-        resetStartButton();
+        resetToggleButton();
       }
     };
 
     fireNextBurst();
   };
 
-  function resetStartButton() {
-      if (btnStartStress) {
-        btnStartStress.disabled = false;
-        btnStartStress.innerHTML = `
+  function resetToggleButton() {
+      if (btnToggleStress) {
+        btnToggleStress.classList.remove("btn-danger");
+        btnToggleStress.classList.add("btn-primary");
+        btnToggleStress.innerHTML = `
           <svg class="svg-icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
           <span>Start Firing Burst</span>
         `;
       }
   }
 
-  if (btnStartStress) {
-    btnStartStress.addEventListener("click", window.startBurstLoadTest);
-  }
-
-  if (btnStopStress) {
-    btnStopStress.addEventListener("click", () => {
-      isStressTesting = false;
-      if (stressTestTimer) {
-        clearTimeout(stressTestTimer);
-        stressTestTimer = null;
-      }
-      appendLoadgenLog("Stress cannon stopped by operator.");
-      showToast("Stress test stopped.");
-      resetStartButton();
-    });
+  if (btnToggleStress) {
+    btnToggleStress.addEventListener("click", window.toggleBurstLoadTest);
   }
 
   // Toast Helper
