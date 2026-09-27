@@ -22,7 +22,7 @@ if str(TESTING_DIR) not in sys.path:
     sys.path.insert(0, str(TESTING_DIR))
 
 # Line 19: ULPF Pipeline engine under test (from main core)
-from app.pipeline import UlpfPipeline
+from kosmoporos.engine import KosmoporosEngine
 
 # Line 20: Test log generator (prefers testing core, falls back to main api generator)
 try:
@@ -45,7 +45,7 @@ def run_benchmark(
     print(f"================================================================================")
     print(f"Initializing ULPF Pipeline & Warm-up (8 Deterministic Parsers Loaded)...")
 
-    pipeline = UlpfPipeline()
+    pipeline = KosmoporosEngine()
 
     # Pre-generate sample logs to isolate pure pipeline execution time
     formats = ["cef", "syslog", "json", "kv", "leef"] if format_filter in ("mixed", "all") else [format_filter if format_filter != "key_value" else "kv"]
@@ -71,7 +71,7 @@ def run_benchmark(
     for raw_msg, src in test_logs:
         t0 = time.perf_counter()
         try:
-            ir = pipeline.process(raw_msg, source=src)
+            ir = pipeline.parse(raw_payload=raw_msg, source=src)
             if ir.status == "success":
                 successes += 1
             else:
@@ -80,8 +80,6 @@ def run_benchmark(
             errors += 1
         t1 = time.perf_counter()
         latencies_us.append((t1 - t0) * 1_000_000)
-        if interval > 0:
-            time.sleep(interval)
 
     t_end = time.perf_counter()
     total_duration_sec = t_end - t_start
