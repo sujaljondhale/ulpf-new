@@ -122,6 +122,7 @@ class MinioStore:
         # Try MinIO S3 Object Storage if available
         if self.is_available():
             try:
+                self.ensure_bucket()
                 object_name = f"events/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{event_id}.raw"
                 put_url = f"{self.base_url}/{self.bucket}/{object_name}"
                 headers = {

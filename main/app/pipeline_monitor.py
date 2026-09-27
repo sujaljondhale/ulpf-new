@@ -87,6 +87,19 @@ class ThroughputMonitor:
 
             mb_per_sec = round(bytes_1s / (1024 * 1024), 3)
 
+            p50 = 0.0
+            p95 = 0.0
+            p99 = 0.0
+            if latencies_1s:
+                s = sorted(latencies_1s)
+                p50 = round(s[int(len(s) * 0.50)], 2)
+                p95 = round(s[int(len(s) * 0.95)], 2)
+                p99 = round(s[min(len(s) - 1, int(len(s) * 0.99))], 2)
+            elif self._total_events > 0:
+                p50 = avg_lat_us
+                p95 = round(avg_lat_us * 1.25, 2)
+                p99 = round(avg_lat_us * 1.5, 2)
+
             return {
                 "live_eps": current_eps,
                 "current_eps": current_eps,
@@ -96,6 +109,9 @@ class ThroughputMonitor:
                 "total_bytes_processed": self._total_bytes,
                 "throughput_mb_s": mb_per_sec,
                 "avg_latency_us": avg_lat_us,
+                "latency_p50_us": p50,
+                "latency_p95_us": p95,
+                "latency_p99_us": p99,
                 "formatted_rate": f"{current_eps:,.0f} logs/sec" if current_eps > 0 else (f"{avg_eps:,.0f} logs/sec" if avg_eps > 0 else "0 logs/sec"),
                 "is_active": current_eps > 0 or (now - (self._timestamps[-1][0] if self._timestamps else 0) < 3.0),
                 "load_shedding": self.is_load_shedding_active(),

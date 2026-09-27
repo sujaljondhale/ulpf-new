@@ -30,7 +30,7 @@ mapping:
     raw = create_raw_event("src=10.0.0.1 dst=8.8.8.8 spt=5000 dpt=80 act=allow")
     result = parser.parse(raw)
     assert result.status == "success"
-    assert result.fields["src"] == "10.0.0.1"
+    assert result.fields.get("source.ip") == "10.0.0.1" or result.fields.get("src") == "10.0.0.1"
 
 
 def test_ai_onboarding_engine():

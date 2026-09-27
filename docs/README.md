@@ -30,7 +30,9 @@ Welcome to the official technical documentation repository for the **Universal L
 * **[AI Model Integration & Unknown Logs Guide](ai-integration.md)**: Deep dive into offline Small Language Model (SLM) integration, Ollama local engine, 4 core capabilities (Parser Synthesis, Threat Reasoning, NL Query to OpenSearch DSL, Sigma Rule Synthesis), and the 4-phase unknown log quarantine decision cascade.
 
 ### 6. Deployment & Operations
-* **[Deployment Guide](deployment.md)**: Production deployment instructions for Oracle Cloud VM, local bare-metal, and Docker Compose.
+* **[Deployment Guide (Comprehensive)](deployment.md)**: Production deployment instructions for Oracle Cloud VM, local bare-metal, and Docker Compose.
+* **[Quick-Start Deployment Guide (Root)](../DEPLOYMENT.md)**: Container orchestration inventory, port matrix, and automated deployment scripts (`deploy.sh`, `deploy.ps1`).
+* **[System Readiness & Verification Ledger](../working.md)**: Full runtime verification status across all components, ports, and tests.
 * **[Air-Gapped & Sovereign Deployment](air-gapped-deployment.md)**: Specific steps for air-gapped national security environments with zero outbound network access.
 * **[Known Limitations & Engineering Roadmap](limitations.md)**: Transparent engineering disclosure of current limitations, operational boundaries, and future enhancements.
 
@@ -43,22 +45,36 @@ Welcome to the official technical documentation repository for the **Universal L
 
 ##  Quick Start: Running the Services
 
-### 1. Start the Production Server (Port `8000`):
-```cmd
-start_main.bat
-```
-* **Dashboard**: `http://localhost:8000/dashboard/index.html`
-* **Swagger API Docs**: `http://localhost:8000/docs`
+### Option A: One-Command Automated Deployment (Docker)
+```bash
+# On Linux / Oracle Cloud VM:
+chmod +x deploy.sh && ./deploy.sh
 
-### 2. Start the Testing Simulator Hub (Port `8050`):
-```cmd
-start_testing.bat
-```
-* **Testing Studio**: `http://localhost:8050`
-* **Testing API Docs**: `http://localhost:8050/docs`
+# On Windows (PowerShell):
+powershell -ExecutionPolicy Bypass -File .\deploy.ps1
 
-### 3. Run Automated Test Pipeline:
-```cmd
-test_pipeline.bat
+# Or standard Docker Compose:
+docker compose up -d --build
 ```
-Executes all 5 test stages (Pytest suites, Smoke test, Security test, Stack verify, Benchmark).
+
+### Option B: Local Windows Batch Launchers
+1. **Start the Production Server (Port `8000`)**:
+   ```cmd
+   start_main.bat
+   ```
+   * **Dashboard**: `http://localhost:8000/dashboard/index.html`
+   * **Swagger API Docs**: `http://localhost:8000/docs`
+
+2. **Start the Testing Simulator Hub (Port `8050`)**:
+   ```cmd
+   start_testing.bat
+   ```
+   * **Testing Studio**: `http://localhost:8050`
+   * **Testing API Docs**: `http://localhost:8050/docs`
+
+3. **Run Automated Test Pipeline**:
+   ```cmd
+   test_pipeline.bat
+   ```
+   Executes all 5 test stages (Pytest suites, Smoke test, Security test, Stack verify, Benchmark).
+

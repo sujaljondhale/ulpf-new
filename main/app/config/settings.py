@@ -72,6 +72,14 @@ class Settings(BaseModel):
     )
     ai_confidence_threshold: float = 0.80
 
+    # Redis High-Performance In-Memory Cache & Session Store
+    redis_enabled: bool = Field(
+        default_factory=lambda: os.getenv("REDIS_ENABLED", "true").lower() in ("true", "1", "yes")
+    )
+    redis_url: str = Field(
+        default_factory=lambda: os.getenv("REDIS_URL", "redis://redis:6379/0")
+    )
+
     # Redpanda / Kafka High-Throughput Streaming Bus Configuration
     redpanda_enabled: bool = Field(
         default_factory=lambda: os.getenv("REDPANDA_ENABLED", "true").lower() in ("true", "1", "yes")

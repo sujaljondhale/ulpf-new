@@ -1,95 +1,63 @@
 # ==============================================================================
-# ULPF (Universal Log Pre-processing Framework) - Windows Production Deployment
+# ULPF (Universal Log Pre-processing Framework) - Automated Deployment (PowerShell)
 # ==============================================================================
 
-Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host "   ULPF ENTERPRISE DEPLOYMENT SCRIPT (WINDOWS / DOCKER)     " -ForegroundColor Cyan
-Write-Host "============================================================" -ForegroundColor Cyan
+Write-Host "======================================================================" -ForegroundColor Cyan
+Write-Host "         ULPF ENTERPRISE STACK DEPLOYMENT & BOOTSTRAP                " -ForegroundColor Cyan
+Write-Host "======================================================================" -ForegroundColor Cyan
 
-# 1. Check Docker Daemon
-Write-Host "[1/6] Checking Docker Engine status..." -ForegroundColor Yellow
-try {
-    $dockerVersion = docker --version
-    Write-Host "      Docker installed: $dockerVersion" -ForegroundColor Green
-    docker ps > $null 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "      ERROR: Docker Desktop daemon is not running! Please start Docker Desktop." -ForegroundColor Red
-        exit 1
-    }
-    Write-Host "      Docker daemon is online and operational." -ForegroundColor Green
-} catch {
-    Write-Host "      ERROR: Docker CLI not found in PATH." -ForegroundColor Red
-    exit 1
-}
-
-# 2. Environment Configuration
-Write-Host "[2/6] Verifying environment configuration..." -ForegroundColor Yellow
+# 1. Ensure .env exists
 if (-not (Test-Path ".env")) {
-    if (Test-Path ".env.example") {
-        Copy-Item ".env.example" ".env"
-        Write-Host "      Created .env from .env.example" -ForegroundColor Green
-    } else {
-        Write-Host "      WARNING: No .env found. Using default container environments." -ForegroundColor Yellow
-    }
+    Write-Host "[1/5] Creating default .env configuration..." -ForegroundColor Yellow
+    Copy-Item ".env.example" ".env"
 } else {
-    Write-Host "      Using existing .env configuration." -ForegroundColor Green
+    Write-Host "[1/5] Environment file .env detected." -ForegroundColor Green
 }
 
-# 3. Build & Pull Container Images
-Write-Host "[3/6] Building and preparing container stack..." -ForegroundColor Yellow
+# 2. Build local container images
+Write-Host "`n[2/5] Building Docker microservices..." -ForegroundColor Yellow
 docker compose build ulpf-api ulpf-worker ulpf-simulator
+
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "      ERROR: Failed to build Docker images." -ForegroundColor Red
-    exit 1
+    Write-Host "[ERROR] Docker build failed. Please check Docker Desktop status." -ForegroundColor Red
+    exit $LASTEXITCODE
 }
 
-# 4. Launch Microservices Stack
-Write-Host "[4/6] Starting microservices stack..." -ForegroundColor Yellow
-docker compose up -d minio redpanda redpanda-console ulpf-worker ulpf-api ulpf-simulator
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "      ERROR: Failed to start containers via docker compose." -ForegroundColor Red
-    exit 1
-}
+# 3. Start core infrastructure and microservices
+Write-Host "`n[3/5] Starting ULPF stack containers..." -ForegroundColor Yellow
+docker compose up -d redis minio redpanda redpanda-console ulpf-api ulpf-worker ulpf-simulator
 
-# 5. Initialize Storage Buckets and Kafka Streaming Topics
-Write-Host "[5/6] Initializing MinIO S3 buckets and Redpanda topics..." -ForegroundColor Yellow
-Start-Sleep -Seconds 5
+# 4. Wait for core services to become healthy
+Write-Host "`n[4/5] Waiting for services to initialize..." -ForegroundColor Yellow
+Start-Sleep -Seconds 10
 
-# Initialize MinIO Bucket
+# 5. Initialize MinIO and Redpanda Topics
+Write-Host "`n[5/5] Bootstrapping MinIO buckets and Redpanda streaming topics..." -ForegroundColor Yellow
+$minioUser = if ($env:MINIO_ACCESS_KEY) { $env:MINIO_ACCESS_KEY } else { "ulpf_admin" }
+$minioPass = if ($env:MINIO_SECRET_KEY) { $env:MINIO_SECRET_KEY } else { "ulpf_password_2026" }
+$minioBucket = if ($env:MINIO_BUCKET) { $env:MINIO_BUCKET } else { "ulpf-raw" }
+
 try {
-    docker exec ulpf-minio mc alias set local http://localhost:9000 ulpf_admin ulpf_password_2026 > $null 2>&1
-    docker exec ulpf-minio mc mb local/ulpf-raw > $null 2>&1
-    Write-Host "      MinIO bucket 'ulpf-raw' verified." -ForegroundColor Green
+    docker exec ulpf-minio mc alias set local http://localhost:9000 $minioUser $minioPass 2>$null
+    docker exec ulpf-minio mc mb "local/$minioBucket" 2>$null
+    Write-Host "  -> MinIO bucket '$minioBucket' verified." -ForegroundColor Green
 } catch {
-    Write-Host "      MinIO bucket initialization notice." -ForegroundColor Yellow
+    Write-Host "  -> Notice: MinIO bucket init deferred or already initialized." -ForegroundColor Gray
 }
 
-# Initialize Redpanda Topics
 try {
-    docker exec ulpf-redpanda rpk topic create ulpf-raw-ingress ulpf-events-normalized ulpf-alerts -p 3 -r 1 > $null 2>&1
-    Write-Host "      Redpanda Kafka topics created (ulpf-raw-ingress, ulpf-events-normalized, ulpf-alerts)." -ForegroundColor Green
+    docker exec ulpf-redpanda rpk topic create ulpf-raw-ingress ulpf-events-normalized ulpf-alerts -p 3 -r 1 2>$null
+    Write-Host "  -> Redpanda Kafka topics verified." -ForegroundColor Green
 } catch {
-    Write-Host "      Redpanda topics verified." -ForegroundColor Yellow
+    Write-Host "  -> Notice: Redpanda topics already initialized." -ForegroundColor Gray
 }
 
-# 6. Service Health & Readiness Probe
-Write-Host "[6/6] Verifying operational endpoints..." -ForegroundColor Yellow
-Start-Sleep -Seconds 3
-
-Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host "   ULPF PRODUCTION STACK DEPLOYED SUCCESSFULLY              " -ForegroundColor Green
-Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host ""
-Write-Host "  Service Endpoints:" -ForegroundColor White
-Write-Host "  * Core 1 SOC Web Dashboard:       http://localhost:8000/dashboard/index.html" -ForegroundColor Cyan
-Write-Host "  * Core 1 REST API Docs:           http://localhost:8000/docs" -ForegroundColor Cyan
-Write-Host "  * Core 2 Simulator & Testbed:     http://localhost:8050/index.html" -ForegroundColor Cyan
-Write-Host "  * Redpanda Kafka Console:         http://localhost:8085" -ForegroundColor Cyan
-Write-Host "  * MinIO S3 Storage Console:       http://localhost:9001 (ulpf_admin / ulpf_password_2026)" -ForegroundColor Cyan
-Write-Host "  * Ingestion Syslog Ports:         UDP 5140, TCP 5141" -ForegroundColor Cyan
-Write-Host ""
-Write-Host "  Operational Commands:" -ForegroundColor White
-Write-Host "  * View Live Container Logs:       docker compose logs -f [service]" -ForegroundColor Gray
-Write-Host "  * Scale Streaming Workers:        docker compose up -d --scale ulpf-worker=3" -ForegroundColor Gray
-Write-Host "  * Stop Stack:                     docker compose down" -ForegroundColor Gray
-Write-Host "============================================================" -ForegroundColor Cyan
+Write-Host "`n======================================================================" -ForegroundColor Green
+Write-Host "           ULPF ENTERPRISE STACK ONLINE & OPERATIONAL                " -ForegroundColor Green
+Write-Host "======================================================================" -ForegroundColor Green
+Write-Host " SOC UI & Gateway:       http://localhost:8000" -ForegroundColor White
+Write-Host " Testing Simulator Hub:  http://localhost:8050" -ForegroundColor White
+Write-Host " Redpanda Stream Visual: http://localhost:8085" -ForegroundColor White
+Write-Host " MinIO Object Storage:   http://localhost:9001 ($minioUser / [configured secret])" -ForegroundColor White
+Write-Host " Redis Cache & Broker:   Port 6379" -ForegroundColor White
+Write-Host "======================================================================`n" -ForegroundColor Green

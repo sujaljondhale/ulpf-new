@@ -1,12 +1,20 @@
 import json
 import hashlib
 from typing import Dict, Any, List, Optional, Tuple
-from app.storage.database import DatabaseManager
-from app.storage.minio_store import MinioStore
-from app.storage.opensearch_store import OpenSearchStore
+try:
+    from .database import DatabaseManager
+    from .minio_store import MinioStore
+    from .opensearch_store import OpenSearchStore
+    from .interfaces import IMainStorageUnit
+except (ImportError, ValueError):
+    from app.storage.database import DatabaseManager
+    from app.storage.minio_store import MinioStore
+    from app.storage.opensearch_store import OpenSearchStore
+    from app.storage.interfaces import IMainStorageUnit
+from kosmoporos.merkle.vault import KosmoporosMerkleVault
 
 
-class PersistenceManager:
+class PersistenceManager(IMainStorageUnit):
     """
     Master Storage & Persistence Coordinator.
     Architecture:
@@ -19,15 +27,20 @@ class PersistenceManager:
         self.db = DatabaseManager()
         self.minio = MinioStore()
         self.opensearch = OpenSearchStore()
+        self.merkle_vault = KosmoporosMerkleVault(block_size=125)
 
     def persist_event(
         self,
-        ir_event: Any,
+        ir_event: Any = None,
         readable_id: Optional[str] = None,
         raw_event_id: Optional[str] = None,
         source_name: Optional[str] = None,
         record: Optional[Dict[str, Any]] = None,
         source: Optional[str] = None,
+        event_id: Optional[str] = None,
+        raw_message: Optional[str] = None,
+        canonical_event: Any = None,
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
         Store event across all 3 tiers:
@@ -38,38 +51,41 @@ class PersistenceManager:
         import time
         from datetime import datetime, timezone
         
-        src = source or source_name or (ir_event.source.ip if hasattr(ir_event, "source") and getattr(ir_event.source, "ip", None) else "default")
-        rid = readable_id or (getattr(ir_event, "ulpf", None).event_id if hasattr(ir_event, "ulpf") else f"ULPF-{int(time.time()*1000)}")
+        ir_event = ir_event if ir_event is not None else canonical_event
+        rid = event_id or readable_id or (getattr(getattr(ir_event, "ulpf", None), "event_id", None) if ir_event else f"ULPF-{int(time.time()*1000)}")
         raw_id = raw_event_id or rid
+        src = source or source_name or (getattr(getattr(ir_event, "source", None), "ip", None) or "default")
         
-        raw_message = getattr(ir_event.original, "raw_text", getattr(ir_event.original, "message", ""))
-        raw_hash = getattr(ir_event.original, "sha256", "")
-        log_format = getattr(ir_event.original, "format", "Unknown")
+        raw_msg = raw_message or getattr(getattr(ir_event, "original", None), "raw_text", getattr(getattr(ir_event, "original", None), "message", ""))
+        raw_hash = getattr(getattr(ir_event, "original", None), "sha256", "")
+        if not raw_hash and raw_msg:
+            raw_hash = hashlib.sha256(raw_msg.encode("utf-8", errors="replace")).hexdigest()
+        log_format = getattr(getattr(ir_event, "original", None), "format", "Unknown")
 
         if record is None:
             record = {
                 "event_id": rid,
                 "raw_event_id": raw_id,
-                "timestamp": getattr(ir_event, "timestamp", datetime.now(timezone.utc).isoformat()),
+                "timestamp": getattr(ir_event, "timestamp", datetime.now(timezone.utc).isoformat()) if ir_event else datetime.now(timezone.utc).isoformat(),
                 "source": src,
-                "vendor": getattr(ir_event.device, "vendor", "Generic") if hasattr(ir_event, "device") else "Generic",
-                "product": getattr(ir_event.device, "product", "Generic") if hasattr(ir_event, "device") else "Generic",
+                "vendor": getattr(getattr(ir_event, "device", None), "vendor", "Generic") if ir_event else "Generic",
+                "product": getattr(getattr(ir_event, "device", None), "product", "Generic") if ir_event else "Generic",
                 "format": log_format,
-                "event_type": getattr(ir_event.event, "category", "network") if hasattr(ir_event, "event") else "network",
-                "action": getattr(ir_event.event, "action", "allow") if hasattr(ir_event, "event") else "allow",
-                "severity": getattr(ir_event, "severity", "informational"),
-                "src_ip": getattr(ir_event.source, "ip", "") if hasattr(ir_event, "source") else "",
-                "dst_ip": getattr(ir_event.destination, "ip", "") if hasattr(ir_event, "destination") else "",
+                "event_type": getattr(getattr(ir_event, "event", None), "category", "network") if ir_event else "network",
+                "action": getattr(getattr(ir_event, "event", None), "action", "allow") if ir_event else "allow",
+                "severity": getattr(ir_event, "severity", "informational") if ir_event else "informational",
+                "src_ip": getattr(getattr(ir_event, "source", None), "ip", "") if ir_event else "",
+                "dst_ip": getattr(getattr(ir_event, "destination", None), "ip", "") if ir_event else "",
                 "parser": log_format,
-                "status": getattr(ir_event, "status", "success"),
+                "status": getattr(ir_event, "status", "success") if ir_event else "success",
                 "sha256": raw_hash,
-                "raw_message": raw_message,
+                "raw_message": raw_msg or "",
             }
 
         # 1. Store Raw Evidence in MinIO (Immutable S3)
         storage_uri, storage_status = self.minio.store_raw_log(
             event_id=rid,
-            raw_message=raw_message,
+            raw_message=raw_msg or "",
             source=src,
             log_format=log_format,
             sha256_hash=raw_hash,
@@ -102,14 +118,16 @@ class PersistenceManager:
             opensearch_status=opensearch_status,
         )
 
-        # 4. Checkpoint Merkle Root
-        # In a real high-throughput scenario, this would be batched.
-        # Here we continuously update the running hash root for simplicity.
-        prev_root = self.db.get_config("merkle_root_latest") or ""
-        chain_hash = getattr(ir_event.original, "chain_hash", raw_hash)
-        new_root = hashlib.sha256((prev_root + chain_hash).encode("utf-8")).hexdigest()
-        self.db.set_config("merkle_root_latest", new_root)
-        self.db.append_merkle_root(new_root)
+        # 4. Checkpoint Merkle Root via Kosmoporos Merkle Vault (125 logs/block batching)
+        merkle_rec = self.merkle_vault.append_event(raw_payload=raw_msg or "", event_id=rid)
+        sealed_info = merkle_rec.get("sealed_block")
+        if sealed_info:
+            new_root = sealed_info["root_hash"]
+            self.db.set_config("merkle_root_latest", new_root)
+            self.db.append_merkle_root(new_root)
+        elif not self.db.get_config("merkle_root_latest"):
+            init_root = self.merkle_vault.get_latest_root()
+            self.db.set_config("merkle_root_latest", init_root)
 
         return record
 

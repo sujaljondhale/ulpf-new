@@ -162,6 +162,7 @@ class SyslogTCPCollector(BaseConnector):
         self.queue = queue
         self.event_callback = event_callback
         self.server = None
+        self._client_tasks = set()
 
     async def start_async(self) -> None:
         if self.is_running:
@@ -185,6 +186,13 @@ class SyslogTCPCollector(BaseConnector):
             
         client_ip, client_port = addr[0], addr[1]
         buffer = ""
+        current_task = None
+        try:
+            current_task = asyncio.current_task()
+            if current_task:
+                self._client_tasks.add(current_task)
+        except Exception:
+            pass
 
         try:
             while self.is_running:
@@ -240,14 +248,21 @@ class SyslogTCPCollector(BaseConnector):
                 self.total_errors += 1
                 logger.error(f"[AsyncSyslogTCP] Client handler error ({client_ip}): {e}")
         finally:
+            if current_task:
+                self._client_tasks.discard(current_task)
             try:
                 writer.close()
-                await writer.wait_closed()
             except Exception:
                 pass
 
     def stop(self) -> None:
         self.is_running = False
+        for task in list(self._client_tasks):
+            try:
+                task.cancel()
+            except Exception:
+                pass
+        self._client_tasks.clear()
         if self.server:
             try:
                 self.server.close()

@@ -220,6 +220,18 @@ class AsyncIngestionQueue:
                 self._queue.put_nowait(ingress)
             self.total_enqueued += 1
 
+            # Non-blocking zero-copy staging to Kosmoporos Temp Storage buffer
+            try:
+                from app.storage.temp_storage import get_temp_storage
+                get_temp_storage().stage_raw_log(
+                    event_id=getattr(ingress, "ingress_id", str(time.time())),
+                    raw_payload=ingress.raw_text,
+                    source=ingress.source,
+                    metadata=getattr(ingress, "transport_metadata", None),
+                )
+            except Exception:
+                pass
+
             return True, "ACCEPTED"
         except asyncio.QueueFull:
             self.total_dropped_backpressure += 1

@@ -50,9 +50,11 @@ Allows configuring:
 * **Auto-Probe Frequency**: `Paused`, `5 seconds`, or `10 seconds`
 * **Buttons**: ` Save & Apply`, ` Test Ping`, ` Reset Defaults`
 
-### 2.3 Browser CORS Bypass Guarantee
-When the ULPF server is hosted on a remote machine, browsers may block direct JavaScript cross-origin requests.  
-**Solution**: Health radar checks and synthetic log dispatches are proxied through `/api/test/target-status` and `/api/test/send-log` on the local simulator backend (`testing/server/sim_server.py`), executing raw Python socket probes directly to the remote machine. This guarantees **100% reliable connectivity verification** with zero CORS or mixed-content errors.
+### 2.3 Browser CORS Bypass, Split-Horizon DNS & Hairpin NAT Tolerance
+When the ULPF server is hosted on a remote machine, cloud instance (such as Oracle Cloud Infrastructure / OCI), or local container network, browsers may block direct cross-origin requests or encounter hairpin NAT routing limitations.
+* **Backend Socket Proxying**: Health radar checks and synthetic log dispatches are proxied through `/api/test/target-status` and `/api/test/send-log` on the simulator backend (`testing/server/sim_server.py`), executing raw Python socket handshakes directly to the target machine without CORS or mixed-content restrictions.
+* **Split-Horizon DNS & Hairpin NAT Fallback**: When testing against a server running on the same host or cloud VM (where the public IP is not routable back to the host via NAT loopback), the simulator detects internal loopback (`127.0.0.1` / `ulpf-api:8000`) vs public interface probes, seamlessly maintaining accurate socket status indicators.
+* **Hybrid Fallback Check**: The frontend (`testing/web/simulator.js`) pairs the backend `/api/test/target-status` probe with a fast direct HTTP fetch probe (`/api/v1/health` with `mode: 'cors'`). If either connection path succeeds, the target machine is immediately registered as `ONLINE`.
 
 ---
 

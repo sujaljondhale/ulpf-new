@@ -220,13 +220,14 @@ The Testing Hub provides specialized endpoints for synthetic telemetry dispatch,
 ### 1. Remote Server Connectivity & Health Radar
 
 #### `GET /api/test/target-status`
-Executes raw Python socket probes directly from the testing backend to the remote machine host across HTTP/HTTPS, Syslog UDP, and Syslog TCP. **Bypasses browser CORS restrictions.**
+Executes concurrent Python socket handshakes and probes directly from the testing backend to the target machine host across HTTP/HTTPS, Syslog UDP, Syslog TCP, SSE broadcast, and Local AI ports. **Bypasses browser CORS restrictions, respects split-horizon internal routing, and automatically recovers from cloud hairpin NAT.**
 
-**Query Parameters**:
+**Query Parameters / JSON Body**:
 * `host` (default: `127.0.0.1`): Remote server IP or hostname.
 * `api_port` (default: `8000`): Remote HTTP REST API port.
 * `udp_port` (default: `5140`): Remote Syslog UDP port.
 * `tcp_port` (default: `5141`): Remote Syslog TCP port.
+* `ollama_port` (default: `11434`): Local AI inference port.
 * `scheme` (default: `http`): Protocol scheme (`http` or `https`).
 
 **Response `200 OK`**:
@@ -235,13 +236,17 @@ Executes raw Python socket probes directly from the testing backend to the remot
   "host": "192.168.1.50",
   "api_port": 8000,
   "scheme": "http",
+  "version": "1.0.0 Enterprise (Phase 8)",
+  "platform": "ULPF Dual-Core Sovereign Telemetry Architecture",
   "ports": {
-    "http_api": { "port": 8000, "protocol": "HTTP", "status": "online", "latency_ms": 2.4, "detail": "HTTP 200 OK" },
-    "syslog_udp": { "port": 5140, "protocol": "UDP", "status": "ready", "latency_ms": 0.8, "detail": "UDP socket ready" },
-    "syslog_tcp": { "port": 5141, "protocol": "TCP", "status": "online", "latency_ms": 2.1, "detail": "TCP socket connected" }
+    "http_api": { "port": 8000, "protocol": "HTTP", "status": "healthy", "latency_ms": 2.4, "detail": "HTTP Ingestion API on 192.168.1.50:8000" },
+    "syslog_udp": { "port": 5140, "protocol": "UDP", "status": "ready", "latency_ms": 0.8, "detail": "UDP socket opened to 192.168.1.50:5140" },
+    "syslog_tcp": { "port": 5141, "protocol": "TCP", "status": "online", "latency_ms": 2.1, "detail": "TCP Syslog Collector on 192.168.1.50:5141" },
+    "sse_stream": { "port": 8000, "protocol": "SSE / HTTP", "status": "online", "latency_ms": 1.2, "detail": "Real-Time Event Stream Broadcast active" },
+    "ai_engine": { "port": 11434, "protocol": "OLLAMA (qwen2.5:7b)", "status": "online", "latency_ms": 1.8, "detail": "Local Sovereign AI Model Engine (Qwen 7B) active" },
+    "merkle_vault": { "port": 8000, "protocol": "MERKLE / S3", "status": "online", "latency_ms": 0.4, "detail": "Cryptographic SHA-256 Merkle Ledger & MinIO immutable vault operational" }
   },
-  "overall_ready": true,
-  "overall_status": "READY"
+  "all_ready": true
 }
 ```
 
