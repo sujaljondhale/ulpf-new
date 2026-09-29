@@ -1492,9 +1492,9 @@ document.addEventListener("DOMContentLoaded", () => {
       const saved = localStorage.getItem("ulpf_testbed_settings");
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (isCloudHost && (parsed.host === "80.225.207.171" || parsed.host === "localhost" || parsed.host === "host.docker.internal" || !parsed.host)) {
-          parsed.host = window.location.hostname || "80.225.207.171";
-          parsed.scheme = window.location.protocol.replace(":", "") || "http";
+        if (parsed.host === "ulpf-new.onrender.com" || parsed.host === "localhost" || parsed.host === "127.0.0.1" || parsed.host === "host.docker.internal" || !parsed.host) {
+          parsed.host = "80.225.207.171";
+          parsed.scheme = "http";
           if (!parsed.apiPort || parsed.apiPort === 8050) {
             parsed.apiPort = 8000;
           }
