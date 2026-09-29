@@ -1311,10 +1311,9 @@ document.addEventListener("DOMContentLoaded", () => {
   // ==============================================================================
   // SETTINGS & REMOTE SERVER API CONTROLLER (PERSISTENT VIA LOCALSTORAGE)
   // ==============================================================================
-  const isCloudHost = typeof window !== "undefined" && !!window.location && !!window.location.hostname &&
-    window.location.hostname !== "localhost" && window.location.hostname !== "80.225.207.171" && window.location.hostname !== "0.0.0.0";
-  const defaultHost = (typeof window !== "undefined" && window.location && window.location.hostname) ? window.location.hostname : "80.225.207.171";
-  const defaultScheme = (typeof window !== "undefined" && window.location && window.location.protocol) ? window.location.protocol.replace(":", "") : "http";
+  const isCloudHost = false;
+  const defaultHost = "80.225.207.171";
+  const defaultScheme = "http";
 
   const DEFAULT_SETTINGS = {
     scheme: defaultScheme || "http",
