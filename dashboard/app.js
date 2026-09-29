@@ -4238,8 +4238,8 @@ normalization:
           </p>
         </div>
         <div style="display:flex; gap:10px; align-items:center;">
-          <a href="http://${window.location.hostname || '127.0.0.1'}:8050" target="_blank" class="btn btn-sm btn-secondary" style="display:inline-flex; align-items:center; gap:6px; text-decoration:none;">
-            <span> Open Testing Web Studio (:8050)</span>
+          <a href="https://ulpf-new.onrender.com" target="_blank" class="btn btn-sm btn-secondary" style="display:inline-flex; align-items:center; gap:6px; text-decoration:none;">
+            <span> Open Testing Web Studio</span>
           </a>
           <button class="btn btn-sm btn-primary" id="btnRunDashboardPipeline">
             <span>Run Test Pipeline</span>

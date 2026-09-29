@@ -5,89 +5,10 @@
  */
 
 document.addEventListener("DOMContentLoaded", () => {
-  const DEFAULT_DEVICES = [
-    {
-      id: "dev-palo-alto",
-      name: "PA-5220-Edge-FW",
-      vendor: "PaloAlto",
-      format: "kv",
-      ip: "192.168.1.1",
-      protocol: "UDP",
-      port: 5140,
-      interval_ms: 100,
-      custom_template: "",
-      connected: true,
-      packetsSent: 0
-    },
-    {
-      id: "dev-cisco-asa",
-      name: "Cisco-ASA-5585-X",
-      vendor: "Cisco",
-      format: "syslog",
-      ip: "192.168.1.254",
-      protocol: "UDP",
-      port: 5140,
-      interval_ms: 100,
-      custom_template: "",
-      connected: true,
-      packetsSent: 0
-    },
-    {
-      id: "dev-fortinet",
-      name: "FortiGate-600E",
-      vendor: "Fortinet",
-      format: "cef",
-      ip: "10.0.1.1",
-      protocol: "UDP",
-      port: 5140,
-      interval_ms: 100,
-      custom_template: "",
-      connected: true,
-      packetsSent: 0
-    },
-    {
-      id: "dev-suricata",
-      name: "Suricata-Sensor-01",
-      vendor: "Suricata",
-      format: "leef",
-      ip: "10.0.2.50",
-      protocol: "UDP",
-      port: 5140,
-      interval_ms: 100,
-      custom_template: "",
-      connected: true,
-      packetsSent: 0
-    },
-    {
-      id: "dev-aws-waf",
-      name: "AWS-WAF-Ingress",
-      vendor: "AWS_WAF",
-      format: "json",
-      ip: "172.31.0.1",
-      protocol: "HTTP",
-      port: 8000,
-      interval_ms: 100,
-      custom_template: "",
-      connected: true,
-      packetsSent: 0
-    },
-    {
-      id: "dev-linux-bastion",
-      name: "Linux-Bastion-Host",
-      vendor: "Linux",
-      format: "syslog",
-      ip: "192.168.1.10",
-      protocol: "TCP",
-      port: 5141,
-      interval_ms: 100,
-      custom_template: "",
-      connected: true,
-      packetsSent: 0
-    }
-  ];
+  const DEFAULT_DEVICES = [];
 
   let virtualDevices = [...DEFAULT_DEVICES];
-  let activeDeviceId = virtualDevices[0].id;
+  let activeDeviceId = virtualDevices.length > 0 ? virtualDevices[0].id : null;
   let activeEventType = "traffic";
   let simulationTimer = null;
   let simulatedTerminalLogs = [];
