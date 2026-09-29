@@ -41,7 +41,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const themeSelect = document.getElementById("themeSelector");
 
   function applyTheme(theme) {
-    let activeTheme = (theme === "light" || theme === "luxury") ? theme : "dark";
+    let activeTheme = (theme === "light" || theme === "dark") ? theme : "luxury";
     document.documentElement.setAttribute("data-theme", activeTheme);
     try {
       localStorage.setItem("ulpf_theme", activeTheme);
@@ -49,8 +49,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (themeSelect) themeSelect.value = activeTheme;
   }
 
-  let savedTheme = localStorage.getItem("ulpf_theme") || "dark";
-  if (savedTheme !== "light" && savedTheme !== "luxury") savedTheme = "dark";
+  let savedTheme = localStorage.getItem("ulpf_theme") || "luxury";
+  if (savedTheme !== "light" && savedTheme !== "dark") savedTheme = "luxury";
   applyTheme(savedTheme);
 
   if (themeSelect) {

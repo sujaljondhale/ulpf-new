@@ -14,8 +14,8 @@
   <script>
     (function () {
       try {
-        const saved = localStorage.getItem("ulpf_theme") || "dark";
-        const normalized = (saved === "light" || saved === "luxury") ? saved : "dark";
+        const saved = localStorage.getItem("ulpf_theme") || "luxury";
+        const normalized = (saved === "light" || saved === "dark") ? saved : "luxury";
         document.documentElement.setAttribute("data-theme", normalized);
       } catch (e) { }
     })();
