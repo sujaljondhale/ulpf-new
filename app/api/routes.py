@@ -1133,6 +1133,7 @@ async def update_settings(payload: Dict[str, Any] = Body(...)):
         settings.ai_confidence_threshold = float(payload["ai_confidence_threshold"])
     if "rate_limit_per_minute" in payload:
         settings.rate_limit_per_minute = int(payload["rate_limit_per_minute"])
+        ingestion_queue.max_eps = max(1, settings.rate_limit_per_minute // 60)
     if "ai_fallback_enabled" in payload:
         settings.ai_fallback_enabled = bool(payload["ai_fallback_enabled"])
     
