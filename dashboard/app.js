@@ -4702,8 +4702,8 @@ normalization:
               <tr><th>Audit Timestamp</th><th>Event Target</th><th>Algorithm</th><th>Audit Result</th></tr>
             </thead>
             <tbody>
-              ${filtered.length === 0 ? `<tr><td colspan="4" class="text-center text-muted" style="padding:16px;">No audit evidence available</td></tr>` : 
-                filtered.slice(0, 8).map(evt => `
+              ${filteredList.length === 0 ? `<tr><td colspan="4" class="text-center text-muted" style="padding:16px;">No audit evidence available</td></tr>` : 
+                filteredList.slice(0, 8).map(evt => `
                   <tr>
                     <td class="mono">${new Date(evt.timestamp || evt.ingested_at || Date.now()).toISOString().replace('T', ' ').substr(0, 19)}</td>
                     <td class="mono">${evt.event_id || 'UNKNOWN'}</td>
