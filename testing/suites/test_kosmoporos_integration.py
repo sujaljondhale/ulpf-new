@@ -163,6 +163,7 @@ def test_ulpf_pipeline_kosmoporos_integration():
     # Threat log
     ir_threat = pipeline.process("<134>1 2026-09-25T12:00:00Z web.corp - - - GET /login?u=admin'-- HTTP/1.1")
     assert ir_threat.unmapped.get("threat_verdict", {}).get("is_threat", True) is True
+    assert ir_threat.event.type is not None
     assert "SQL Injection" in ir_threat.event.type
 
     # Verify Merkle stats accessible from pipeline
