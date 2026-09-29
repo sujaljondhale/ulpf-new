@@ -327,7 +327,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Helper to proxy virtual device source notifications through the backend to avoid Mixed Content / CORS
   function forwardSourcesApi(method, subpath = "", body = null) {
-    const host = testbedSettings.host || document.getElementById("targetHostInput")?.value.trim() || "127.0.0.1";
+    const host = testbedSettings.host || document.getElementById("targetHostInput")?.value.trim() || "80.225.207.171";
     const apiPort = document.getElementById("modalApiPort")?.value || testbedSettings.apiPort || 8000;
     const scheme = testbedSettings.scheme || "http";
     const query = `host=${encodeURIComponent(host)}&port=${apiPort}&scheme=${encodeURIComponent(scheme)}&subpath=${encodeURIComponent(subpath)}`;
@@ -545,7 +545,7 @@ document.addEventListener("DOMContentLoaded", () => {
       id: auditLogs.length + 1,
       timestamp: new Date().toLocaleTimeString(),
       protocol: entry.protocol || "UDP",
-      target: entry.target || "127.0.0.1:5140",
+      target: entry.target || "80.225.207.171:5140",
       source: entry.source || "VirtualDevice",
       status: entry.status || "SUCCESS",
       bytes: entry.bytes || 0,
@@ -679,7 +679,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    const host = testbedSettings.host || (document.getElementById("targetHostInput")?.value.trim()) || "127.0.0.1";
+    const host = testbedSettings.host || (document.getElementById("targetHostInput")?.value.trim()) || "80.225.207.171";
     let targetPort = dev.port;
     if (dev.protocol === "UDP" && (!dev.port || dev.port === 5140)) {
       targetPort = testbedSettings.udpPort || 5140;
@@ -763,7 +763,7 @@ document.addEventListener("DOMContentLoaded", () => {
   async function sendSingleLogForDeviceBackground(dev) {
     if (!dev || !dev.connected) return;
     const payload = generatePayloadForDev(dev);
-    const host = testbedSettings.host || (document.getElementById("targetHostInput")?.value.trim()) || "127.0.0.1";
+    const host = testbedSettings.host || (document.getElementById("targetHostInput")?.value.trim()) || "80.225.207.171";
     let targetPort = dev.port;
     if (dev.protocol === "UDP" && (!dev.port || dev.port === 5140)) targetPort = testbedSettings.udpPort || 5140;
     else if (dev.protocol === "TCP" && (!dev.port || dev.port === 5141)) targetPort = testbedSettings.tcpPort || 5141;
@@ -881,7 +881,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   window.runAttackScenario = async function (scenarioKey) {
-    const host = (hostInput && hostInput.value.trim()) ? hostInput.value.trim() : (testbedSettings.host || "127.0.0.1");
+    const host = (hostInput && hostInput.value.trim()) ? hostInput.value.trim() : (testbedSettings.host || "80.225.207.171");
     const statusBadge = document.getElementById("attackStatusBadge");
 
     if (statusBadge) {
@@ -1018,7 +1018,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    const host = (hostInput && hostInput.value.trim()) ? hostInput.value.trim() : (testbedSettings.host || "127.0.0.1");
+    const host = (hostInput && hostInput.value.trim()) ? hostInput.value.trim() : (testbedSettings.host || "80.225.207.171");
     appendAttackLog("ATTACK", `[CUSTOM] Launching custom exploit [${name}] via ${proto} to ${host}...`);
 
     try {
@@ -1138,7 +1138,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const pacingValue = parseInt(pacingSelect ? pacingSelect.value : "0", 10) || 0;
       const pacingDelayMs = pacingValue === 0 ? 0 : Math.round(1000 / pacingValue);
 
-      const host = (typeof hostInput !== 'undefined' && hostInput && hostInput.value.trim()) ? hostInput.value.trim() : (testbedSettings.host || "127.0.0.1");
+      const host = (typeof hostInput !== 'undefined' && hostInput && hostInput.value.trim()) ? hostInput.value.trim() : (testbedSettings.host || "80.225.207.171");
 
       if (statBurstDelivered) statBurstDelivered.textContent = "Blasting...";
       if (statBurstEps) statBurstEps.textContent = "Calculating...";
@@ -1312,13 +1312,13 @@ document.addEventListener("DOMContentLoaded", () => {
   // SETTINGS & REMOTE SERVER API CONTROLLER (PERSISTENT VIA LOCALSTORAGE)
   // ==============================================================================
   const isCloudHost = typeof window !== "undefined" && !!window.location && !!window.location.hostname &&
-    window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1" && window.location.hostname !== "0.0.0.0";
-  const defaultHost = (typeof window !== "undefined" && window.location && window.location.hostname) ? window.location.hostname : "127.0.0.1";
+    window.location.hostname !== "localhost" && window.location.hostname !== "80.225.207.171" && window.location.hostname !== "0.0.0.0";
+  const defaultHost = (typeof window !== "undefined" && window.location && window.location.hostname) ? window.location.hostname : "80.225.207.171";
   const defaultScheme = (typeof window !== "undefined" && window.location && window.location.protocol) ? window.location.protocol.replace(":", "") : "http";
 
   const DEFAULT_SETTINGS = {
     scheme: defaultScheme || "http",
-    host: defaultHost || "127.0.0.1",
+    host: defaultHost || "80.225.207.171",
     apiPort: 8000,
     udpPort: 5140,
     tcpPort: 5141,
@@ -1371,7 +1371,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const portEl = document.getElementById("targetPortInput");
 
     const scheme = (protoEl?.value || testbedSettings.scheme || "http").toLowerCase();
-    const host = (hostEl?.value.trim() || testbedSettings.host || "127.0.0.1");
+    const host = (hostEl?.value.trim() || testbedSettings.host || "80.225.207.171");
     const port = portEl?.value || testbedSettings.apiPort || 8000;
     const serverBaseUrl = (scheme === "https" && port == 443) || (scheme === "http" && port == 80)
       ? `${scheme}://${host}`
@@ -1488,8 +1488,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const saved = localStorage.getItem("ulpf_testbed_settings");
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (isCloudHost && (parsed.host === "127.0.0.1" || parsed.host === "localhost" || parsed.host === "host.docker.internal" || !parsed.host)) {
-          parsed.host = window.location.hostname || "127.0.0.1";
+        if (isCloudHost && (parsed.host === "80.225.207.171" || parsed.host === "localhost" || parsed.host === "host.docker.internal" || !parsed.host)) {
+          parsed.host = window.location.hostname || "80.225.207.171";
           parsed.scheme = window.location.protocol.replace(":", "") || "http";
           if (!parsed.apiPort || parsed.apiPort === 8050) {
             parsed.apiPort = 8000;
@@ -1504,7 +1504,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   window.saveTestbedSettings = function (event) {
     if (event) event.preventDefault();
-    const host = (document.getElementById("settingServerHost")?.value || "127.0.0.1").trim();
+    const host = (document.getElementById("settingServerHost")?.value || "80.225.207.171").trim();
     const apiPort = parseInt(document.getElementById("settingApiPort")?.value, 10) || 8000;
     const udpPort = parseInt(document.getElementById("settingUdpPort")?.value, 10) || 5140;
     const tcpPort = parseInt(document.getElementById("settingTcpPort")?.value, 10) || 5141;
@@ -1585,11 +1585,11 @@ document.addEventListener("DOMContentLoaded", () => {
     presetSelect.addEventListener("change", () => {
       const val = presetSelect.value;
       if (!val) return;
-      if (val === "127.0.0.1:8000") {
-        applyTargetSettings({ scheme: "http", host: "127.0.0.1", apiPort: 8000 }, true, true);
-        showToast("Switched to Localhost preset (127.0.0.1:8000)");
+      if (val === "80.225.207.171:8000") {
+        applyTargetSettings({ scheme: "http", host: "80.225.207.171", apiPort: 8000 }, true, true);
+        showToast("Switched to Localhost preset (80.225.207.171:8000)");
       } else if (val === "lan_custom") {
-        const customIp = prompt("Enter Remote Server LAN IP Address (e.g. 192.168.1.50):", testbedSettings.host !== "127.0.0.1" ? testbedSettings.host : "192.168.1.50");
+        const customIp = prompt("Enter Remote Server LAN IP Address (e.g. 192.168.1.50):", testbedSettings.host !== "80.225.207.171" ? testbedSettings.host : "192.168.1.50");
         if (customIp) {
           const parsed = parseTargetServerInput(customIp);
           applyTargetSettings({
@@ -1653,10 +1653,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (btnSaveModal) {
     btnSaveModal.addEventListener("click", () => {
-      const rawHost = (document.getElementById("modalHost")?.value || "127.0.0.1").trim();
+      const rawHost = (document.getElementById("modalHost")?.value || "80.225.207.171").trim();
       const parsed = parseTargetServerInput(rawHost);
       const scheme = document.getElementById("modalScheme")?.value || (parsed ? parsed.scheme : "http") || "http";
-      const host = (parsed ? parsed.host : rawHost) || "127.0.0.1";
+      const host = (parsed ? parsed.host : rawHost) || "80.225.207.171";
       const apiPort = parseInt(document.getElementById("modalApiPort")?.value, 10) || (parsed ? parsed.port : 8000) || 8000;
       const udpPort = parseInt(document.getElementById("modalUdpPort")?.value, 10) || 5140;
       const tcpPort = parseInt(document.getElementById("modalTcpPort")?.value, 10) || 5141;
@@ -1679,11 +1679,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (btnModalPing) {
     btnModalPing.addEventListener("click", () => {
-      const rawHost = (document.getElementById("modalHost")?.value || "127.0.0.1").trim();
+      const rawHost = (document.getElementById("modalHost")?.value || "80.225.207.171").trim();
       const parsed = parseTargetServerInput(rawHost);
       applyTargetSettings({
         scheme: document.getElementById("modalScheme")?.value || "http",
-        host: (parsed ? parsed.host : rawHost) || "127.0.0.1",
+        host: (parsed ? parsed.host : rawHost) || "80.225.207.171",
         apiPort: parseInt(document.getElementById("modalApiPort")?.value, 10) || 8000,
         udpPort: parseInt(document.getElementById("modalUdpPort")?.value, 10) || 5140,
         tcpPort: parseInt(document.getElementById("modalTcpPort")?.value, 10) || 5141,
@@ -1889,7 +1889,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const targetKey = targetSelect ? targetSelect.value : "http_api";
     const payloadInput = document.getElementById("probePayloadInput");
     const payload = payloadInput ? payloadInput.value.trim() : "PING / SOCKET_PROBE_REQUEST";
-    const host = testbedSettings.host || (topHostInput ? topHostInput.value.trim() : "127.0.0.1");
+    const host = testbedSettings.host || (topHostInput ? topHostInput.value.trim() : "80.225.207.171");
 
     let port = 8000;
     if (targetKey === "syslog_udp") port = testbedSettings.udpPort || 5140;
@@ -2023,7 +2023,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   window.checkServerHealth = async function (interactive = false) {
-    const host = testbedSettings.host || (topHostInput ? topHostInput.value.trim() : "127.0.0.1");
+    const host = testbedSettings.host || (topHostInput ? topHostInput.value.trim() : "80.225.207.171");
     const apiPort = testbedSettings.apiPort || 8000;
     const udpPort = testbedSettings.udpPort || 5140;
     const tcpPort = testbedSettings.tcpPort || 5141;
@@ -2182,7 +2182,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   window.runFullDiagnostics = async function () {
-    const host = testbedSettings.host || "127.0.0.1";
+    const host = testbedSettings.host || "80.225.207.171";
     const apiPort = testbedSettings.apiPort || 8000;
     const scheme = testbedSettings.scheme || "http";
     const url = `/api/test/readiness?host=${encodeURIComponent(host)}&port=${apiPort}&scheme=${encodeURIComponent(scheme)}`;
@@ -2448,7 +2448,7 @@ print("Ingestion Ack:", resp.json())`,
     const g = GUIDES[key];
     if (!g) return;
 
-    const host = testbedSettings.host || "127.0.0.1";
+    const host = testbedSettings.host || "80.225.207.171";
     const box = document.getElementById("guideContentBox");
     if (!box) return;
 
@@ -2520,7 +2520,7 @@ print("Ingestion Ack:", resp.json())`,
     const g = GUIDES[key];
     if (!g) return;
 
-    const host = testbedSettings.host || "127.0.0.1";
+    const host = testbedSettings.host || "80.225.207.171";
     const isUdp = g.protocol.includes("UDP");
     const port = isUdp ? (testbedSettings.udpPort || 5140) : (testbedSettings.tcpPort || 5141);
     const proto = isUdp ? "UDP" : "TCP";
@@ -3055,7 +3055,7 @@ LEEF:2.0|Suricata|IDS|6.0|ALERT|devTime=2026-09-25T14:32:03Z|src=10.0.1.55|dst=8
       fileToUpload = new File([blob], fname, { type: "text/plain" });
     }
 
-    const host = (hostInput && hostInput.value.trim()) ? hostInput.value.trim() : (testbedSettings.host || "127.0.0.1");
+    const host = (hostInput && hostInput.value.trim()) ? hostInput.value.trim() : (testbedSettings.host || "80.225.207.171");
     const modeEl = document.querySelector('input[name="uploadTransportMode"]:checked');
     const mode = modeEl ? modeEl.value : "http_upload";
     let port = 8000;
@@ -3255,7 +3255,7 @@ LEEF:2.0|Suricata|IDS|6.0|ALERT|devTime=2026-09-25T14:32:03Z|src=10.0.1.55|dst=8
   }
   if (btnSaveEndpoints) {
     btnSaveEndpoints.addEventListener("click", () => {
-      const rawHost = (document.getElementById("modalTargetHost")?.value || "127.0.0.1").trim();
+      const rawHost = (document.getElementById("modalTargetHost")?.value || "80.225.207.171").trim();
       const proto = document.getElementById("modalTargetProto")?.value || "http";
       const apiPort = parseInt(document.getElementById("modalTargetPort")?.value, 10) || 8000;
       const udpPort = parseInt(document.getElementById("modalSyslogUdpPort")?.value, 10) || 5140;
@@ -3298,7 +3298,7 @@ LEEF:2.0|Suricata|IDS|6.0|ALERT|devTime=2026-09-25T14:32:03Z|src=10.0.1.55|dst=8
             id: item.id || idx + 1,
             timestamp: item.timestamp || new Date().toLocaleTimeString(),
             protocol: (item.protocol || "UDP").toUpperCase(),
-            target: `${item.host || "127.0.0.1"}:${item.port || 5140}`,
+            target: `${item.host || "80.225.207.171"}:${item.port || 5140}`,
             source: item.source || "Virtual-Device",
             status: item.success !== false ? "SUCCESS" : "FAILED",
             bytes: item.bytes_sent || (item.payload ? item.payload.length : 0),
