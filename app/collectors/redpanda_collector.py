@@ -60,6 +60,9 @@ class RedpandaCollector(BaseCollector):
         self._local_topic_buffer: List[Dict[str, Any]] = []
         self._buffer_lock = threading.Lock()
         self._spool_lock = threading.Lock()
+        
+        from concurrent.futures import ThreadPoolExecutor
+        self._executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="redpanda_bg")
 
         # Disk spooling for high-throughput buffering
         self.spool_file = os.path.join(os.environ.get("STORAGE_DIR", "storage/raw"), "temp_spool.jsonl")
@@ -134,6 +137,10 @@ class RedpandaCollector(BaseCollector):
         if self._consumer_thread and self._consumer_thread.is_alive():
             self._consumer_thread.join(timeout=1.0)
         self._connected = False
+        
+        if hasattr(self, "_executor"):
+            self._executor.shutdown(wait=False)
+            
         logger.info("RedpandaCollector stopped.")
 
     def check_broker_connectivity(self, force_refresh: bool = False, timeout: float = 0.05) -> Tuple[bool, str]:
@@ -210,7 +217,7 @@ class RedpandaCollector(BaseCollector):
                     # Spool the entire current buffer to disk to prevent thread explosion and free RAM instantly
                     items_to_spool = self._local_topic_buffer[:]
                     self._local_topic_buffer = []
-                    threading.Thread(target=self._spool_to_disk, args=(items_to_spool,), daemon=True).start()
+                    self._executor.submit(self._spool_to_disk, items_to_spool)
 
         self.messages_produced += 1
         self.bytes_produced += len(raw_message.encode("utf-8"))
@@ -234,7 +241,7 @@ class RedpandaCollector(BaseCollector):
                 now = time.time()
                 # 1. Periodically check socket connectivity asynchronously
                 if now - last_conn_check >= 5.0:
-                    threading.Thread(target=self._async_check_broker, daemon=True).start()
+                    self._executor.submit(self._async_check_broker)
                     last_conn_check = now
 
                 # 2. Process local buffer in chunks

@@ -6,7 +6,7 @@ Executes the full automated testing suite across the decoupled architecture:
   2. End-to-End Smoke Test Suite (10 verification phases)
   3. Security & Resilience Smoke Test Suite (8 injection/resilience tests)
   4. Stack & Subsystem Verification (10 Docker/AI/Redpanda/API checks)
-  5. High-Throughput Ingestion Benchmark (1,000+ events)
+  5. High-Throughput Ingestion Benchmark (10,000+ events)
 """
 
 import sys
@@ -76,7 +76,7 @@ def main():
     parser.add_argument("--security", action="store_true", help="Run only security smoke test")
     parser.add_argument("--stack", action="store_true", help="Run only stack verification")
     parser.add_argument("--bench", action="store_true", help="Run only throughput benchmark")
-    parser.add_argument("--bench-events", type=int, default=1000, help="Number of benchmark events (default: 1000)")
+    parser.add_argument("--bench-events", type=int, default=10000, help="Number of benchmark events (default: 10000)")
     parser.add_argument("--fast", action="store_true", help="Run fast smoke & security tests without full pytest")
     parser.add_argument("--device-timeout", type=float, default=default_timeout, help=f"Device socket connection/transmission timeout in seconds (default: {default_timeout}s)")
     parser.add_argument("--logs-interval", type=float, default=default_interval_sec, help=f"Inter-log sending interval pacing in seconds (default: {default_interval_sec}s = {default_interval_sec*1000:.1f}ms)")

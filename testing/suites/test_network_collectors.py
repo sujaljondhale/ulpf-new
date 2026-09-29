@@ -271,6 +271,43 @@ def test_ingestion_queue_rate_limiting():
     finally:
         queue.stop()
 
+def test_ingestion_queue_per_client_rate_limiting():
+    """Test IngestionQueue isolates rate limits per client."""
+    queue = IngestionQueue(
+        max_size=1000,
+        max_eps=3,          # hard cap at 3 events/sec per client
+        worker_count=1,
+    )
+    queue.start()
+
+    try:
+        results_client_a = []
+        results_client_b = []
+        for i in range(10):
+            a_acc, _ = queue.enqueue(RawIngress(connector_type="test", source="client_A", raw_text=f"Event {i}"))
+            results_client_a.append(a_acc)
+            
+            if i < 3:
+                b_acc, _ = queue.enqueue(RawIngress(connector_type="test", source="client_B", raw_text=f"Event {i}"))
+                results_client_b.append(b_acc)
+
+        accepted_a = sum(1 for a in results_client_a if a)
+        dropped_a = sum(1 for a in results_client_a if not a)
+        
+        accepted_b = sum(1 for b in results_client_b if b)
+        dropped_b = sum(1 for b in results_client_b if not b)
+
+        # Client A should be capped at 3
+        assert accepted_a <= 3
+        assert dropped_a >= 7
+        
+        # Client B only sent 3, should ALL be accepted because it has its own bucket
+        assert accepted_b == 3
+        assert dropped_b == 0
+
+    finally:
+        queue.stop()
+
 
 # ---------------------------------------------------------------------------
 # 6. SourceRegistry — in-memory tracking, block/unblock

@@ -1,6 +1,7 @@
 import time
 import asyncio
 import logging
+import redis
 from typing import Optional, Callable, Dict, Any, Tuple
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from app.collectors.ingress import RawIngress
@@ -58,8 +59,12 @@ class AsyncIngestionQueue:
         # Dynamically scale workers to prevent over-threading on limited cores
         if worker_count is None:
             import os
+            assigned_workers = int(os.getenv("WORKERS", "0"))
             cores = os.cpu_count() or 4
-            self.worker_count = max(1, cores // 4)
+            if assigned_workers > 0:
+                self.worker_count = assigned_workers
+            else:
+                self.worker_count = min(16, max(1, cores // 4))
         else:
             self.worker_count = worker_count
             
@@ -74,7 +79,16 @@ class AsyncIngestionQueue:
 
         # Rate Limiting State
         self._window_start = time.time()
-        self._window_count = 0
+        self._client_window_counts = {}
+        self.redis_client = None
+        if settings.redis_enabled:
+            try:
+                self.redis_client = redis.Redis.from_url(settings.redis_url, decode_responses=True)
+                self.redis_client.ping()
+                logger.info(f"Redis Rate Limiter connected via {settings.redis_url}")
+            except Exception as e:
+                logger.warning(f"Failed to connect to Redis for rate limiting: {e}. Falling back to local global limiter.")
+                self.redis_client = None
 
         # Metrics
         self.total_enqueued = 0
@@ -181,15 +195,34 @@ class AsyncIngestionQueue:
                 
             logger.info(f"Scaled workers to {new_count}")
 
-    def _check_rate_limit(self) -> bool:
-        """Simple rate limit check."""
+    def _check_rate_limit(self, client_id: str = "global") -> bool:
+        """Redis-backed per-client rate limit check with local global fallback."""
+        if self.redis_client:
+            try:
+                # Redis-backed isolated rate limiting (per client IP/source)
+                key = f"ulpf:ratelimit:{client_id}"
+                current_count = self.redis_client.incr(key)
+                if current_count == 1:
+                    self.redis_client.expire(key, 1) # 1-second fixed window
+                
+                if current_count > self.max_eps:
+                    return False
+                return True
+            except Exception as e:
+                # Fallback to local rate limiting if Redis is down
+                logger.error(f"Redis rate limiting error: {e}")
+                pass
+
         now = time.time()
         if now - self._window_start >= 1.0:
             self._window_start = now
-            self._window_count = 0
-        if self._window_count >= self.max_eps:
+            self._client_window_counts = {}
+        
+        current_count = self._client_window_counts.get(client_id, 0)
+        if current_count >= self.max_eps:
             return False
-        self._window_count += 1
+            
+        self._client_window_counts[client_id] = current_count + 1
         return True
 
     def enqueue(self, ingress: RawIngress) -> Tuple[bool, str]:
@@ -199,7 +232,8 @@ class AsyncIngestionQueue:
         if not self._is_running or not self._queue:
             return False, "STOPPED"
 
-        if not self._check_rate_limit():
+        client_id = ingress.source or "unknown"
+        if not self._check_rate_limit(client_id):
             self.total_dropped_rate_limit += 1
             return False, "RATE_LIMIT_EXCEEDED"
 

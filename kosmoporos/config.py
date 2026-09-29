@@ -17,7 +17,7 @@ class KosmoporosConfig:
     ai_model: str = "qwen2.5-coder:7b"
     c_acceleration: bool = True
     threat_detection: bool = True
-    blocked_ips: Set[str] = field(default_factory=lambda: {"198.51.100.99", "203.0.113.50"})
+    blocked_ips: Set[str] = field(default_factory=set)
 
     @classmethod
     def from_env(cls) -> "KosmoporosConfig":
@@ -30,7 +30,7 @@ class KosmoporosConfig:
         c_accel = os.getenv("KOSMOPOROS_C_ACCEL", "true").lower() in ("true", "1", "yes")
         threat_det = os.getenv("KOSMOPOROS_THREAT_DETECTION", "true").lower() in ("true", "1", "yes")
 
-        blocked_str = os.getenv("KOSMOPOROS_BLOCKED_IPS", "198.51.100.99,203.0.113.50")
+        blocked_str = os.getenv("KOSMOPOROS_BLOCKED_IPS", "")
         blocked_ips = {ip.strip() for ip in blocked_str.split(",") if ip.strip()}
 
         return cls(

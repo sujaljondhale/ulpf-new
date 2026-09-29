@@ -246,6 +246,14 @@ python scripts/run_benchmarks.py
 | **NIST SP 800-92** | Guide to Computer Security Log Management. | Implements dual-layer raw and canonical retention with cryptographic audit immutability and PII anonymization. |
 | **OCSF v1.1.0 Specification** | Open Cybersecurity Schema Framework. | Guarantees vendor-neutral interoperability with open-source and commercial downstream SIEM platforms. |
 
+##  Recent Updates & Fixes (2026-09-29)
+* **Thread Capping & Stability:** Fixed a critical thread explosion issue where `RedpandaCollector` unbounded daemon threads and `AnyIO` pools spawned up to 30 threads on 2-core machines. Replaced with bounded `ThreadPoolExecutor` and respected the `WORKERS` environment variable for robust resource limitation.
+* **Per-Client Rate Limiting:** Implemented true per-client rate isolation for both the primary Redis-backed ingestion queue and the in-memory global fallback layer.
+* **Benchmark & Audits:** Removed hardcoded, default, and static values from the Deterministic Single-Core Ingestion Benchmark, Forensic Audit Ledger, and Analysis Studio to accurately reflect raw and active data metrics.
+* **Cryptographic Tamper-Evidence:** Added Merkle root verification display to the Tamper-Evidence Audit UI, updating dynamically upon log corruption detection.
+* **AI Resynthesizer:** Fully wired the Human Verification page to the backend `v1/ai/onboard` engine, removing mock data dependencies and enabling true autonomous schema updates.
+* **Dynamic Blacklist Engine:** Purged default static IPs from the IP active blocklist/perimeter firewall config to prevent conflicting legacy blocks.
+
 ---
 
 ##  Strategic 4-Phase Roadmap

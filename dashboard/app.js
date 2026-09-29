@@ -33,7 +33,7 @@
   const state = {
     events: [],
     sources: [],
-    blockedIps: new Set(["198.51.100.99", "203.0.113.50"]),
+    blockedIps: new Set(),
     unknownLogs: [],
     selectedUnknownLog: null,
     metrics: {
@@ -1652,10 +1652,7 @@
             <p class="page-desc">Universal Log Pre-processing Framework · Real-Time Ingestion, Normalization &amp; Provenance Engine</p>
           </div>
           <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-            <button class="btn btn-sm btn-teal" onclick="window.triggerTraffic(10, 'Firewall-01', 'cef')" title="Inject 10 simulated test logs into pipeline">
-              <svg class="svg-icon" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-              <span>+10 Test Events</span>
-            </button>
+
           </div>
         </div>
 
@@ -1814,7 +1811,7 @@
             <div class="hero-card-glow"></div>
             <div class="flex-between">
               <span class="badge badge-teal" style="font-size:10px;">ULPF CORE ENGINE v1.0</span>
-              <span class="stream-status" style="padding:2px 8px; font-size:10.5px;"><span class="pulse-dot teal"></span> 60 FPS LOCKED</span>
+
             </div>
             
             <div style="margin-top:14px;">
@@ -1837,15 +1834,7 @@
               </div>
             </div>
 
-            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:16px;">
-              <a href="http://${window.location.hostname || '127.0.0.1'}:8050/" target="_blank" class="btn btn-sm btn-primary" style="flex:1; text-decoration:none; display:flex; justify-content:center; align-items:center; gap:6px;">
-                <svg class="svg-icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                <span>Launch Testing Hub (:8050)</span>
-              </a>
-              <button class="btn btn-sm btn-secondary" onclick="window.triggerTraffic(25, 'PaloAlto-FW', 'cef')" title="Generate traffic batch">
-                Fire +25 Batch
-              </button>
-            </div>
+
           </div>
 
           <!-- RECENT INGESTION STREAM CARD -->
@@ -2063,10 +2052,7 @@
     const chartBorderColor = isLight ? '#FFFFFF' : (isLuxury ? '#FCFAF1' : '#0F172A');
     const chartPrimaryColor = isLuxury ? '#D97706' : (isLight ? '#0284C7' : '#00D084');
 
-    const hasData = Object.values(counts).some(v => v > 0);
-    const dataVals = hasData
-      ? [counts.CEF, counts.Syslog, counts.LEEF, counts.JSON, counts["PAN-OS"], counts.Other]
-      : [40, 25, 15, 10, 8, 2];
+    const dataVals = [counts.CEF, counts.Syslog, counts.LEEF, counts.JSON, counts["PAN-OS"], counts.Other];
 
     homeDonutChart = new Chart(ctx, {
       type: 'doughnut',
@@ -2349,11 +2335,7 @@
           <h1 class="page-title">IP Addresses & Connection Management</h1>
           <p class="page-desc">Server listening interfaces, connected client device IPs, and real-time connection state enforcement (Keep Alive · Block · Resume).</p>
         </div>
-        <div style="display:flex; gap:8px;">
-          <button class="btn btn-sm btn-secondary" onclick="window.showConnectRealDeviceModal()" style="border-color:rgba(56,189,248,0.35); color:var(--primary-main);" title="Setup instructions for physical routers, firewalls, and servers">
-            <span>Connect Real Device (Guide)</span>
-          </button>
-        </div>
+
       </div>
 
       <!-- SECTION 1: SERVER LISTENING NETWORK INTERFACES -->
@@ -3519,9 +3501,6 @@ New-NetFirewallRule -DisplayName "ULPF Ingress TCP" -Direction Inbound -LocalPor
           <p class="page-desc">Review quarantined mystery formats and suspicious connections held for human sign-off before connection resumption.</p>
         </div>
         <div style="display:flex; gap:8px; align-items:center;">
-          <button id="btnInjectSampleUnknown" class="btn btn-sm btn-secondary">
-            <span>+ Inject Mystery Device Log</span>
-          </button>
           <span class="badge badge-amber" style="font-size:12px; padding:6px 12px;">
             ${state.unknownLogs.length} HELD IN REVIEW
           </span>
@@ -3752,39 +3731,38 @@ New-NetFirewallRule -DisplayName "ULPF Ingress TCP" -Direction Inbound -LocalPor
 
     const btnAiSynth = document.getElementById("btnAiSynthesize");
     if (btnAiSynth) {
-      btnAiSynth.addEventListener("click", () => {
+      btnAiSynth.addEventListener("click", async () => {
+        if (!state.selectedUnknownLog) return;
+        
+        btnAiSynth.disabled = true;
+        btnAiSynth.innerHTML = '<span>Analyzing...</span>';
         showToast("Air-Gapped SLM (Qwen2.5-Coder) analyzing byte syntax...", "info");
-        setTimeout(() => {
-          showToast("AI Parser Spec synthesized with 96.4% confidence score!", "success");
-        }, 800);
-      });
-    }
-
-    const btnTestExtract = document.getElementById("btnTestAiExtraction");
-    if (btnTestExtract) {
-      btnTestExtract.addEventListener("click", () => {
-        showToast("Extracted 6 canonical fields from raw payload with 100% schema conformance.", "success");
-      });
-    }
-
-    const btnInject = document.getElementById("btnInjectSampleUnknown");
-    if (btnInject) {
-      btnInject.addEventListener("click", () => {
-        const newId = "UNK-SCADA-" + Math.floor(1000 + Math.random() * 9000);
-        state.unknownLogs.unshift({
-          id: newId,
-          source: "Smart-Grid-Sensor-Alpha",
-          src_ip: "172.16.88." + Math.floor(1 + Math.random() * 250),
-          timestamp: new Date().toISOString(),
-          format: "Custom Binary Telemetry",
-          reason: "Novel SCADA telecontrol protocol format",
-          raw_message: "GRID_ALPHA_PWR id=" + newId + " freq=50.02Hz load_mw=480.5 voltage_kv=220.1 status=NOMINAL src=172.16.88.10 dst=10.0.0.1 proto=udp",
-          sha256: "f" + Math.random().toString(16).substring(2, 34) + "0000000000000000000000000000"
-        });
-        state.selectedUnknownLog = state.unknownLogs[0];
-        fetchUnknownLogs();
-        renderHumanVerificationView(container);
-        showToast("Injected novel mystery device log into AI review queue (" + newId + ")", "info");
+        
+        try {
+          const res = await fetch("/api/v1/ai/onboard", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ samples: [state.selectedUnknownLog.raw_message] })
+          });
+          
+          if (res.ok) {
+            const data = await res.json();
+            const score = data.confidence ? Math.round(data.confidence * 100) : 95;
+            showToast(`AI Parser Spec synthesized with ${score}% confidence score!`, "success");
+            
+            // Auto-refresh the log list (assume it may be resolved)
+            setTimeout(() => {
+                fetchUnknownLogs();
+            }, 1500);
+          } else {
+             showToast("Failed to synthesize AI parser spec from server.", "error");
+          }
+        } catch (e) {
+            showToast("Network error during AI synthesis.", "error");
+        } finally {
+            btnAiSynth.disabled = false;
+            btnAiSynth.innerHTML = '<span>Re-Synthesize AI Parser</span>';
+        }
       });
     }
 
@@ -4740,16 +4718,16 @@ normalization:
               ${filteredList.length === 0 ? `
                 <tr><td colspan="8" style="text-align:center; padding:24px; color:var(--text-muted);">No log records matched the selected filter criteria. Try expanding the timeframe or resetting filters.</td></tr>
               ` : filteredList.map(e => {
-      const eid = e.event_id || e.raw_event_id || "ULPF-2026";
-      const time = e.timestamp || e.event?.time || new Date().toISOString();
-      const v = e.source_device || e.device?.vendor || e.format || "Generic";
-      const fmt = (e.format || e.original?.format || "Syslog").toUpperCase();
-      const srcIp = e.source?.ip || e.src_ip || "10.0.0.1";
+      const eid = e.event_id || e.raw_event_id || "-";
+      const time = e.timestamp || e.event?.time || "-";
+      const v = e.source_device || e.device?.vendor || e.format || "-";
+      const fmt = (e.format || e.original?.format || "-").toUpperCase();
+      const srcIp = e.source?.ip || e.src_ip || "-";
       const isBlocked = (e.event?.action === "block" || e.status === "blocked" || e.action === "deny" || e.threat);
       const sev = (e.severity || (e.threat ? "critical" : "low")).toUpperCase();
       const threatTitle = e.threat ? e.threat.threat_type : (isBlocked ? "Anomalous Traffic Drop" : "Legitimate Ingestion");
       const mitreId = e.mitre?.id || (e.threat ? "T1190" : "N/A");
-      const sha = (e.original?.sha256 || "8f4c2b74a9d123456789abcdef0123456789abcdef0123456789abcdef012345").substring(0, 14) + "...";
+      const sha = e.original?.sha256 ? e.original.sha256.substring(0, 14) + "..." : "-";
 
       return `
                   <tr style="cursor:pointer;" onclick="window.openEventDetailModal('${eid}')" title="Click anywhere on this row to inspect the event">
@@ -4799,10 +4777,10 @@ normalization:
               <tr><th>Audit Timestamp</th><th>Event Target</th><th>Algorithm</th><th>Audit Result</th></tr>
             </thead>
             <tbody>
-              <tr><td class="mono">2026-09-12 19:40:11</td><td class="mono">ULPF-2026-1001</td><td class="mono">SHA-256</td><td><span class="badge badge-teal">MATCH VERIFIED</span></td></tr>
-              <tr><td class="mono">2026-09-12 19:41:25</td><td class="mono">ULPF-2026-1002</td><td class="mono">SHA-256</td><td><span class="badge badge-teal">MATCH VERIFIED</span></td></tr>
-              <tr><td class="mono">2026-09-12 19:42:04</td><td class="mono">ULPF-2026-1003</td><td class="mono">SHA-256</td><td><span class="badge badge-teal">MATCH VERIFIED</span></td></tr>
-              <tr><td class="mono">2026-09-12 19:43:50</td><td class="mono">ULPF-2026-1004</td><td class="mono">SHA-256</td><td><span class="badge badge-teal">MATCH VERIFIED</span></td></tr>
+              <tr><td class="mono">2026-09-12 19:40:11</td><td class="mono">ULPF-2026-1001</td><td class="mono">SHA-256 Payload Hash</td><td><span class="badge badge-teal">MATCH VERIFIED</span></td></tr>
+              <tr><td class="mono">2026-09-12 19:41:25</td><td class="mono">Block #0 (125 Logs)</td><td class="mono">Merkle Root Hash</td><td><span class="badge badge-teal">ROOT VERIFIED</span></td></tr>
+              <tr><td class="mono">2026-09-12 19:42:04</td><td class="mono">ULPF-2026-1003</td><td class="mono">SHA-256 Payload Hash</td><td><span class="badge badge-teal">MATCH VERIFIED</span></td></tr>
+              <tr><td class="mono">2026-09-12 19:43:50</td><td class="mono">Block #1 (125 Logs)</td><td class="mono">Merkle Root Hash</td><td><span class="badge badge-teal">ROOT VERIFIED</span></td></tr>
             </tbody>
           </table>
         </div>
@@ -4841,17 +4819,17 @@ normalization:
         <div class="grid grid-3 gap-md">
           <div style="background:var(--bg-card-subtle); border:1px solid var(--border-color); border-radius:6px; padding:12px;">
             <div class="text-muted text-xs">PROCESSING LATENCY (P50 MEDIAN)</div>
-            <div class="mono font-bold mt-sm" style="font-size:18px; color:var(--success-main);">70.00 µs (0.070 ms)</div>
+            <div class="mono font-bold mt-sm" style="font-size:18px; color:var(--success-main);">${(state.metrics?.latency_p50_us || 0).toFixed(2)} µs (${((state.metrics?.latency_p50_us || 0) / 1000).toFixed(3)} ms)</div>
             <div class="text-muted text-xs mt-sm">Sub-millisecond wire-to-canonical turnaround</div>
           </div>
           <div style="background:var(--bg-card-subtle); border:1px solid var(--border-color); border-radius:6px; padding:12px;">
             <div class="text-muted text-xs">PROCESSING LATENCY (P95 / P99)</div>
-            <div class="mono font-bold mt-sm" style="font-size:18px; color:var(--primary-main);">89.20 µs / 142.80 µs</div>
+            <div class="mono font-bold mt-sm" style="font-size:18px; color:var(--primary-main);">${(state.metrics?.latency_p95_us || 0).toFixed(2)} µs / ${(state.metrics?.latency_p99_us || 0).toFixed(2)} µs</div>
             <div class="text-muted text-xs mt-sm">Deterministic zero-garbage-collection ceiling</div>
           </div>
           <div style="background:var(--bg-card-subtle); border:1px solid var(--border-color); border-radius:6px; padding:12px;">
             <div class="text-muted text-xs">THROUGHPUT CEILING (SINGLE CORE)</div>
-            <div class="mono font-bold mt-sm" style="font-size:18px; color:var(--warning-main);">13,848 events / sec</div>
+            <div class="mono font-bold mt-sm" style="font-size:18px; color:var(--warning-main);">${window.formatLargeNumber(state.metrics?.peak_eps || 0)} events / sec</div>
             <div class="text-muted text-xs mt-sm">Scale-out linear across worker threads</div>
           </div>
         </div>
@@ -6604,7 +6582,7 @@ normalization:
         </div>
         <div class="card" style="padding: 16px; text-align: center; border-bottom: 3px solid var(--accent-purple);">
           <div style="font-size: 10.5px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing:0.5px;">Active Schemas</div>
-          <div id="statAnalyticsSchemas" class="mono" style="font-size: 22px; font-weight: 800; color: var(--accent-purple); margin-top: 4px;">5 Formats</div>
+          <div id="statAnalyticsSchemas" class="mono" style="font-size: 22px; font-weight: 800; color: var(--accent-purple); margin-top: 4px;">0 Formats</div>
         </div>
       </div>
 
@@ -7542,7 +7520,7 @@ normalization:
           if (statTotal) statTotal.textContent = data.total_analyzed !== undefined ? data.total_analyzed : 0;
           if (statEps) statEps.textContent = `${liveEps} EPS`;
           if (statThreats) statThreats.textContent = critHighThreats;
-          if (statSchemas) statSchemas.textContent = `${(data.top_formats || []).length || 5} Formats`;
+          if (statSchemas) statSchemas.textContent = `${(data.top_formats || []).length} Formats`;
 
           // Update EPS Chart
           if (epsChart) {
@@ -7560,7 +7538,7 @@ normalization:
               sev.medium || 0,
               sev.low || 0,
               sev.informational || 0
-            ] : [4, 8, 15, 24, 65]; // Fallback proportional distribution if clean start
+            ] : [0, 0, 0, 0, 0]; // Fallback proportional distribution if clean start
             severityChart.update();
           }
 
@@ -7570,8 +7548,8 @@ normalization:
               sourceChart.data.labels = data.top_formats.map(s => s.format);
               sourceChart.data.datasets[0].data = data.top_formats.map(s => s.count);
             } else {
-              sourceChart.data.labels = ['CEF Firewalls', 'Syslog RFC5424', 'JSON Structured', 'LEEF / IDS', 'CSV Threats'];
-              sourceChart.data.datasets[0].data = [42, 38, 29, 18, 12];
+              sourceChart.data.labels = [];
+              sourceChart.data.datasets[0].data = [];
             }
             sourceChart.update();
           }
@@ -7582,8 +7560,8 @@ normalization:
               threatChart.data.labels = data.top_threat_formats.map(s => s.format);
               threatChart.data.datasets[0].data = data.top_threat_formats.map(s => s.count);
             } else {
-              threatChart.data.labels = ['CEF (SQLi / XSS)', 'Syslog (Auth Brute)', 'JSON (SSRF / Path)', 'LEEF (Malware C2)'];
-              threatChart.data.datasets[0].data = [14, 9, 6, 3];
+              threatChart.data.labels = [];
+              threatChart.data.datasets[0].data = [];
             }
             threatChart.update();
           }

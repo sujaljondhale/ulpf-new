@@ -1943,7 +1943,7 @@ DEFAULT_PIPELINE_STAGES = [
     {"id": "smoke", "name": "End-to-End Smoke Test Suite (10 Verification Phases)", "status": "idle", "duration": 0.0, "error": None},
     {"id": "security", "name": "Security & Cyber Resilience Tests (8 Attack Tests)", "status": "idle", "duration": 0.0, "error": None},
     {"id": "stack", "name": "Stack & Subsystem Verification (10 Checks)", "status": "idle", "duration": 0.0, "error": None},
-    {"id": "bench", "name": "Ingestion Throughput Benchmark (1,000 Events)", "status": "idle", "duration": 0.0, "error": None},
+    {"id": "bench", "name": "Ingestion Throughput Benchmark (10,000 Events)", "status": "idle", "duration": 0.0, "error": None},
     {"id": "bench_all", "name": "Comprehensive All-Parsers Benchmark (C + 9 Vendors)", "status": "idle", "duration": 0.0, "error": None},
 ]
 
@@ -1965,7 +1965,7 @@ _pipeline_lock = threading.Lock()
 
 class PipelineRunRequest(BaseModel):
     stage: str = "all"  # 'all', 'fast', 'suites', 'smoke', 'security', 'stack', 'bench', 'bench_all'
-    bench_events: int = 1000
+    bench_events: int = 10000
     device_timeout: float = 3.0
     logs_interval_ms: float = 10.0
 

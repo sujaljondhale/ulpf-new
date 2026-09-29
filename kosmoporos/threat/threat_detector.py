@@ -10,7 +10,7 @@ class ThreatDetector:
     """
 
     def __init__(self, blocked_ips: Optional[Set[str]] = None, ai_scorer: Optional[Any] = None):
-        self.blocked_ips = blocked_ips or {"198.51.100.99", "203.0.113.50"}
+        self.blocked_ips = blocked_ips or set()
         self.ai_scorer = ai_scorer
 
         # Precompiled exploit signatures: (Pattern, Threat Type, Description, Score)

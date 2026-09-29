@@ -113,7 +113,7 @@ def broadcast_event(event_dict: Dict[str, Any]):
 
 
 BLOCKED_SOURCES: set = set()
-BLOCKED_IPS: set = {"198.51.100.99", "203.0.113.50"}  # Active IP blacklist
+BLOCKED_IPS: set = set()  # Active IP blacklist
 EVENT_COUNTER: int = 1000
 
 
@@ -875,7 +875,7 @@ async def post_ingest(request: Request):
 
         print("post_ingest: checking rate limit")
         # Priority 14: Collector Rate Limiting
-        if not ingestion_queue._check_rate_limit():
+        if not ingestion_queue._check_rate_limit(source_name):
             ingestion_queue.total_dropped_rate_limit += 1
             raise HTTPException(status_code=429, detail="Rate limit exceeded. System is under high load.")
 

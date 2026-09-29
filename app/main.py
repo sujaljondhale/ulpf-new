@@ -60,8 +60,22 @@ from app.config import settings
 from app.pipeline_monitor import global_throughput_monitor
 
 
+import anyio
+import os
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    cores = os.cpu_count() or 4
+    assigned_workers = int(os.getenv("WORKERS", "0"))
+    if assigned_workers > 0:
+        worker_count = assigned_workers
+    else:
+        worker_count = min(16, max(1, cores // 4))
+    
+    # Cap AnyIO threadpool to prevent threads jumping out of control
+    anyio.to_thread.current_default_thread_limiter().total_tokens = worker_count
+
+
     # Startup: Connect persistent database and hydrate event state
     db_info = init_database_and_load_state()
     logging.info(f"[Database] Connected: {db_info.get('status')}, backend: {db_info.get('backend')}, total records: {db_info.get('total_in_db', 0)}")

@@ -2119,8 +2119,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const heroSub = document.getElementById("serverHeroSubsystems");
     const heroDot = document.getElementById("heroStatusDot");
     const stateDot = document.getElementById("serverStateDot");
+    const sidebarSummary = document.getElementById("sidebarTargetSummary");
 
     if (heroTarget) heroTarget.textContent = baseUrl;
+    if (sidebarSummary) sidebarSummary.textContent = baseUrl;
     if (topPing) topPing.textContent = "(...)";
 
     const t0 = performance.now();
