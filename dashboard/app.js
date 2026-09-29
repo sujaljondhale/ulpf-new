@@ -4442,82 +4442,7 @@ normalization:
   };
 
   function getBaseAuditEvents() {
-    let list = (state.events && state.events.length > 0) ? [...state.events] : [];
-    if (list.length === 0) {
-      list = [
-        {
-          event_id: "INC-2026-0811",
-          timestamp: new Date(Date.now() - 1000 * 60 * 12).toISOString(),
-          source_device: "Edge-PaloAlto-01",
-          format: "panos",
-          source: { ip: "198.51.100.42", port: 49152 },
-          destination: { ip: "10.0.0.15", port: 8000 },
-          threat: { threat_type: "SQL Injection Attempt (SQLi)", detail: "Exploit attempt against /api/v2/checkout with UNION SELECT payload" },
-          mitre: { id: "T1190", name: "Exploit Public-Facing Application" },
-          severity: "critical",
-          event: { action: "block" },
-          status: "blocked",
-          original: { format: "Palo Alto PAN-OS", sha256: "8f4c2b74a9d123456789abcdef0123456789abcdef0123456789abcdef012345" }
-        },
-        {
-          event_id: "INC-2026-0812",
-          timestamp: new Date(Date.now() - 1000 * 60 * 35).toISOString(),
-          source_device: "Core-CiscoASA-02",
-          format: "cisco_asa",
-          source: { ip: "203.0.113.88", port: 55421 },
-          destination: { ip: "10.0.0.22", port: 22 },
-          threat: { threat_type: "SSH Brute Force Credential Guessing", detail: "Exceeded 50 rapid authentication failures per minute" },
-          mitre: { id: "T1110.001", name: "Password Guessing" },
-          severity: "high",
-          event: { action: "block" },
-          status: "blocked",
-          original: { format: "Cisco ASA", sha256: "3d9e1a82f0b987654321fedcba987654321fedcba987654321fedcba987654" }
-        },
-        {
-          event_id: "INC-2026-0813",
-          timestamp: new Date(Date.now() - 1000 * 60 * 75).toISOString(),
-          source_device: "GW-FortiGate-01",
-          format: "fortigate",
-          source: { ip: "185.220.101.5", port: 60102 },
-          destination: { ip: "10.0.0.40", port: 445 },
-          threat: { threat_type: "Remote Shell Command Execution", detail: "Crafted SMB payload with CMD injection" },
-          mitre: { id: "T1059.004", name: "Unix Shell Execution" },
-          severity: "critical",
-          event: { action: "block" },
-          status: "blocked",
-          original: { format: "Fortinet FortiGate", sha256: "1b2c3d4e5f60718293a4b5c6d7e8f90123456789abcdef0123456789abcdef01" }
-        },
-        {
-          event_id: "AUD-2026-0914",
-          timestamp: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
-          source_device: "Cloud-AWS-Trail-01",
-          format: "aws_cloudtrail",
-          source: { ip: "54.239.28.85", port: 443 },
-          destination: { ip: "10.0.1.100", port: 443 },
-          threat: null,
-          mitre: { id: "N/A", name: "Standard Audit Ingestion" },
-          severity: "low",
-          event: { action: "allow" },
-          status: "success",
-          original: { format: "AWS CloudTrail", sha256: "aa99887766554433221100ffeeddccbbaa99887766554433221100ffeeddccbb" }
-        },
-        {
-          event_id: "AUD-2026-0915",
-          timestamp: new Date(Date.now() - 1000 * 60 * 180).toISOString(),
-          source_device: "NIDS-Suricata-01",
-          format: "suricata_eve",
-          source: { ip: "198.18.0.15", port: 53 },
-          destination: { ip: "10.0.0.2", port: 53 },
-          threat: { threat_type: "DNS Tunneling Anomaly", detail: "Base64 payload in TXT record query" },
-          mitre: { id: "T1071.004", name: "DNS Application Layer Protocol" },
-          severity: "high",
-          event: { action: "block" },
-          status: "blocked",
-          original: { format: "Suricata EVE", sha256: "cc22bb44aa6688ee001133557799bbddff112233445566778899aabbccddeeff" }
-        }
-      ];
-    }
-    return list;
+    return (state.events && state.events.length > 0) ? [...state.events] : [];
   }
 
   function getFilteredReportEvents() {
@@ -4777,10 +4702,15 @@ normalization:
               <tr><th>Audit Timestamp</th><th>Event Target</th><th>Algorithm</th><th>Audit Result</th></tr>
             </thead>
             <tbody>
-              <tr><td class="mono">2026-09-12 19:40:11</td><td class="mono">ULPF-2026-1001</td><td class="mono">SHA-256 Payload Hash</td><td><span class="badge badge-teal">MATCH VERIFIED</span></td></tr>
-              <tr><td class="mono">2026-09-12 19:41:25</td><td class="mono">Block #0 (125 Logs)</td><td class="mono">Merkle Root Hash</td><td><span class="badge badge-teal">ROOT VERIFIED</span></td></tr>
-              <tr><td class="mono">2026-09-12 19:42:04</td><td class="mono">ULPF-2026-1003</td><td class="mono">SHA-256 Payload Hash</td><td><span class="badge badge-teal">MATCH VERIFIED</span></td></tr>
-              <tr><td class="mono">2026-09-12 19:43:50</td><td class="mono">Block #1 (125 Logs)</td><td class="mono">Merkle Root Hash</td><td><span class="badge badge-teal">ROOT VERIFIED</span></td></tr>
+              ${filtered.length === 0 ? `<tr><td colspan="4" class="text-center text-muted" style="padding:16px;">No audit evidence available</td></tr>` : 
+                filtered.slice(0, 8).map(evt => `
+                  <tr>
+                    <td class="mono">${new Date(evt.timestamp || evt.ingested_at || Date.now()).toISOString().replace('T', ' ').substr(0, 19)}</td>
+                    <td class="mono">${evt.event_id || 'UNKNOWN'}</td>
+                    <td class="mono">SHA-256 Payload Hash${evt.merkle_root ? ' / Merkle Root' : ''}</td>
+                    <td><span class="badge ${evt.tampered ? 'badge-red' : 'badge-teal'}">${evt.tampered ? 'TAMPERED (FAIL)' : (evt.merkle_root ? 'ROOT VERIFIED' : 'MATCH VERIFIED')}</span></td>
+                  </tr>
+                `).join("")}
             </tbody>
           </table>
         </div>
@@ -4798,10 +4728,7 @@ normalization:
               <tr><th>Consumer Sink</th><th>Target Standard</th><th>Status</th><th>Latency Overhead</th></tr>
             </thead>
             <tbody>
-              <tr><td>OpenSearch 2.11 Node</td><td class="mono">ulpf-events (Index)</td><td><span class="badge badge-teal">INDEXED</span></td><td class="mono">0.42 ms</td></tr>
-              <tr><td>OCSF Exporter v1.1.0</td><td class="mono">Class 4001 (Network)</td><td><span class="badge badge-teal">COMPLIANT</span></td><td class="mono">0.05 ms</td></tr>
-              <tr><td>Elastic Common Schema</td><td class="mono">ECS v8.x JSON</td><td><span class="badge badge-teal">COMPLIANT</span></td><td class="mono">0.04 ms</td></tr>
-              <tr><td>Redpanda Streaming Bus</td><td class="mono">ulpf-events-normalized</td><td><span class="badge badge-teal">STREAMING</span></td><td class="mono">0.18 ms</td></tr>
+              <tr><td colspan="4" class="text-center text-muted" style="padding:16px;">No downstream exporters configured or active</td></tr>
             </tbody>
           </table>
         </div>
