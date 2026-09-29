@@ -1390,6 +1390,11 @@ document.addEventListener("DOMContentLoaded", () => {
       inspectServerLink.title = `Inspect on VM Server at ${serverBaseUrl}`;
       inspectServerLink.target = "_blank";
     }
+
+    const sidebarTargetSummary = document.getElementById("sidebarTargetSummary");
+    if (sidebarTargetSummary) {
+      sidebarTargetSummary.textContent = serverBaseUrl;
+    }
   }
 
   // Centralized function to synchronize all UI inputs and settings across tabs
