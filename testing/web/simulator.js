@@ -1116,7 +1116,7 @@ document.addEventListener("DOMContentLoaded", () => {
       btnToggleStress.classList.add("btn-danger");
       btnToggleStress.innerHTML = `
         <svg class="svg-icon" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12"></rect></svg>
-        <span>Stop Firing Burst</span>
+        <span>Abort Burst</span>
       `;
     }
 
@@ -1192,9 +1192,8 @@ document.addEventListener("DOMContentLoaded", () => {
           payload: `[STRESS-BURST] ${delivered} packets fired via ${protocol} at ${effectiveEps.toLocaleString()} EPS`
         });
 
-        if (isStressTesting) {
-          stressTestTimer = setTimeout(fireNextBurst, 100);
-        }
+        isStressTesting = false;
+        resetToggleButton();
       } catch (err) {
         appendLoadgenLog(`[WARN] Stress burst notice: ${err.message}.`);
         showToast(`Stress Cannon notice: ${err.message}`);
@@ -1212,7 +1211,7 @@ document.addEventListener("DOMContentLoaded", () => {
         btnToggleStress.classList.add("btn-primary");
         btnToggleStress.innerHTML = `
           <svg class="svg-icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-          <span>Start Firing Burst</span>
+          <span>Fire Burst Cannon</span>
         `;
       }
   }
