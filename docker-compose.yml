@@ -11,7 +11,7 @@
 #   - opensearch: Normalized Analytics & Search Cluster (Port 9200)
 #   - opensearch-dashboards: SIEM Visualization Console (Port 5601, profile: analytics)
 #   - ulpf-ai: Sovereign Local LLM AI Engine (Ollama Qwen 7B, Port 11434, profile: ai)
-#   - ulpf-simulator: Virtual Device Simulator & Protocol Testing Hub (Port 8050)
+
 # ==============================================================================
 
 services:
@@ -322,35 +322,6 @@ services:
       - ulpf-net
     restart: unless-stopped
 
-  # ----------------------------------------------------------------------------
-  # 11. ULPF Virtual Device Simulator & Protocol Testing Hub (Port 8050)
-  # ----------------------------------------------------------------------------
-  ulpf-simulator:
-    build:
-      context: .
-      dockerfile: Dockerfile.simulator
-    container_name: ulpf-simulator
-    ports:
-      - "8050:8050"
-    environment:
-      - TESTING_HOST=0.0.0.0
-      - TESTING_PORT=8050
-      - ULPF_API_URL=http://ulpf-api:8000
-      - ULPF_INTERNAL_API_HOST=ulpf-api
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    depends_on:
-      ulpf-api:
-        condition: service_started
-    networks:
-      - ulpf-net
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f -s http://127.0.0.1:8050/ || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
-    restart: unless-stopped
 
 volumes:
   minio_data:
