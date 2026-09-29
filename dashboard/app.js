@@ -7444,7 +7444,17 @@ normalization:
           const sev = data.severity_distribution || {};
           const critHighThreats = (sev.critical || 0) + (sev.high || 0);
 
-          if (statTotal) statTotal.textContent = data.total_analyzed !== undefined ? data.total_analyzed : 0;
+          function formatNumberCompact(num) {
+            if (num >= 1e9) return (num / 1e9).toFixed(1).replace(/\.0$/, '') + 'B';
+            if (num >= 1e6) return (num / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
+            if (num >= 1e3) return (num / 1e3).toFixed(1).replace(/\.0$/, '') + 'k';
+            return num;
+          }
+
+          if (statTotal) {
+            const rawTotal = data.total_analyzed !== undefined ? data.total_analyzed : 0;
+            statTotal.textContent = formatNumberCompact(rawTotal);
+          }
           if (statEps) statEps.textContent = `${liveEps} EPS`;
           if (statThreats) statThreats.textContent = critHighThreats;
           if (statSchemas) statSchemas.textContent = `${(data.top_formats || []).length} Formats`;

@@ -3299,10 +3299,13 @@ def get_analytics_summary():
         reverse=True
     )[:5]
     
-    # Extract real EPS from the global throughput monitor
+    # Extract real EPS and total events from the global throughput monitor
     base_eps = 0
+    total_events = len(recent_events)
     try:
-        base_eps = float(global_throughput_monitor.get_stats().get("avg_eps_10s", 0))
+        stats = global_throughput_monitor.get_stats()
+        base_eps = float(stats.get("avg_eps_10s", 0))
+        total_events = int(stats.get("total_events_processed", len(recent_events)))
     except:
         pass
         
@@ -3313,7 +3316,7 @@ def get_analytics_summary():
         "top_threat_formats": top_threat_formats,
         "live_eps": base_eps,
         "processing_rate": f"{base_eps} logs/sec",
-        "total_analyzed": len(recent_events)
+        "total_analyzed": total_events
     }
 
 @router.get("/api/v1/analytics/minio-stats")
