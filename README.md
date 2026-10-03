@@ -231,9 +231,9 @@ python scripts/run_benchmarks.py
 ```
 
 ### 5. Access the Web Interfaces
-*  **Main SOC Dashboard**: [http://127.0.0.1:8000/dashboard/](http://127.0.0.1:8000/dashboard/)
-*  **Cyber Simulator & Testbed**: [http://localhost:8050/](http://localhost:8050/)
-*  **Interactive OpenAPI Documentation**: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+*  **Main SOC Dashboard**: [http://80.225.207.171:8000](http://80.225.207.171:8000)
+*  **Cyber Simulator & Testbed**: [https://ulpf-new.onrender.com](https://ulpf-new.onrender.com)
+*  **Interactive OpenAPI Documentation**: [http://80.225.207.171:8000/docs](http://80.225.207.171:8000/docs)
 *  **Full Technical Documentation Hub**: [**`docs/README.md`**](docs/README.md)
 *  **System Readiness & Component Ledger**: [**`working.md`**](working.md)
 *  **Codebase File Index & Architecture**: [**`details.md`**](details.md)
