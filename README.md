@@ -18,7 +18,7 @@
 [![Architecture](https://img.shields.io/badge/Pipeline-10--Stage%20Decoupled-F59E0B.svg?style=for-the-badge)](#-end-to-end-10-stage-system-architecture)
 
 </div>
-<div align="right">
+<div align="center">
 Main server link: http://80.225.207.171:8000
 Testing site link: https://ulpf-new.onrender.com
 Youtube link: https://youtu.be/G4Z3u0I4eXY
