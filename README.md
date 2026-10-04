@@ -54,8 +54,6 @@ The system utilizes a strictly sequential, highly optimized pipeline to ensure z
 8. **Persistence Layer:** Uses SQLite WAL / PostgreSQL for metadata, and MinIO S3 as the raw object lake.
 9. **Multi-Sink Egress:** Pushes normalized data to OCSF, ECS, OpenSearch, Kafka Streams, and real-time SSE streams.
 10. **Consumers & SOC:** Feeds data to the SOC Command Console, Cyber Simulator, and downstream SIEMs.
-### Flow Chart
-![Flowchart](flowchart156.png)
 
 ### 🛡️ Three-Unit Decoupled Architecture
 Kosmoporos enforces a strict, unidirectional dependency graph:
@@ -71,7 +69,8 @@ Kosmoporos enforces a strict, unidirectional dependency graph:
 * **AI:** Qwen 2.5 7B (Local Sovereign LLM).
 * **Infrastructure:** Docker, Docker Compose, Bash/PowerShell deployment scripts.
 
-![Flow Chart](Techstack.png)
+### Flow Chart
+![Flow Chart](flow.jpep)
 
 
 
