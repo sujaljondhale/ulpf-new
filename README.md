@@ -2,7 +2,10 @@
 <img src="dashboard/logo.png" alt="Kosmoporos Logo" width="180" style="border-radius: 16px; box-shadow: 0 8px 32px rgba(0, 208, 132, 0.25); margin-bottom: 16px;"></div>
 
 # Kosmoporos (ULPF) - Detailed Project Report and File Structure
-
+---
+*  **Main SOC Dashboard**: [http://80.225.207.171:8000](http://80.225.207.171:8000)
+*  **Cyber Simulator & Testbed**: [https://ulpf-new.onrender.com](https://ulpf-new.onrender.com)
+---
 ##  Project Overview: Kosmoporos (Universal Log Pre-processing Framework)
 
 **Kosmoporos** is not just another Security Information and Event Management (SIEM) tool or a basic log forwarder. It is an ultra-high-speed, vendor-independent, air-gapped log preprocessing and cryptographic provenance layer. It serves as the critical junction between heterogeneous network log sources (firewalls, routers, cloud workloads, and SCADA systems) and the analytical platforms that consume them.
