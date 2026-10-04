@@ -73,7 +73,8 @@ Kosmoporos enforces a strict, unidirectional dependency graph:
    </div>
 
 ### Flow Chart
-'''mermaid
+
+```mermaid
 graph TD
     %% Color Palette Definition
     classDef extColor fill:#DEB887,stroke:#A0522D,stroke-width:1px,color:#000;
@@ -147,8 +148,7 @@ graph TD
     OSD --> FDASH
     SM --> FDASH
     TD --> OS
-'''
-
+```
 
 
 ## 📂 Project File Structure
