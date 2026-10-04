@@ -1,4 +1,6 @@
-<img src="dashboard/logo.png" alt="Kosmoporos Logo" width="180" style="border-radius: 16px; box-shadow: 0 8px 32px rgba(0, 208, 132, 0.25); margin-bottom: 16px;" />
+<div align="center">
+<img src="dashboard/logo.png" alt="Kosmoporos Logo" width="180" style="border-radius: 16px; box-shadow: 0 8px 32px rgba(0, 208, 132, 0.25); margin-bottom: 16px;"
+</div>
 
 # Kosmoporos (ULPF) - Detailed Project Report and File Structure
 
