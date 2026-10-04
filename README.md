@@ -1,6 +1,5 @@
 <div align="center">
 <img src="dashboard/logo.png" alt="Kosmoporos Logo" width="180" style="border-radius: 16px; box-shadow: 0 8px 32px rgba(0, 208, 132, 0.25); margin-bottom: 16px;"></div>
-</div>
 
 # Kosmoporos (ULPF) - Detailed Project Report and File Structure
 
@@ -68,9 +67,14 @@ Kosmoporos enforces a strict, unidirectional dependency graph:
 * **AI:** Qwen 2.5 7B (Local Sovereign LLM).
 * **Infrastructure:** Docker, Docker Compose, Bash/PowerShell deployment scripts.
 
+### Tech Stack
+<div align="center">
+<img src="./techstack.jpeg" alt="Tech Stack">
+   </div>
+
 ### Flow Chart
 <div align="center">
-<img src="./flow.jpeg" alt="Flow Chart";"></img>
+<img src="./flow.jpeg" alt="Flow Chart">
 </div>
 
 
