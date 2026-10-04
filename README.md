@@ -3,7 +3,7 @@
 
 # Kosmoporos (ULPF) - Detailed Project Report and File Structure
 
-## 🚀 Project Overview: Kosmoporos (Universal Log Pre-processing Framework)
+##  Project Overview: Kosmoporos (Universal Log Pre-processing Framework)
 
 **Kosmoporos** is not just another Security Information and Event Management (SIEM) tool or a basic log forwarder. It is an ultra-high-speed, vendor-independent, air-gapped log preprocessing and cryptographic provenance layer. It serves as the critical junction between heterogeneous network log sources (firewalls, routers, cloud workloads, and SCADA systems) and the analytical platforms that consume them.
 
@@ -11,7 +11,7 @@ In modern enterprise and defense Security Operations Centers (SOCs), cybersecuri
 
 Designed specifically for national defense, air-gapped critical infrastructure, and high-throughput enterprise environments, Kosmoporos represents a massive leap over legacy forwarders like Logstash or Fluentd.
 ---
-### 🌟 Core Value Propositions
+###  Core Value Propositions
 
 1. **The Ingestion Tax Elimination:** Commercial SIEMs (like Splunk, Sentinel) charge prohibitively high fees for raw, unparsed, noisy logs. By pre-processing, normalizing, and compressing data *before* it reaches the SIEM, Kosmoporos slashes data ingestion costs.
 2. **Ultra-High Throughput & Edge Efficiency:** Operating directly via non-blocking kernel sockets, Kosmoporos achieves an astonishing ingestion rate of **188,761+ Packets/Second**. Furthermore, it maintains an ultra-lightweight memory footprint of just `42.14 MB RSS`, meaning it can be run on resource-constrained edge devices, vastly outperforming JVM-based legacy systems.
@@ -36,7 +36,7 @@ Unlike legacy log forwarders (Logstash, Fluentd, Vector, FluentBit) or monolithi
 | **Air-Gapped Sovereign AI** |  Requires Cloud APIs |  None |  Cloud-connected LLMs | **`100% Local / Zero-Cloud Leakage`** *(Qwen 2.5 7B)* |
 
 ---
-### 🏗️ 10-Stage Pipeline Architecture
+###  10-Stage Pipeline Architecture
 
 The system utilizes a strictly sequential, highly optimized pipeline to ensure zero-loss processing:
 1. **Heterogeneous Sources:** Ingestion from Firewalls, Routers, Linux/Win Servers, and SCADA.
@@ -53,13 +53,13 @@ The system utilizes a strictly sequential, highly optimized pipeline to ensure z
 9. **Multi-Sink Egress:** Pushes normalized data to OCSF, ECS, OpenSearch, Kafka Streams, and real-time SSE streams.
 10. **Consumers & SOC:** Feeds data to the SOC Command Console, Cyber Simulator, and downstream SIEMs.
 
-### 🛡️ Three-Unit Decoupled Architecture
+###  Three-Unit Decoupled Architecture
 Kosmoporos enforces a strict, unidirectional dependency graph:
 *   **`kosmoporos` (The Core Engine Unit):** A standalone, C-optimized library focusing exclusively on ultra-high-speed parsing, byte-offset mapping, threat detection, and cryptography.
 *   **`app` (The Integration & Orchestration Unit):** Wraps the core engine to manage REST APIs, multi-tier persistence, WebSocket streaming, and network sockets.
 *   **`testing/` (The Simulator Unit):** A completely decoupled external suite that acts as a testbed, red-team attack arsenal, and load generator, without polluting the production environment.
 
-### 🛠️ Technology Stack
+###  Technology Stack
 * **Languages:** Python 3.10+ (Orchestration/API), C (Performance subsystems/Parsers), Vanilla JS (Dashboards).
 * **Framework:** FastAPI, Uvicorn, Pydantic.
 * **Storage:** SQLite/PostgreSQL, MinIO S3, OpenSearch.
@@ -180,7 +180,7 @@ graph LR
     class WC,FD,PR,AI,HV,SN,TD,MV,SM kosmoNode;
 ```
 
-## 📂 Project File Structure
+##  Project File Structure
 
 Below is the detailed and categorized project file structure, explicitly excluding temporary, binary, or non-essential files (`__pycache__`, `.pytest_cache`, `.raw`, `.db`, etc.).
 
