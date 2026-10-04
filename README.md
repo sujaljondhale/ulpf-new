@@ -73,9 +73,81 @@ Kosmoporos enforces a strict, unidirectional dependency graph:
    </div>
 
 ### Flow Chart
-<div align="center">
-<img src="./flow.jpeg" alt="Flow Chart">
-</div>
+'''mermaid
+graph TD
+    %% Color Palette Definition
+    classDef extColor fill:#DEB887,stroke:#A0522D,stroke-width:1px,color:#000;
+    classDef testColor fill:#E6A875,stroke:#D2691E,stroke-width:1px,color:#000;
+    classDef apiColor fill:#FFE4C4,stroke:#D2691E,stroke-width:1px,color:#000;
+    classDef rawColor fill:#F4A460,stroke:#CD853F,stroke-width:1px,color:#000;
+    classDef brokerColor fill:#F5DEB3,stroke:#D2691E,stroke-width:1px,color:#000;
+    classDef anaColor fill:#FFE4B5,stroke:#D2691E,stroke-width:1px,color:#000;
+    classDef kosmoColor fill:#FFF,stroke:#D2691E,stroke-width:1px,color:#000;
+    
+    %% Main Subgraphs
+    subgraph ExternalLogSources["External Log Sources"]
+        FW["Firewall<br>(Cisco - Palo Alto)"]
+        SW["Switches and<br>Routers"]
+        SRV["Servers<br>(Syslog/rsyslog)"]
+        API["API/Webhooks"]
+    end
+    class FW,SW,SRV,API extColor;
+
+    subgraph TestingSuite["Testing Suite"]
+        IC["Integrity Checks"]
+        LT["Load Testing"]
+        VDS["Virtual Devices<br>Simulator"]
+    end
+    class IC,LT,VDS testColor;
+
+    subgraph APIGateway["API Gateway"]
+        FIG["FastAPI Ingestion<br>Gateway 8000<br>- 5140 UDP<br>- 5141 TCP"]
+        ARL["Auth + Rate Limiting<br>(Redis)"]
+        FIG --> ARL
+    end
+    class FIG,ARL apiColor;
+
+    subgraph RawEvidence["Raw Evidence"]
+        RE["MinIO (S3)<br>Immutable Backup"]
+    end
+    class RE rawColor;
+
+    subgraph MessageBroker["Message Broker"]
+        RP["Redpanda<br>raw log ingress"]
+    end
+    class RP brokerColor;
+
+    subgraph Kosmoporos["Kosmoporos"]
+        WC["Worker Consumer"] --> FD["Format Detector"]
+        FD -- Known --> PR["Parser Registry"]
+        FD -- Unknown --> AI["AI Analysis<br>Ollama,<br>Qwen 7B"]
+        PR -- Error --> AI
+        AI --> HV["Human Validation"]
+        HV --> SN["Semantic Normalizer<br>ULPF-IR → OCSF &<br>ECS"]
+        PR --> SN
+        SN --> TD["Threat Detector"]
+        TD --> MV["Markle Vault"]
+        MV --> SM["Stats and Metrics"]
+    end
+    style Kosmoporos fill:#DEB887,stroke:#CD853F,stroke-width:2px;
+    class WC,FD,PR,AI,HV,SN,TD,MV,SM kosmoColor;
+
+    subgraph AnalyticsAndVisualization["Analytics and Visualization"]
+        OS["OpenSearch"] --> OSD["OpenSearch Dashboard"]
+        FDASH["Frontend Dashboard"]
+    end
+    class OS,OSD,FDASH anaColor;
+
+    %% Global Orchestration Connections
+    ExternalLogSources --> FIG
+    TestingSuite --> FIG
+    FIG --> RE
+    ARL --> RP
+    RP --> WC
+    OSD --> FDASH
+    SM --> FDASH
+    TD --> OS
+'''
 
 
 
