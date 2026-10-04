@@ -68,15 +68,24 @@ Kosmoporos enforces a strict, unidirectional dependency graph:
 * **Infrastructure:** Docker, Docker Compose, Bash/PowerShell deployment scripts.
 
 ### Tech Stack
-<div align="center">
-<img src="./techstack.jpeg" alt="Tech Stack">
-   </div>
+
+| Category | Tools & Technologies | Description / Function |
+| :--- | :--- | :--- |
+| **Core Languages** | Python 3.10+, C (C11/C99), JavaScript | Primary development languages |
+| **Web Framework & API** | FastAPI, Uvicorn, Pydantic, Python-Multipart | API Development & Parsing layer |
+| **Storage & Persistence** | SQLite, PostgreSQL (Production), MinIO (S3-compatible), OpenSearch, Redis | Databases, Cache & Storage (Queue / Buffer, Search & Analytics) |
+| **Message Broker & Streaming** | Redpanda | Event Streaming |
+| **Sovereign AI / ML** | Qwen 2.5 7B, Hugging Face Hub | Language Models & Machine Learning framework |
+| **Testing & Benchmarking** | pytest, Hptt X, PSUtil | Testing suite and system resource benchmarking |
+| **Deployment & Infrastructure** | Docker + Docker Compose, Oracle | Containerization and Infrastructure hosting |
+| **Export Standards** | OCSF (Open Cybersecurity Schema Framework), ECS (Elastic Common Schema) | Security data normalization formats |
+
 
 ### Flow Chart
 
 ```mermaid
-graph LR
-    %% Muted Light Pastel Color Palette
+graph TB
+    %% Muted Light Pastel Color Palette Configuration
     classDef extColor fill:#F8F1EB,stroke:#D3C2B0,stroke-width:1.5px,color:#2D2D2D;
     classDef testColor fill:#FAF3EB,stroke:#E6C5A8,stroke-width:1.5px,color:#2D2D2D;
     classDef apiColor fill:#FFF8F0,stroke:#F0D2B5,stroke-width:1.5px,color:#2D2D2D;
@@ -86,69 +95,78 @@ graph LR
     classDef kosmoNode fill:#FFFFFF,stroke:#C2B09E,stroke-width:1.2px,color:#2D2D2D;
 
     %% ==========================================
-    %% LEFT COLUMN: SYSTEM INPUTS & INGESTION
+    %% LEFT CONTAINER COLUMN (Ingestion Pipeline)
     %% ==========================================
-    
-    %% Row 1: Top Inputs Side-by-Side
-    subgraph ExternalLogSources["External Log Sources"]
+    subgraph IngestionSystem["Ingestion Platform & Orchestration"]
         direction TB
-        FW["Firewall<br>(Cisco - Palo Alto)"]
-        SW["Switches and Routers"]
-        SRV["Servers<br>(Syslog/rsyslog)"]
-        API["API/Webhooks"]
-    end
 
-    subgraph TestingSuite["Testing Suite"]
-        direction TB
-        IC["Integrity Checks"]
-        LT["Load Testing"]
-        VDS["Virtual Devices Simulator"]
-    end
+        %% Top Row: External Sources & Testing Side-by-Side Grid
+        subgraph TopGrid[" "]
+            direction LR
+            subgraph ExternalLogSources["External Log Sources"]
+                direction TB
+                FW["Firewall<br>(Cisco - Palo Alto)"]
+                SW["Switches and Routers"]
+                SRV["Servers<br>(Syslog/rsyslog)"]
+                API["API/Webhooks"]
+            end
 
-    %% Row 2: Ingestion Gateway Block
-    subgraph APIGateway["API Gateway"]
-        direction TB
-        FIG["FastAPI Ingestion Gateway 8000<br>- 5140 UDP<br>- 5141 TCP"] 
-        ARL["Auth + Rate Limiting<br>(Redis)"]
-        FIG --> ARL
-    end
+            subgraph TestingSuite["Testing Suite"]
+                direction TB
+                IC["Integrity Checks"]
+                LT["Load Testing"]
+                VDS["Virtual Devices Simulator"]
+            end
+        end
+        style TopGrid fill:none,stroke:none;
 
-    %% Row 3: Target Storage blocks
-    subgraph RawEvidence["Raw Evidence"]
-        RE["MinIO (S3)<br>Immutable Backup"]
-    end
+        %% Middle Row: API Gateway Component Block
+        subgraph APIGateway["API Gateway"]
+            direction LR
+            FIG["FastAPI Ingestion Gateway 8000<br>- 5140 UDP<br>- 5141 TCP"] --> ARL["Auth + Rate Limiting<br>(Redis)"]
+        end
 
-    subgraph MessageBroker["Message Broker"]
-        RP["Redpanda<br>raw log ingress"]
-    end
+        %% Mid-Bottom Row: Storage and Queue Targets Side-by-Side
+        subgraph TargetGrid[" "]
+            direction LR
+            subgraph RawEvidence["Raw Evidence"]
+                direction TB
+                RE["MinIO (S3)<br>Immutable Backup"]
+            end
+            subgraph MessageBroker["Message Broker"]
+                direction TB
+                RP["Redpanda<br>raw log ingress"]
+            end
+        end
+        style TargetGrid fill:none,stroke:none;
 
-    %% Row 4: Analytics Unit
-    subgraph AnalyticsAndVisualization["Analytics and Visualization"]
-        direction TB
-        OS["OpenSearch"] --> OSD["OpenSearch Dashboard"]
-        FDASH["Frontend Dashboard"]
-        OSD --> FDASH
+        %% Bottom Row: Visualization Unit
+        subgraph AnalyticsAndVisualization["Analytics and Visualization"]
+            direction LR
+            OS["OpenSearch"] --> OSD["OpenSearch Dashboard"]
+            FDASH["Frontend Dashboard"]
+            OSD --> FDASH
+        end
+        
+        %% Internal Layout Constrainers (Forces strict Top-to-Bottom column alignment)
+        ExternalLogSources ~~~ FIG ~~~ RawEvidence
+        TestingSuite ~~~ ARL ~~~ MessageBroker
+        RawEvidence ~~~ OS
+        MessageBroker ~~~ FDASH
+        
     end
-
-    %% Structural Alignment Links (Forces left-column items to stack nicely)
-    ExternalLogSources --- TestingSuite
-    ExternalLogSources --> FIG
-    TestingSuite --> FIG
-    FIG --> RE
-    ARL --> RP
-    RE --- MessageBroker
-    RE --> OS
+    style IngestionSystem fill:none,stroke:none;
 
     %% ==========================================
-    %% RIGHT COLUMN: MAIN KOSMOPOROS ENGINE
+    %% RIGHT CONTAINER COLUMN (Processing Pipeline)
     %% ==========================================
     subgraph Kosmoporos["Kosmoporos"]
         direction TB
         WC["Worker Consumer"] --> FD["Format Detector"]
         
-        %% Pipeline branch paths
-        FD -->|Known| PR["Parser Registry"]
+        %% Processing Split & Error Handling Loops
         FD -->|Unknown| AI["AI Analysis<br>Ollama, Qwen 7B"]
+        FD -->|Known| PR["Parser Registry"]
         PR -->|Error| AI
         
         AI --> HV["Human Validation"]
@@ -158,19 +176,26 @@ graph LR
         SN --> TD["Threat Detector"]
         TD --> MV["Markle Vault"]
         MV --> SM["Stats and Metrics"]
+        
+        %% Grid balance constraints inside Kosmoporos container
+        PR ~~~ HV
     end
     style Kosmoporos fill:#FAF0E6,stroke:#D3C2B0,stroke-width:2px;
 
-    %% Horizontal Layout Grid Constrainers (Forces Kosmoporos to stay strictly right-side parallel)
-    TestingSuite --- WC
+    %% ==========================================
+    %% GLOBAL INTER-COMPONENT ROUTING PATHS
+    %% ==========================================
+    ExternalLogSources --> FIG
+    TestingSuite --> FIG
+    FIG --> RE
+    ARL --> RP
+    
+    %% Cross-Pipeline Pipeline Links
     RP --> WC
     TD --> OS
     SM --> FDASH
 
-    %% Invisible Link Hacks to hide the alignment skeleton lines
-    linkStyle 0,5,8 stroke:none,stroke-width:0px;
-
-    %% Apply Style Colors
+    %% Color Mapping Bindings
     class FW,SW,SRV,API extColor;
     class IC,LT,VDS testColor;
     class FIG,ARL apiColor;
