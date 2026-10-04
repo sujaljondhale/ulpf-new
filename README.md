@@ -75,108 +75,114 @@ Kosmoporos enforces a strict, unidirectional dependency graph:
 ### Flow Chart
 
 ```mermaid
-graph LR
-    %% Palette Configuration
-    classDef extColor fill:#DEB887,stroke:#A0522D,stroke-width:1px,color:#000;
-    classDef testColor fill:#E6A875,stroke:#D2691E,stroke-width:1px,color:#000;
-    classDef apiColor fill:#FFE4C4,stroke:#D2691E,stroke-width:1px,color:#000;
-    classDef rawColor fill:#F4A460,stroke:#CD853F,stroke-width:1px,color:#000;
-    classDef brokerColor fill:#F5DEB3,stroke:#D2691E,stroke-width:1px,color:#000;
-    classDef anaColor fill:#FFE4B5,stroke:#D2691E,stroke-width:1px,color:#000;
-    classDef kosmoColor fill:#FFF,stroke:#D2691E,stroke-width:1px,color:#000;
+graph TD
+    %% Muted Light Pastel Color Palette
+    classDef extColor fill:#F5EBE0,stroke:#D3C2B0,stroke-width:1.5px,color:#333;
+    classDef testColor fill:#F9EBDD,stroke:#E6C5A8,stroke-width:1.5px,color:#333;
+    classDef apiColor fill:#FFF2E6,stroke:#F0D2B5,stroke-width:1.5px,color:#333;
+    classDef rawColor fill:#FAEBD7,stroke:#E3C09A,stroke-width:1.5px,color:#333;
+    classDef brokerColor fill:#FAF0E6,stroke:#E8D8C8,stroke-width:1.5px,color:#333;
+    classDef anaColor fill:#FFF5EE,stroke:#EAD5C3,stroke-width:1.5px,color:#333;
+    classDef kosmoNode fill:#FFFFFF,stroke:#D3C2B0,stroke-width:1px,color:#333;
 
-    %% Left-Side Pipeline
-    subgraph LeftPipeline[" "]
-        direction TB
-        
-        %% Column 1: Top Inputs Row
-        subgraph TopInputs[" "]
-            direction LR
-            subgraph ExternalLogSources["External Log Sources"]
-                direction TB
-                FW["Firewall<br>(Cisco - Palo Alto)"]
-                SW["Switches and<br>Routers"]
-                SRV["Servers<br>(Syslog/rsyslog)"]
-                API["API/Webhooks"]
+    %% Layout Structure: Main split into Left Platform and Right Processing
+    subgraph MainLayout[" "]
+        direction LR
+
+        %% LEFT SIDE PLATFORM
+        subgraph LeftPlatform[" "]
+            direction TB
+
+            %% Top Row: External Sources & Testing side-by-side
+            subgraph TopRow[" "]
+                direction LR
+                subgraph ExternalLogSources["External Log Sources"]
+                    direction TB
+                    FW["Firewall<br>(Cisco - Palo Alto)"]
+                    SW["Switches and Routers"]
+                    SRV["Servers<br>(Syslog/rsyslog)"]
+                    API["API/Webhooks"]
+                end
+
+                subgraph TestingSuite["Testing Suite"]
+                    direction TB
+                    IC["Integrity Checks"]
+                    LT["Load Testing"]
+                    VDS["Virtual Devices Simulator"]
+                end
             end
+            style TopRow fill:none,stroke:none;
+
+            %% Middle Row: API Gateway Ingestion
+            subgraph APIGateway["API Gateway"]
+                direction LR
+                FIG["FastAPI Ingestion Gateway 8000<br>- 5140 UDP<br>- 5141 TCP"] --> ARL["Auth + Rate Limiting<br>(Redis)"]
+            end
+
+            %% Data Destinations Row
+            subgraph DataLayer[" "]
+                direction LR
+                subgraph RawEvidence["Raw Evidence"]
+                    RE["MinIO (S3)<br>Immutable Backup"]
+                end
+                subgraph MessageBroker["Message Broker"]
+                    RP["Redpanda<br>raw log ingress"]
+                end
+            end
+            style DataLayer fill:none,stroke:none;
+
+            %% Bottom Row: Analytics
+            subgraph AnalyticsAndVisualization["Analytics and Visualization"]
+                direction LR
+                OS["OpenSearch"] --> OSD["OpenSearch Dashboard"]
+                FDASH["Frontend Dashboard"]
+                OSD --> FDASH
+            end
+        end
+        style LeftPlatform fill:none,stroke:none;
+
+        %% RIGHT SIDE PLATFORM (Processing Pipeline)
+        subgraph Kosmoporos["Kosmoporos"]
+            direction TB
+            WC["Worker Consumer"] --> FD["Format Detector"]
             
-            subgraph TestingSuite["Testing Suite"]
-                direction TB
-                IC["Integrity Checks"]
-                LT["Load Testing"]
-                VDS["Virtual Devices<br>Simulator"]
-            end
+            %% Processing Split
+            FD -- Known --> PR["Parser Registry"]
+            FD -- Unknown --> AI["AI Analysis<br>Ollama, Qwen 7B"]
+            PR -- Error --> AI
+            
+            AI --> HV["Human Validation"]
+            HV --> SN["Semantic Normalizer<br>ULPF-IR → OCSF & ECS"]
+            PR --> SN
+            
+            SN --> TD["Threat Detector"]
+            TD --> MV["Markle Vault"]
+            MV --> SM["Stats and Metrics"]
         end
-        style TopInputs fill:none,stroke:none;
-        class FW,SW,SRV,API extColor;
-        class IC,LT,VDS testColor;
+        style Kosmoporos fill:#FAF0E6,stroke:#D3C2B0,stroke-width:2px;
 
-        %% Column 2: Ingestion layer
-        subgraph APIGateway["API Gateway"]
-            direction LR
-            FIG["FastAPI Ingestion<br>Gateway 8000<br>- 5140 UDP<br>- 5141 TCP"] --> ARL["Auth + Rate Limiting<br>(Redis)"]
-        end
-        class FIG,ARL apiColor;
-
-        %% Connect inputs to Gateway
-        ExternalLogSources --> FIG
-        TestingSuite --> FIG
-
-        %% Column 3: Storage & Ingress
-        subgraph MidOutputs[" "]
-            direction LR
-            subgraph RawEvidence["Raw Evidence"]
-                direction TB
-                RE["MinIO (S3)<br>Immutable Backup"]
-            end
-            subgraph MessageBroker["Message Broker"]
-                direction TB
-                RP["Redpanda<br>raw log ingress"]
-            end
-        end
-        style MidOutputs fill:none,stroke:none;
-        class RE rawColor;
-        class RP brokerColor;
-
-        FIG --> RE
-        ARL --> RP
-
-        %% Column 4: Bottom Layer
-        subgraph AnalyticsAndVisualization["Analytics and Visualization"]
-            direction LR
-            OS["OpenSearch"] --> OSD["OpenSearch Dashboard"]
-            FDASH["Frontend Dashboard"]
-        end
-        OSD --> FDASH
-        class OS,OSD,FDASH anaColor;
     end
-    style LeftPipeline fill:none,stroke:none;
+    style MainLayout fill:none,stroke:none;
 
-    %% Right-Side Pipeline (Main Processing Column)
-    subgraph Kosmoporos["Kosmoporos"]
-        direction TB
-        WC["Worker Consumer"] --> FD["Format Detector"]
-        
-        %% AI Branch alignment handling
-        FD -- Unknown --> AI["AI Analysis<br>Ollama,<br>Qwen 7B"]
-        FD -- Known --> PR["Parser Registry"]
-        PR -- Error --> AI
-        
-        AI --> HV["Human Validation"]
-        HV --> SN["Semantic Normalizer<br>ULPF-IR → OCSF &<br>ECS"]
-        PR --> SN
-        
-        SN --> TD["Threat Detector"]
-        TD --> MV["Markle Vault"]
-        MV --> SM["Stats and Metrics"]
-    end
-    style Kosmoporos fill:#DEB887,stroke:#CD853F,stroke-width:2px;
-    class WC,FD,PR,AI,HV,SN,TD,MV,SM kosmoColor;
-
-    %% Cross-Pipeline Connections
+    %% Connecting Pipelines
+    ExternalLogSources --> FIG
+    TestingSuite --> FIG
+    FIG --> RE
+    ARL --> RP
+    
+    %% Inter-system Flows
     RP --> WC
     TD --> OS
     SM --> FDASH
+
+    %% Color Assignments
+    class FW,SW,SRV,API extColor;
+    class IC,LT,VDS testColor;
+    class FIG,ARL apiColor;
+    class RE rawColor;
+    class RP brokerColor;
+    class OS,OSD,FDASH anaColor;
+    class WC,FD,PR,AI,HV,SN,TD,MV,SM kosmoNode;
 ```
 
 
