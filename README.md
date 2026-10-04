@@ -75,8 +75,8 @@ Kosmoporos enforces a strict, unidirectional dependency graph:
 ### Flow Chart
 
 ```mermaid
-graph TB
-    %% Muted Light Pastel Color Palette Configuration
+graph LR
+    %% Muted Light Pastel Color Palette
     classDef extColor fill:#F8F1EB,stroke:#D3C2B0,stroke-width:1.5px,color:#2D2D2D;
     classDef testColor fill:#FAF3EB,stroke:#E6C5A8,stroke-width:1.5px,color:#2D2D2D;
     classDef apiColor fill:#FFF8F0,stroke:#F0D2B5,stroke-width:1.5px,color:#2D2D2D;
@@ -86,78 +86,69 @@ graph TB
     classDef kosmoNode fill:#FFFFFF,stroke:#C2B09E,stroke-width:1.2px,color:#2D2D2D;
 
     %% ==========================================
-    %% LEFT CONTAINER COLUMN (Ingestion Pipeline)
+    %% LEFT COLUMN: SYSTEM INPUTS & INGESTION
     %% ==========================================
-    subgraph IngestionSystem["Ingestion Platform & Orchestration"]
+    
+    %% Row 1: Top Inputs Side-by-Side
+    subgraph ExternalLogSources["External Log Sources"]
         direction TB
-
-        %% Top Row: External Sources & Testing Side-by-Side Grid
-        subgraph TopGrid[" "]
-            direction LR
-            subgraph ExternalLogSources["External Log Sources"]
-                direction TB
-                FW["Firewall<br>(Cisco - Palo Alto)"]
-                SW["Switches and Routers"]
-                SRV["Servers<br>(Syslog/rsyslog)"]
-                API["API/Webhooks"]
-            end
-
-            subgraph TestingSuite["Testing Suite"]
-                direction TB
-                IC["Integrity Checks"]
-                LT["Load Testing"]
-                VDS["Virtual Devices Simulator"]
-            end
-        end
-        style TopGrid fill:none,stroke:none;
-
-        %% Middle Row: API Gateway Component Block
-        subgraph APIGateway["API Gateway"]
-            direction LR
-            FIG["FastAPI Ingestion Gateway 8000<br>- 5140 UDP<br>- 5141 TCP"] --> ARL["Auth + Rate Limiting<br>(Redis)"]
-        end
-
-        %% Mid-Bottom Row: Storage and Queue Targets Side-by-Side
-        subgraph TargetGrid[" "]
-            direction LR
-            subgraph RawEvidence["Raw Evidence"]
-                direction TB
-                RE["MinIO (S3)<br>Immutable Backup"]
-            end
-            subgraph MessageBroker["Message Broker"]
-                direction TB
-                RP["Redpanda<br>raw log ingress"]
-            end
-        end
-        style TargetGrid fill:none,stroke:none;
-
-        %% Bottom Row: Visualization Unit
-        subgraph AnalyticsAndVisualization["Analytics and Visualization"]
-            direction LR
-            OS["OpenSearch"] --> OSD["OpenSearch Dashboard"]
-            FDASH["Frontend Dashboard"]
-            OSD --> FDASH
-        end
-        
-        %% Internal Layout Constrainers (Forces strict Top-to-Bottom column alignment)
-        ExternalLogSources ~~~ FIG ~~~ RawEvidence
-        TestingSuite ~~~ ARL ~~~ MessageBroker
-        RawEvidence ~~~ OS
-        MessageBroker ~~~ FDASH
-        
+        FW["Firewall<br>(Cisco - Palo Alto)"]
+        SW["Switches and Routers"]
+        SRV["Servers<br>(Syslog/rsyslog)"]
+        API["API/Webhooks"]
     end
-    style IngestionSystem fill:none,stroke:none;
+
+    subgraph TestingSuite["Testing Suite"]
+        direction TB
+        IC["Integrity Checks"]
+        LT["Load Testing"]
+        VDS["Virtual Devices Simulator"]
+    end
+
+    %% Row 2: Ingestion Gateway Block
+    subgraph APIGateway["API Gateway"]
+        direction TB
+        FIG["FastAPI Ingestion Gateway 8000<br>- 5140 UDP<br>- 5141 TCP"] 
+        ARL["Auth + Rate Limiting<br>(Redis)"]
+        FIG --> ARL
+    end
+
+    %% Row 3: Target Storage blocks
+    subgraph RawEvidence["Raw Evidence"]
+        RE["MinIO (S3)<br>Immutable Backup"]
+    end
+
+    subgraph MessageBroker["Message Broker"]
+        RP["Redpanda<br>raw log ingress"]
+    end
+
+    %% Row 4: Analytics Unit
+    subgraph AnalyticsAndVisualization["Analytics and Visualization"]
+        direction TB
+        OS["OpenSearch"] --> OSD["OpenSearch Dashboard"]
+        FDASH["Frontend Dashboard"]
+        OSD --> FDASH
+    end
+
+    %% Structural Alignment Links (Forces left-column items to stack nicely)
+    ExternalLogSources --- TestingSuite
+    ExternalLogSources --> FIG
+    TestingSuite --> FIG
+    FIG --> RE
+    ARL --> RP
+    RE --- MessageBroker
+    RE --> OS
 
     %% ==========================================
-    %% RIGHT CONTAINER COLUMN (Processing Pipeline)
+    %% RIGHT COLUMN: MAIN KOSMOPOROS ENGINE
     %% ==========================================
     subgraph Kosmoporos["Kosmoporos"]
         direction TB
         WC["Worker Consumer"] --> FD["Format Detector"]
         
-        %% Processing Split & Error Handling Loops
-        FD -->|Unknown| AI["AI Analysis<br>Ollama, Qwen 7B"]
+        %% Pipeline branch paths
         FD -->|Known| PR["Parser Registry"]
+        FD -->|Unknown| AI["AI Analysis<br>Ollama, Qwen 7B"]
         PR -->|Error| AI
         
         AI --> HV["Human Validation"]
@@ -167,26 +158,19 @@ graph TB
         SN --> TD["Threat Detector"]
         TD --> MV["Markle Vault"]
         MV --> SM["Stats and Metrics"]
-        
-        %% Grid balance constraints inside Kosmoporos container
-        PR ~~~ HV
     end
     style Kosmoporos fill:#FAF0E6,stroke:#D3C2B0,stroke-width:2px;
 
-    %% ==========================================
-    %% GLOBAL INTER-COMPONENT ROUTING PATHS
-    %% ==========================================
-    ExternalLogSources --> FIG
-    TestingSuite --> FIG
-    FIG --> RE
-    ARL --> RP
-    
-    %% Cross-Pipeline Pipeline Links
+    %% Horizontal Layout Grid Constrainers (Forces Kosmoporos to stay strictly right-side parallel)
+    TestingSuite --- WC
     RP --> WC
     TD --> OS
     SM --> FDASH
 
-    %% Color Mapping Bindings
+    %% Invisible Link Hacks to hide the alignment skeleton lines
+    linkStyle 0,5,8 stroke:none,stroke-width:0px;
+
+    %% Apply Style Colors
     class FW,SW,SRV,API extColor;
     class IC,LT,VDS testColor;
     class FIG,ARL apiColor;
@@ -195,8 +179,6 @@ graph TB
     class OS,OSD,FDASH anaColor;
     class WC,FD,PR,AI,HV,SN,TD,MV,SM kosmoNode;
 ```
-
-
 
 ## 📂 Project File Structure
 
