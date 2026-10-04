@@ -9,15 +9,6 @@
 **Theme:** Blockchain & Cybersecurity | **Category:** Software / Core Cyber Defense  
 **Team ID:** CMRU025 | **Team Name:** MEGABYTES | **Institution:** CMR University, Bengaluru
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-00D084.svg?style=for-the-badge)](LICENSE)
-[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-38BDF8.svg?style=for-the-badge)](https://www.python.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688.svg?style=for-the-badge)](https://fastapi.tiangolo.com/)
-[![Throughput](https://img.shields.io/badge/Wire%20Throughput-188%2C761%20EPS-00D084.svg?style=for-the-badge)](scripts/run_benchmarks.py)
-[![Latency](https://img.shields.io/badge/Mean%20Latency-0.45%20ms-38BDF8.svg?style=for-the-badge)](scripts/run_benchmarks.py)
-[![Memory](https://img.shields.io/badge/Memory%20RSS-42.14%20MB-8B5CF6.svg?style=for-the-badge)](scripts/run_benchmarks.py)
-[![Architecture](https://img.shields.io/badge/Pipeline-10--Stage%20Decoupled-F59E0B.svg?style=for-the-badge)](#-end-to-end-10-stage-system-architecture)
-
-</div>
 <div align="center">
 Main server link: http://80.225.207.171:8000
 Testing site link: https://ulpf-new.onrender.com
